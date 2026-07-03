@@ -1,0 +1,8 @@
+⨯ Another next dev server is already running.
+
+- Local:        http://localhost:3000
+- PID:          50604
+- Dir:          C:\Users\HOC Academy\Documents\GitHub\Chess View\chessview.org-next.js
+- Log:          .next\dev\logs\next-development.log
+
+Run taskkill /PID 50604 /F to stop it.

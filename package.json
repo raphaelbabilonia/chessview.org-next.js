@@ -17,10 +17,14 @@
     "verify": "npm run lint && npm run build && npm run smoke && npm audit --audit-level=moderate"
   },
   "dependencies": {
+    "d3-geo": "^3.1.1",
+    "flag-icons": "^7.5.0",
     "lucide-react": "^1.21.0",
     "next": "16.2.9",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "topojson-client": "^3.1.0",
+    "world-atlas": "^2.0.2"
   },
   "devDependencies": {
     "eslint": "^9",

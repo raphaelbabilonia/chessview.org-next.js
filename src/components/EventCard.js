@@ -1,24 +1,75 @@
-import { CalendarDays, ExternalLink, MapPin, Trophy, Users } from "lucide-react";
+import { Clock, ExternalLink, MapPin } from "lucide-react";
 import Link from "next/link";
-import { compactDescription, formatCountryName, formatDateRange, formatTimeControl } from "@/lib/format";
-import { countryHref, localizedEventHref, sourceHref } from "@/lib/tournament";
-import { StatusBadge } from "./StatusBadge";
+import { StatusBadge } from "@/components/StatusBadge";
+import { formatCardDateRange, formatCountryName, formatTimeControl } from "@/lib/format";
+import { countryHref, localizedEventHref } from "@/lib/tournament";
+
+const hostnameFor = (href) => {
+  try {
+    return new URL(href).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+};
+
+const sameHost = (first, second) => {
+  const firstHost = hostnameFor(first);
+  const secondHost = hostnameFor(second);
+  return Boolean(firstHost && secondHost && firstHost === secondHost);
+};
+
+const faviconUrlFor = (href) => {
+  const host = hostnameFor(href);
+  if (!host) return "";
+  return `https://www.google.com/s2/favicons?domain_url=${encodeURIComponent(`https://${host}`)}&sz=32`;
+};
+
+const originalSiteInfo = (event) => {
+  const links = event.externalLinks || [];
+  const website = links.find((link) => link.url && link.type === "website");
+  const source = links.find((link) => link.url && link.type === "source");
+  const firstLink = links.find((link) => link.url);
+  const href = event.websiteUrl || website?.url || event.source?.url || source?.url || firstLink?.url || "";
+  if (!href) return null;
+
+  const sourceName = String(event.source?.name || "").trim();
+  const label = sourceName && sameHost(href, event.source?.url) ? sourceName : hostnameFor(href) || sourceName;
+
+  return {
+    href,
+    iconUrl: faviconUrlFor(href),
+    label,
+  };
+};
+
+const roundsLabel = (copy, count) => {
+  const rounds = Number(count || 0);
+  if (!rounds) return "";
+  return `${rounds} ${rounds === 1 ? copy.card.round : copy.card.rounds}`;
+};
 
 export function EventCard({ copy, event, locale }) {
-  const fallbackDescription = `${event.city || ""} ${copy.card.eventFallback}`.trim();
-  const description = compactDescription(event.description, fallbackDescription, { title: event.title });
   const locationLabel = [event.city, formatCountryName(event.country, locale)].filter(Boolean).join(", ");
-  const normalizedDescription = description.toLowerCase();
-  const locationOnlyDescription = [event.city, event.venueName, event.address]
-    .filter(Boolean)
-    .some((value) => normalizedDescription === String(value).toLowerCase());
+  const cardDate = formatCardDateRange(event.startDate, event.endDate, locale);
+  const timeControl = formatTimeControl(event.timeControl, locale, copy.card.timeControlTba);
+  const timeDetails = [timeControl, roundsLabel(copy, event.roundsCount)].filter(Boolean).join(" - ");
+  const sourceInfo = originalSiteInfo(event);
+  const sourceName = event.source?.name || event.sourceOrganizerName || copy.event.source;
 
   return (
     <article className="event-card">
-      <div className="event-card-main">
-        <p className="eyebrow">{formatDateRange(event.startDate, event.endDate, locale)}</p>
-        <h3>{event.title}</h3>
-        {locationOnlyDescription ? null : <p>{description}</p>}
+      <div className="event-card-header">
+        <time className="event-card-date" dateTime={event.startDate} title={cardDate.accessible}>
+          <span className="event-card-date-primary">{cardDate.primary}</span>
+          {cardDate.secondary ? <span className="event-card-date-secondary">{cardDate.secondary}</span> : null}
+        </time>
+        <div className="event-card-main">
+          <div className="event-card-title-row">
+            <h3>{event.title}</h3>
+            <StatusBadge labels={copy.status} value={event.status || "published"} />
+          </div>
+          <p className="event-card-source">{sourceName}</p>
+        </div>
       </div>
       <div className="event-meta-grid">
         <span>
@@ -32,28 +83,28 @@ export function EventCard({ copy, event, locale }) {
           )}
         </span>
         <span>
-          <CalendarDays size={16} aria-hidden="true" />
-          {formatTimeControl(event.timeControl, locale, copy.card.timeControlTba)}
-        </span>
-        <span>
-          {event.source?.name ? <ExternalLink size={16} aria-hidden="true" /> : <Users size={16} aria-hidden="true" />}
-          {event.source?.name ? (
-            <Link href={`/${locale}${sourceHref(event.source.name)}`}>{event.source.name}</Link>
-          ) : (
-            `${event.playersCount || 0}/${event.maxPlayers || copy.card.openCapacity}`
-          )}
-        </span>
-        <span>
-          <Trophy size={16} aria-hidden="true" />
-          {event.ratingType || `${event.sectionsCount || event.sections?.length || 0} ${copy.card.sections}`}
+          <Clock size={16} aria-hidden="true" />
+          {timeDetails}
         </span>
       </div>
       <div className="event-card-actions">
-        <StatusBadge labels={copy.status} value={event.status} />
-        <StatusBadge labels={copy.status} value={event.registrationStatus} />
         <Link className="button button-small" href={localizedEventHref(locale, event)}>
-          {copy.card.open}
+          {copy.card.seeMore}
         </Link>
+        {sourceInfo ? (
+          <a className="button button-small button-ghost event-source-button" href={sourceInfo.href} rel="noreferrer" target="_blank">
+            {sourceInfo.iconUrl ? (
+              <span
+                aria-hidden="true"
+                className="source-favicon"
+                style={{ backgroundImage: `url(${sourceInfo.iconUrl})` }}
+              />
+            ) : (
+              <ExternalLink size={16} aria-hidden="true" />
+            )}
+            <span>{sourceInfo.label || copy.card.originalSite}</span>
+          </a>
+        ) : null}
       </div>
     </article>
   );

@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 760" role="img" aria-labelledby="title desc">
   <title id="title">ChessView logo</title>
   <desc id="desc">ChessView brand mark built from the approved Illustrator SVG: chess knight inside an eye shape with board and standings motifs.</desc>
 
-  <rect x="24" y="24" width="464" height="464" rx="96" fill="#032044"/>
-  <rect x="24" y="24" width="464" height="464" rx="96" fill="none" stroke="#BA9B4A" stroke-width="8"/>
-  <svg x="56.00" y="134.00" width="400.00" height="269.00" viewBox="0 0 528.1 355.25" overflow="visible">
+  <rect width="720" height="760" fill="transparent"/>
+  <svg x="110.00" y="70.00" width="500.00" height="336.00" viewBox="0 0 528.1 355.25" overflow="visible">
 <defs>
     <style>
       .cls-1 {
@@ -13,16 +12,15 @@
       }
 
       .cls-2 {
-        fill: #FDFCFD;
-      }
-
-      .cls-3 {
         fill: #032044;
       }
 
+      .cls-3 {
+        fill: #FDFCFD;
+      }
+
       .cls-4 {
-        fill: #FFFFFF;
-        opacity: .22;
+        fill: #DEDAD6;
       }
     </style>
   </defs>
@@ -40,5 +38,8 @@
   <path class="cls-1" d="M384.01,218.3l.81,54.31c-.24,1.09-1.04,1.54-1.87,2.13-.97.69-18.43,8.58-19.49,8.57-.94-.01-2.45-.96-2.45-1.51v-62c0-.11,1.39-1.5,1.5-1.5h21.5Z"/>
   <path class="cls-3" d="M316.01,61.31c-2.04,11-6.38,5.77-11.99.49l11.99-.49Z"/>
   </svg>
+  <text x="360" y="575" text-anchor="middle" font-family="Inter, Avenir Next, Montserrat, Helvetica Neue, Arial, sans-serif" font-size="84" font-weight="800" letter-spacing="-2">
+    <tspan fill="#032044">Chess</tspan><tspan fill="#BA9B4A">View</tspan>
+  </text>
 
 </svg>

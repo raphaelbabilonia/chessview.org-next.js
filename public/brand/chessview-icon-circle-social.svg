@@ -3,9 +3,9 @@
   <title id="title">ChessView logo</title>
   <desc id="desc">ChessView brand mark built from the approved Illustrator SVG: chess knight inside an eye shape with board and standings motifs.</desc>
 
-  <rect x="24" y="24" width="464" height="464" rx="96" fill="#032044"/>
-  <rect x="24" y="24" width="464" height="464" rx="96" fill="none" stroke="#BA9B4A" stroke-width="8"/>
-  <svg x="56.00" y="134.00" width="400.00" height="269.00" viewBox="0 0 528.1 355.25" overflow="visible">
+  <circle cx="256" cy="256" r="248" fill="#032044"/>
+  <circle cx="256" cy="256" r="248" fill="none" stroke="#BA9B4A" stroke-width="10"/>
+  <svg x="54.00" y="130.00" width="404.00" height="272.00" viewBox="0 0 528.1 355.25" overflow="visible">
 <defs>
     <style>
       .cls-1 {

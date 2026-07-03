@@ -77,7 +77,7 @@ await check("localized home pages render", async () => {
     const { response, text: html } = await getText(`/${locale}`);
     assert(response.status === 200, `/${locale} returned ${response.status}`);
     assert(html.includes(text), `/${locale} did not include ${text}`);
-    assert(html.includes("<title>Chess View</title>"), `/${locale} did not include absolute home title`);
+    assert(html.includes("<title>ChessView</title>"), `/${locale} did not include absolute home title`);
   }
 });
 
@@ -102,6 +102,25 @@ await check("legacy events route redirects by cookie", async () => {
   });
   assert(response.status === 307, `/events returned ${response.status}`);
   assert(response.headers.get("location") === "/it/events", `expected /it/events, got ${response.headers.get("location")}`);
+});
+
+await check("legacy news route redirects by cookie", async () => {
+  const response = await fetch(`${siteUrl}/news`, {
+    redirect: "manual",
+    headers: {
+      Cookie: "chessview_locale=it",
+    },
+  });
+  assert(response.status === 307, `/news returned ${response.status}`);
+  assert(response.headers.get("location") === "/it/news", `expected /it/news, got ${response.headers.get("location")}`);
+});
+
+await check("news bridge page renders source-first cards", async () => {
+  const { response, text } = await getText("/en/news");
+  assert(response.status === 200, `/en/news returned ${response.status}`);
+  assert(text.includes("A source-first chess news bridge"), "News page title missing");
+  assert(text.includes("ChessBase"), "News page did not include ChessBase source");
+  assert(text.includes("Original site"), "News page did not include source CTA");
 });
 
 await check("event list pages render translations", async () => {
@@ -138,6 +157,9 @@ await check("sitemap includes localized event URLs", async () => {
   const { response, text } = await getText("/sitemap.xml");
   assert(response.status === 200, `/sitemap.xml returned ${response.status}`);
   for (const locale of ["en", "es", "it"]) {
+    assert(text.includes(`/${locale}/news`), `sitemap missing ${locale} news URL`);
+  }
+  for (const locale of ["en", "es", "it"]) {
     assert(text.includes(`/${locale}/events/${firstEvent.slug}`), `sitemap missing ${locale} event URL`);
   }
 });
@@ -173,7 +195,7 @@ await check("robots and manifest render", async () => {
 
   const manifest = await getText("/manifest.webmanifest");
   assert(manifest.response.status === 200, `/manifest.webmanifest returned ${manifest.response.status}`);
-  assert(manifest.text.includes("Chess View"), "manifest missing app name");
+  assert(manifest.text.includes("ChessView"), "manifest missing app name");
 });
 
 await check("security headers are present", async () => {

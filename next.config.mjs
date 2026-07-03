@@ -21,6 +21,22 @@ const securityHeaders = [
 const nextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "en.chessbase.com",
+      },
+      {
+        protocol: "https",
+        hostname: "images.chesscomfiles.com",
+      },
+      {
+        protocol: "https",
+        hostname: "image.lichess1.org",
+      },
+    ],
+  },
   async headers() {
     return [
       {

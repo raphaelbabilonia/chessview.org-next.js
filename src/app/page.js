@@ -1,9 +1,10 @@
 import { LocaleRedirect } from "@/components/LocaleRedirect";
 import { getDictionary } from "@/i18n/dictionaries";
+import { siteConfig } from "@/lib/site";
 
 export const metadata = {
   title: {
-    absolute: "Chess View",
+    absolute: siteConfig.name,
   },
   description: getDictionary("en").site.description,
 };

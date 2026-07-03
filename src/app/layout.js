@@ -2,6 +2,7 @@ import { ThemeScript } from "@/components/ThemeScript";
 import { defaultLocale, isLocale } from "@/i18n/config";
 import { siteConfig } from "@/lib/site";
 import { headers } from "next/headers";
+import "flag-icons/css/flag-icons.min.css";
 import "./globals.css";
 
 export const metadata = {
@@ -36,8 +37,11 @@ export const metadata = {
   },
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: "/icon.svg",
-    apple: "/apple-icon.svg",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/brand/chessview-favicon.svg", type: "image/svg+xml" },
+    ],
+    apple: "/brand/chessview-app-icon.svg",
   },
 };
 

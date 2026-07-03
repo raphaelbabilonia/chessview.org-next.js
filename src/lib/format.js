@@ -85,6 +85,51 @@ export const formatDateRange = (start, end, locale = "en") => {
   return startLabel === endLabel ? startLabel : `${startLabel} ${rangeSeparators[locale] || "to"} ${endLabel}`;
 };
 
+const validDate = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+export const formatCardDateRange = (start, end, locale = "en") => {
+  const startDate = validDate(start);
+  const endDate = validDate(end) || startDate;
+  if (!startDate) return { primary: "TBA", secondary: "", accessible: "TBA" };
+
+  const formatter = new Intl.DateTimeFormat(dateLocales[locale] || dateLocales.en, {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+    year: "numeric",
+  });
+  const isRange = endDate && startDate.getTime() !== endDate.getTime();
+  const accessible =
+    isRange && typeof formatter.formatRange === "function"
+      ? formatter.formatRange(startDate, endDate)
+      : formatter.format(startDate);
+
+  if (typeof formatter.formatRangeToParts !== "function" && isRange) {
+    return { primary: accessible, secondary: "", accessible };
+  }
+
+  const parts = isRange
+    ? formatter.formatRangeToParts(startDate, endDate)
+    : formatter.formatToParts(startDate).map((part) => ({ ...part, source: "shared" }));
+  const years = [...new Set(parts.filter((part) => part.type === "year").map((part) => part.value))];
+  const primary = parts
+    .filter((part) => part.type !== "year")
+    .map((part) => part.value)
+    .join("")
+    .replace(/[,\s]+$/g, "")
+    .trim();
+
+  return {
+    primary: primary || accessible,
+    secondary: years.join(" - "),
+    accessible,
+  };
+};
+
 const cleanDescription = (value) =>
   String(value || "")
     .replace(/\s+/g, " ")

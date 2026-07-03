@@ -1,0 +1,35 @@
+import { Code2, Newspaper, Trophy } from "lucide-react";
+import Link from "next/link";
+import { ChessViewLogo } from "./ChessViewLogo";
+
+export function SiteFooter({ copy, locale }) {
+  return (
+    <footer className="site-footer">
+      <div className="site-footer-inner">
+        <div className="footer-brand">
+          <ChessViewLogo className="footer-logo footer-logo-light" height={40} />
+          <ChessViewLogo alt="" ariaHidden className="footer-logo footer-logo-dark" height={40} variant="reversed" />
+          <p>{copy.site.description}</p>
+        </div>
+        <nav className="footer-links" aria-label="Footer navigation">
+          <Link href={`/${locale}/events`}>
+            <Trophy size={16} aria-hidden="true" />
+            {copy.nav.events}
+          </Link>
+          <Link href={`/${locale}/news`}>
+            <Newspaper size={16} aria-hidden="true" />
+            {copy.nav.news}
+          </Link>
+          <a
+            href="https://github.com/raphaelbabilonia/chessview.org-next.js"
+            rel="noreferrer"
+            target="_blank"
+          >
+            <Code2 size={16} aria-hidden="true" />
+            {copy.nav.source}
+          </a>
+        </nav>
+      </div>
+    </footer>
+  );
+}

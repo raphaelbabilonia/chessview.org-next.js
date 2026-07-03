@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { LocalePersist } from "@/components/LocalePersist";
+import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { defaultLocale, isLocale, locales } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
@@ -19,6 +20,7 @@ export default async function LocaleLayout({ children, params }) {
       <LocalePersist locale={locale} />
       <SiteHeader copy={copy} locale={locale} />
       {children}
+      <SiteFooter copy={copy} locale={locale} />
     </>
   );
 }
