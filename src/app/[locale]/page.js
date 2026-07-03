@@ -216,15 +216,24 @@ function CountryTournamentVisual({ copy, stats }) {
 }
 
 function CompactNewsCard({ copy, item, locale }) {
+  const hasImage = typeof item.imageUrl === "string" && item.imageUrl.trim().length > 0;
+
   return (
     <article className="compact-news-card">
       <a className="compact-news-image" href={item.url} rel="noreferrer" target="_blank">
-        <Image
-          alt=""
-          fill
-          sizes="96px"
-          src={item.imageUrl}
-        />
+        {hasImage ? (
+          <Image
+            alt=""
+            fill
+            sizes="96px"
+            src={item.imageUrl}
+          />
+        ) : (
+          <span className="compact-news-fallback" aria-hidden="true">
+            <Newspaper size={20} strokeWidth={1.9} />
+            <span>{item.sourceName || "News"}</span>
+          </span>
+        )}
       </a>
       <div className="compact-news-body">
         <div className="compact-news-meta">

@@ -36,6 +36,10 @@ const nextConfig = {
         protocol: "https",
         hostname: "image.lichess1.org",
       },
+      {
+        protocol: "https",
+        hostname: "www.fide.com",
+      },
     ],
   },
   async headers() {
