@@ -97,7 +97,7 @@ jobs:
             TEMP_DIR="/tmp/chessview-web-deploy"
             BACKUP_ROOT="/home/chessview/backups"
             BACKUP_DIR="$BACKUP_ROOT/web-$(date +%Y%m%d-%H%M%S)"
-            LOCAL_HEALTH_URL="http://127.0.0.1:3001/en"
+            LOCAL_HEALTH_URL="http://127.0.0.1:3011/en"
 
             if [ ! -d "$TEMP_DIR" ]; then
               echo "Temporary deploy directory not found: $TEMP_DIR"
@@ -131,7 +131,7 @@ jobs:
                   exec_mode: "fork",
                   env: {
                     NODE_ENV: "production",
-                    PORT: "3001",
+                    PORT: "3011",
                     HOSTNAME: "127.0.0.1",
                     API_BASE_URL: "https://api.chessview.org/api",
                     NEXT_PUBLIC_SITE_URL: "https://chessview.org"
