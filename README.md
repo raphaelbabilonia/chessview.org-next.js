@@ -78,6 +78,23 @@ NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3001
 
 Production domain and production API URL are intentionally unset for now. Set them per deployment once the domain and API host are decided.
 
+## Production Deployment
+
+The GitHub Actions workflow deploys the public website as a self-hosted Next.js standalone server on the VPS. It expects these repository secrets:
+
+- `VPS_HOST`: the VPS host or IP address, for example `148.230.112.224`.
+- `VPS_USERNAME`: a root or sudo-capable deploy user on the VPS.
+- `VPS_SSH_KEY`: the private SSH key whose public key is authorized for `VPS_USERNAME`.
+
+The workflow builds with:
+
+```env
+API_BASE_URL=https://api.chessview.org/api
+NEXT_PUBLIC_SITE_URL=https://chessview.org
+```
+
+It assumes CloudPanel has a Node.js site for `chessview.org` using site user `chessview`, with nginx proxying to port `3001`. If CloudPanel creates a different site user or path, update `SITE_USER` and `TARGET_DIR` in `.github/workflows/deploy-website.yml`.
+
 ## Security and Open Source Notes
 
 - `.env.local` is ignored and must not be committed.

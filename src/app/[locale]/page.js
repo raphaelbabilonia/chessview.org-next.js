@@ -272,11 +272,13 @@ export default async function HomePage({ params }) {
   if (!isLocale(locale)) notFound();
 
   const copy = getDictionary(locale);
-  const { data: events, error } = await getUpcomingEvents();
+  const [eventsResult, newsResult] = await Promise.all([getUpcomingEvents(), getFeaturedNews(3)]);
+  const { data: events, error } = eventsResult;
+  const { data: news, error: newsError } = newsResult;
   const publicEvents = Array.isArray(events) ? events : [];
   const countryStats = getCountryTournamentStats(publicEvents, locale);
   const featuredEvents = publicEvents.slice(0, 3);
-  const featuredNews = getFeaturedNews(3);
+  const featuredNews = Array.isArray(news) ? news : [];
   const websiteJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -347,11 +349,15 @@ export default async function HomePage({ params }) {
               <ArrowRight size={16} aria-hidden="true" />
             </Link>
           </div>
-          <div className="compact-news-list">
-            {featuredNews.map((item) => (
-              <CompactNewsCard copy={copy} item={item} key={item.id} locale={locale} />
-            ))}
-          </div>
+          {newsError ? <div className="state state-warning">{copy.news.apiError}</div> : null}
+          {!newsError && featuredNews.length === 0 ? <div className="state">{copy.news.empty}</div> : null}
+          {featuredNews.length ? (
+            <div className="compact-news-list">
+              {featuredNews.map((item) => (
+                <CompactNewsCard copy={copy} item={item} key={item.id} locale={locale} />
+              ))}
+            </div>
+          ) : null}
         </aside>
       </section>
     </main>

@@ -62,6 +62,15 @@ await check("API health", async () => {
   assert(health.ok === true, "API health did not return ok=true");
 });
 
+await check("API news", async () => {
+  const newsPayload = await getJson(`${apiUrl}/news?limit=3`);
+  assert(newsPayload.data?.length === 3, "API news did not return three limited items");
+  assert(
+    newsPayload.meta?.sources?.some((source) => source.name === "ChessBase"),
+    "API news did not include source metadata"
+  );
+});
+
 const eventsPayload = await getJson(`${apiUrl}/events?activeFrom=${todayIsoDate()}`);
 const firstEvent = eventsPayload.data?.[0];
 assert(firstEvent, "API returned no public events for smoke tests");

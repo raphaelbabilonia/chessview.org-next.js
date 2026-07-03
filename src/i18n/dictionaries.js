@@ -76,6 +76,8 @@ const dictionaries = {
       latest: "Latest chess news",
       sources: "Indexed sources",
       readOriginal: "Original site",
+      apiError: "News is temporarily unavailable from the API.",
+      empty: "No chess news is available yet.",
     },
     events: {
       eyebrow: "Events",
@@ -303,6 +305,8 @@ const dictionaries = {
       latest: "Últimas noticias de ajedrez",
       sources: "Fuentes indexadas",
       readOriginal: "Sitio original",
+      apiError: "Las noticias no están disponibles temporalmente desde la API.",
+      empty: "Todavía no hay noticias de ajedrez disponibles.",
     },
     events: {
       eyebrow: "Eventos",
@@ -530,6 +534,8 @@ const dictionaries = {
       latest: "Ultime notizie di scacchi",
       sources: "Fonti indicizzate",
       readOriginal: "Sito originale",
+      apiError: "Le notizie non sono temporaneamente disponibili dalla API.",
+      empty: "Non ci sono ancora notizie di scacchi disponibili.",
     },
     events: {
       eyebrow: "Eventi",

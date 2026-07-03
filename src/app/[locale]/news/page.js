@@ -4,7 +4,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { NewsCard } from "@/components/NewsCard";
 import { isLocale, languageAlternates, localePath } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
-import { getNewsItems, getNewsSources } from "@/lib/news";
+import { getNewsItems } from "@/lib/news";
 import { siteConfig } from "@/lib/site";
 
 export const revalidate = 900;
@@ -34,8 +34,9 @@ export default async function NewsPage({ params }) {
   if (!isLocale(locale)) notFound();
 
   const copy = getDictionary(locale);
-  const items = getNewsItems();
-  const sources = getNewsSources();
+  const { data, error, meta } = await getNewsItems();
+  const items = Array.isArray(data) ? data : [];
+  const sources = Array.isArray(meta?.sources) ? meta.sources : [];
   const newsJsonLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
@@ -72,11 +73,15 @@ export default async function NewsPage({ params }) {
         </div>
       </section>
 
-      <section className="news-grid news-grid-large" aria-label={copy.news.latest}>
-        {items.map((item) => (
-          <NewsCard copy={copy} item={item} key={item.id} locale={locale} />
-        ))}
-      </section>
+      {error ? <div className="state state-warning">{copy.news.apiError}</div> : null}
+      {!error && items.length === 0 ? <div className="state">{copy.news.empty}</div> : null}
+      {items.length ? (
+        <section className="news-grid news-grid-large" aria-label={copy.news.latest}>
+          {items.map((item) => (
+            <NewsCard copy={copy} item={item} key={item.id} locale={locale} />
+          ))}
+        </section>
+      ) : null}
     </main>
   );
 }
