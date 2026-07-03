@@ -19,6 +19,15 @@ const escapeHtml = (value) =>
 
 const htmlIncludesText = (html, text) => html.includes(text) || html.includes(escapeHtml(text));
 
+const headerValues = (response, name) =>
+  String(response.headers.get(name) || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+const hasHeaderValue = (response, name, expected) =>
+  headerValues(response, name).some((value) => value.toLowerCase() === expected.toLowerCase());
+
 const slugifySegment = (value) =>
   String(value || "")
     .normalize("NFKD")
@@ -209,9 +218,9 @@ await check("robots and manifest render", async () => {
 
 await check("security headers are present", async () => {
   const response = await fetch(`${siteUrl}/en`);
-  assert(response.headers.get("x-content-type-options") === "nosniff", "missing nosniff header");
-  assert(response.headers.get("x-frame-options") === "DENY", "missing frame options header");
-  assert(response.headers.get("referrer-policy") === "strict-origin-when-cross-origin", "missing referrer policy");
+  assert(hasHeaderValue(response, "x-content-type-options", "nosniff"), "missing nosniff header");
+  assert(hasHeaderValue(response, "x-frame-options", "DENY"), "missing frame options header");
+  assert(hasHeaderValue(response, "referrer-policy", "strict-origin-when-cross-origin"), "missing referrer policy");
   assert(!response.headers.has("x-powered-by"), "x-powered-by should be disabled");
 });
 
