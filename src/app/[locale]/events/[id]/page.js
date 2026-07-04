@@ -1,4 +1,4 @@
-import { Clock, ExternalLink, FileText, MapPin } from "lucide-react";
+import { Clock, Database, ExternalLink, FileText, MapPin } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { JsonLd } from "@/components/JsonLd";
 import { backendAssetUrl, getEvent } from "@/lib/api";
@@ -110,6 +110,74 @@ const announcementDocumentFor = (event, copy) => {
   return null;
 };
 
+const isPlainObject = (value) =>
+  value && typeof value === "object" && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
+
+const hasObjectData = (value) => isPlainObject(value) && Object.keys(value).length > 0;
+
+const hasArrayData = (value) => Array.isArray(value) && value.length > 0;
+
+const titleFromKey = (key) =>
+  String(key || "")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+const metadataValue = (value, copy) => {
+  if (value === null || value === undefined || value === "") return "";
+  if (typeof value === "boolean") return value ? copy.event.yes : copy.event.no;
+  if (typeof value === "number") return String(value);
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) {
+    return value.map((item) => metadataValue(item, copy)).filter(Boolean).join("; ");
+  }
+  if (isPlainObject(value)) {
+    return Object.entries(value)
+      .map(([key, entryValue]) => {
+        const formatted = metadataValue(entryValue, copy);
+        return formatted ? `${titleFromKey(key)}: ${formatted}` : "";
+      })
+      .filter(Boolean)
+      .join(" | ");
+  }
+  return "";
+};
+
+const entriesFromObject = (value, copy) =>
+  Object.entries(value || {})
+    .map(([key, entryValue]) => ({
+      label: titleFromKey(key),
+      value: metadataValue(entryValue, copy),
+    }))
+    .filter((entry) => entry.value);
+
+const metadataGroupsFor = (metadata, copy) => {
+  if (!hasObjectData(metadata)) return [];
+  return [
+    { title: copy.event.metadataFormat, entries: entriesFromObject(metadata.format, copy) },
+    { title: copy.event.metadataRegistration, entries: entriesFromObject(metadata.registration, copy) },
+    { title: copy.event.metadataLogistics, entries: entriesFromObject(metadata.logistics, copy) },
+    { title: copy.event.metadataSchedule, entries: (metadata.schedule || []).map((item, index) => ({ label: item.label || `${copy.event.round} ${index + 1}`, value: metadataValue(item, copy) })) },
+    { title: copy.event.metadataPrizes, entries: entriesFromObject(metadata.prizes, copy) },
+    { title: copy.event.metadataPlayerField, entries: entriesFromObject(metadata.playerField, copy) },
+    {
+      title: copy.event.metadataHistorical,
+      entries: (metadata.historicalEditions || []).map((item, index) => ({
+        label: item.editionName || item.year || `${copy.event.metadataEdition} ${index + 1}`,
+        value: metadataValue(item, copy),
+      })),
+    },
+    { title: copy.event.metadataSourceAudit, entries: entriesFromObject(metadata.sourceAudit, copy) },
+    {
+      title: copy.event.metadataExtraFacts,
+      entries: (metadata.extraFacts || []).map((item, index) => ({
+        label: item.label || `${copy.event.metadataFact} ${index + 1}`,
+        value: metadataValue(item.value ?? item, copy),
+      })),
+    },
+  ].filter((group) => group.entries.length);
+};
+
 async function loadEvent(id) {
   return getEvent(id);
 }
@@ -196,6 +264,9 @@ export default async function EventDetailPage({ params }) {
   const primaryLink = originalSiteLink(event, copy);
   const announcementDocument = announcementDocumentFor(event, copy);
   const sourceName = event.source?.name || primaryLink?.label || copy.event.tba;
+  const metadata = isPlainObject(event.metadata) ? event.metadata : {};
+  const metadataGroups = metadataGroupsFor(metadata, copy);
+  const hasAdvancedMetadata = Boolean(metadata.summary || metadataGroups.length);
   const schema = {
     "@context": "https://schema.org",
     "@type": "SportsEvent",
@@ -329,6 +400,34 @@ export default async function EventDetailPage({ params }) {
               </a>
             </div>
           </article>
+        ) : null}
+
+        {hasAdvancedMetadata ? (
+          <details className="info-panel metadata-panel" id="metadata">
+            <summary>
+              <span>
+                <Database size={18} aria-hidden="true" />
+                {copy.event.metadataToggle}
+              </span>
+              <span>{metadata.enrichmentStatus || copy.event.metadataStatusPartial}</span>
+            </summary>
+            {metadata.summary ? <p>{metadata.summary}</p> : <p>{copy.event.metadataIntro}</p>}
+            <div className="metadata-grid">
+              {metadataGroups.map((group) => (
+                <section className="metadata-group" key={group.title}>
+                  <h3>{group.title}</h3>
+                  <dl className="detail-list">
+                    {group.entries.map((entry) => (
+                      <div key={`${group.title}-${entry.label}`}>
+                        <dt>{entry.label}</dt>
+                        <dd>{entry.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </section>
+              ))}
+            </div>
+          </details>
         ) : null}
       </section>
     </main>
