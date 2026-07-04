@@ -1,6 +1,6 @@
+/* eslint-disable @next/next/no-img-element */
 import { geoEqualEarth, geoGraticule10, geoPath } from "d3-geo";
 import { ArrowRight, CalendarSearch, ExternalLink, Newspaper } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { feature } from "topojson-client";
@@ -222,12 +222,7 @@ function CompactNewsCard({ copy, item, locale }) {
     <article className="compact-news-card">
       <a className="compact-news-image" href={item.url} rel="noreferrer" target="_blank">
         {hasImage ? (
-          <Image
-            alt=""
-            fill
-            sizes="96px"
-            src={item.imageUrl}
-          />
+          <img alt="" loading="lazy" referrerPolicy="no-referrer" src={item.imageUrl} />
         ) : (
           <span className="compact-news-fallback" aria-hidden="true">
             <Newspaper size={20} strokeWidth={1.9} />
