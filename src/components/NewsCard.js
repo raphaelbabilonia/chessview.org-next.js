@@ -3,12 +3,35 @@ import { ExternalLink } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { hasRequiredNewsImage } from "@/lib/news";
 
+const normalizeTagLabel = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "");
+
 export function NewsCard({ copy, item, locale }) {
   if (!hasRequiredNewsImage(item)) return null;
 
   const meta = [item.author, item.region, item.language].filter(Boolean).slice(0, 3);
-  const tags = Array.isArray(item.tags) ? item.tags.slice(0, 4) : [];
   const relatedNames = Array.isArray(item.relatedPlayerNames) ? item.relatedPlayerNames.slice(0, 3) : [];
+  const summary = item.summary || item.description;
+  const visibleLabels = new Set(
+    [item.sourceName, item.category, ...meta, item.relatedTournamentName, ...relatedNames]
+      .map(normalizeTagLabel)
+      .filter(Boolean)
+  );
+  const tags = Array.isArray(item.tags)
+    ? item.tags.reduce((uniqueTags, tag) => {
+        const label = String(tag || "").trim();
+        const key = normalizeTagLabel(label);
+        if (!key || visibleLabels.has(key) || uniqueTags.some((uniqueTag) => normalizeTagLabel(uniqueTag) === key)) {
+          return uniqueTags;
+        }
+        if (uniqueTags.length < 4) uniqueTags.push(label);
+        return uniqueTags;
+      }, [])
+    : [];
 
   return (
     <article className="news-card">
@@ -47,7 +70,7 @@ export function NewsCard({ copy, item, locale }) {
           </a>
         </h3>
         {meta.length ? <div className="news-card-meta">{meta.map((part) => <span key={part}>{part}</span>)}</div> : null}
-        <p>{item.summary}</p>
+        {summary ? <p className="news-card-summary">{summary}</p> : null}
         {relatedNames.length || item.relatedTournamentName ? (
           <p className="news-card-related">
             {[item.relatedTournamentName, ...relatedNames].filter(Boolean).join(" / ")}
