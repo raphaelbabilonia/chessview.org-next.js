@@ -25,7 +25,10 @@ export function LanguageSwitcher({ label, locale }) {
   return (
     <label className="language-switcher">
       <span className="sr-only">{label}</span>
-      <Languages size={18} aria-hidden="true" />
+      <Languages className="language-switcher-icon" size={18} aria-hidden="true" />
+      <span className="language-switcher-current" aria-hidden="true">
+        {locale.toUpperCase()}
+      </span>
       <select
         aria-label={label}
         value={locale}
