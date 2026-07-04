@@ -8,7 +8,7 @@ import { getDictionary } from "@/i18n/dictionaries";
 import { getNewsItems, hasRequiredNewsImage } from "@/lib/news";
 import { siteConfig } from "@/lib/site";
 
-export const revalidate = 900;
+export const revalidate = 60;
 
 const NEWS_FETCH_LIMIT = 100;
 const NEWS_PAGE_SIZE = 12;

@@ -1,6 +1,6 @@
 import { apiFetch } from "./api";
 
-const NEWS_REVALIDATE_SECONDS = 900;
+const NEWS_REVALIDATE_SECONDS = 60;
 
 export const hasRequiredNewsImage = (item) =>
   typeof item?.imageUrl === "string" && /^https?:\/\/\S+/i.test(item.imageUrl.trim());
