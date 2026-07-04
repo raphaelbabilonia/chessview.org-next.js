@@ -61,10 +61,25 @@ jobs:
 
       - name: Upload website package to VPS
         run: |
-          rsync -avz --timeout=300 -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ConnectTimeout=60" \
-            --delete \
-            deploy/ \
-            ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }}:/tmp/chessview-web-deploy/
+          SSH_OPTIONS="-i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ConnectTimeout=90 -o ServerAliveInterval=15 -o ServerAliveCountMax=4"
+
+          for attempt in 1 2 3; do
+            echo "Upload attempt $attempt/3"
+
+            if rsync -avz --timeout=600 -e "ssh $SSH_OPTIONS" \
+              --delete \
+              deploy/ \
+              ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }}:/tmp/chessview-web-deploy/; then
+              exit 0
+            fi
+
+            if [ "$attempt" -eq 3 ]; then
+              echo "Upload failed after $attempt attempts"
+              exit 1
+            fi
+
+            sleep $((attempt * 20))
+          done
 
       - name: Deploy website on VPS
         uses: appleboy/ssh-action@v1.0.3

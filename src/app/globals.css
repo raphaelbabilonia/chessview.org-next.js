@@ -767,6 +767,21 @@ img {
   color: var(--cv-color-white);
 }
 
+.country-coverage-empty {
+  grid-column: 1 / -1;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid rgba(253, 252, 253, 0.14);
+  border-radius: var(--radius);
+  background: rgba(253, 252, 253, 0.065);
+  color: rgba(253, 252, 253, 0.72);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
 .country-coverage-cta {
   justify-self: start;
   border-color: rgba(186, 155, 74, 0.5);

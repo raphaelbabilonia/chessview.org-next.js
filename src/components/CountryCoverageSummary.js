@@ -2,10 +2,11 @@ import { MapPinned } from "lucide-react";
 import Link from "next/link";
 
 export function CountryCoverageSummary({ copy, coverage, locale }) {
-  if (!coverage?.totalTournaments) return null;
-
   const coverageCopy = copy.home.coverage;
-  const stats = coverage.topCountries || [];
+  const stats = coverage?.topCountries || [];
+  const totalTournaments = coverage?.totalTournaments ?? 0;
+
+  if (!coverage?.mapSize || !coverage?.mapPaths) return null;
 
   return (
     <aside className="country-coverage" aria-label={coverageCopy.label}>
@@ -53,24 +54,28 @@ export function CountryCoverageSummary({ copy, coverage, locale }) {
             <h2>{coverageCopy.title}</h2>
           </div>
           <div className="country-coverage-total">
-            <strong>{coverage.totalTournaments}</strong>
+            <strong>{totalTournaments}</strong>
             <span>{coverageCopy.total}</span>
           </div>
         </div>
         <div className="country-coverage-list">
-          {stats.map((stat, index) => (
-            <div
-              aria-label={`${stat.label} ${stat.count}`}
-              className={`country-coverage-chip${index === 0 ? " is-leading" : ""}`}
-              key={stat.country}
-            >
-              <span className="country-coverage-label">
-                <span className={`country-coverage-flag fi fi-${stat.flagCode}`} aria-hidden="true" />
-                <span className="country-coverage-country">{stat.label}</span>
-              </span>
-              <strong>{stat.count}</strong>
-            </div>
-          ))}
+          {stats.length ? (
+            stats.map((stat, index) => (
+              <div
+                aria-label={`${stat.label} ${stat.count}`}
+                className={`country-coverage-chip${index === 0 ? " is-leading" : ""}`}
+                key={stat.country}
+              >
+                <span className="country-coverage-label">
+                  <span className={`country-coverage-flag fi fi-${stat.flagCode}`} aria-hidden="true" />
+                  <span className="country-coverage-country">{stat.label}</span>
+                </span>
+                <strong>{stat.count}</strong>
+              </div>
+            ))
+          ) : (
+            <div className="country-coverage-empty">{coverageCopy.empty}</div>
+          )}
         </div>
         <Link className="button button-small country-coverage-cta" href={`/${locale}/coverage`}>
           <MapPinned size={16} aria-hidden="true" />
