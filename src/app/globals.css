@@ -1361,6 +1361,36 @@ img {
   color: var(--cv-color-navy-900);
 }
 
+.policy-page {
+  max-width: 980px;
+}
+
+.policy-content {
+  display: grid;
+  gap: 18px;
+  color: var(--muted);
+  font-size: clamp(1rem, 1vw, 1.08rem);
+  line-height: 1.75;
+}
+
+.policy-content article {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 18px;
+}
+
+.policy-content h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.policy-content p {
+  margin: 0;
+}
+
 .news-card {
   display: grid;
   align-content: start;

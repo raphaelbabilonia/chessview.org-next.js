@@ -37,6 +37,18 @@ export default async function sitemap() {
         changeFrequency: "daily",
         priority: 0.85,
       },
+      {
+        url: absoluteUrl(localePath(locale, "/terms")),
+        lastModified: now,
+        changeFrequency: "monthly",
+        priority: 0.35,
+      },
+      {
+        url: absoluteUrl(localePath(locale, "/privacy")),
+        lastModified: now,
+        changeFrequency: "monthly",
+        priority: 0.35,
+      },
       ...countries.map((country) => ({
         url: absoluteUrl(localePath(locale, countryHref(country))),
         lastModified: now,

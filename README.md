@@ -4,6 +4,17 @@ Server-rendered public website for ChessView.org.
 
 This app is the SEO-oriented public surface for ChessView. It consumes the existing Express API and renders public event pages as HTML with metadata, sitemap, robots rules, and JSON-LD event data.
 
+## Open Source And Commercial Boundaries
+
+- Source code is licensed under AGPL-3.0-only.
+- The ChessView name, ChessView.org name, logos, icons, domains, and brand identity are reserved trademarks/brand assets. See [TRADEMARKS.md](./TRADEMARKS.md).
+- Brand files under `public/brand/` and app icons derived from the ChessView logo are included for the official deployment and should be replaced in forks.
+- Production databases, curated tournament/news data, source evidence, dedupe state, AI search indexes, analytics databases, embeddings, recommendations, uploads, and commercial datasets are not open source. See [DATA_LICENSE.md](./DATA_LICENSE.md).
+- The official hosted ChessView service is governed by baseline [Terms](./TERMS.md) and [Privacy](./PRIVACY.md) policies, which should be reviewed by counsel before public commercial launch.
+- Contributors must keep private data, third-party proprietary material, credentials, and production exports out of pull requests. See [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+See [OPEN_SOURCE_POLICY.md](./OPEN_SOURCE_POLICY.md) for the full policy.
+
 ## Why Next.js
 
 The React/Vite frontend is a client-side app. That is fine for dashboards and authenticated workflows, but public pages benefit from server-rendered HTML so search engines and social crawlers can read event content immediately.
@@ -101,7 +112,8 @@ It assumes CloudPanel has a Node.js site for `chessview.org` using site user `ch
 - No private API keys are required for this public app.
 - Security headers are configured in `next.config.mjs`.
 - The package is marked private to avoid accidental npm publishing, not to make the repository closed source.
-- License: GNU Affero General Public License v3.0.
+- License: GNU Affero General Public License v3.0 only for source code.
+- The source license does not grant rights to ChessView trademarks, official brand assets, production data, curated datasets, AI/analytics assets, private infrastructure, or hosted-service data.
 
 ## Admin Frontend Split
 

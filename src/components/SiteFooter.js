@@ -1,4 +1,4 @@
-import { Code2, Newspaper, Trophy } from "lucide-react";
+import { Code2, FileText, Newspaper, ShieldCheck, Trophy } from "lucide-react";
 import Link from "next/link";
 import { ChessViewLogo } from "./ChessViewLogo";
 
@@ -19,6 +19,14 @@ export function SiteFooter({ copy, locale }) {
           <Link href={`/${locale}/news`}>
             <Newspaper size={16} aria-hidden="true" />
             {copy.nav.news}
+          </Link>
+          <Link href={`/${locale}/terms`}>
+            <FileText size={16} aria-hidden="true" />
+            Terms
+          </Link>
+          <Link href={`/${locale}/privacy`}>
+            <ShieldCheck size={16} aria-hidden="true" />
+            Privacy
           </Link>
           <a
             href="https://github.com/raphaelbabilonia/chessview.org-next.js"
