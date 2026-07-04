@@ -67,12 +67,18 @@ function PaginationNav({ copy, locale, linkFilters, meta }) {
       <p className="pagination-status">{pageLabel}</p>
       <div className="pagination-controls">
         {meta.hasPrev ? (
-          <a className="pagination-action" href={buildPageHref(locale, linkFilters, meta.page - 1)}>
-            {copy.events.previous}
+          <a className="pagination-action" href={buildPageHref(locale, linkFilters, meta.page - 1)} aria-label={copy.events.previous}>
+            <span className="pagination-action-icon" aria-hidden="true">
+              &lsaquo;
+            </span>
+            <span className="pagination-action-label">{copy.events.previous}</span>
           </a>
         ) : (
           <span className="pagination-action pagination-disabled" aria-disabled="true">
-            {copy.events.previous}
+            <span className="pagination-action-icon" aria-hidden="true">
+              &lsaquo;
+            </span>
+            <span className="pagination-action-label">{copy.events.previous}</span>
           </span>
         )}
         <div className="pagination-pages" aria-label={pageLabel}>
@@ -95,12 +101,22 @@ function PaginationNav({ copy, locale, linkFilters, meta }) {
           )}
         </div>
         {meta.hasNext ? (
-          <a className="pagination-action pagination-action-primary" href={buildPageHref(locale, linkFilters, meta.page + 1)}>
-            {copy.events.next}
+          <a
+            className="pagination-action pagination-action-primary"
+            href={buildPageHref(locale, linkFilters, meta.page + 1)}
+            aria-label={copy.events.next}
+          >
+            <span className="pagination-action-label">{copy.events.next}</span>
+            <span className="pagination-action-icon" aria-hidden="true">
+              &rsaquo;
+            </span>
           </a>
         ) : (
           <span className="pagination-action pagination-disabled" aria-disabled="true">
-            {copy.events.next}
+            <span className="pagination-action-label">{copy.events.next}</span>
+            <span className="pagination-action-icon" aria-hidden="true">
+              &rsaquo;
+            </span>
           </span>
         )}
       </div>
@@ -164,6 +180,7 @@ export default async function EventsPage({ params, searchParams }) {
     ...filters,
     from: requestedFrom,
   };
+  const activeFilterCount = filterParamKeys.filter((key) => linkFilters[key]).length;
 
   return (
     <main className="page">
@@ -172,44 +189,50 @@ export default async function EventsPage({ params, searchParams }) {
         <h1>{copy.events.title}</h1>
       </section>
 
-      <form className="filter-bar" action={`/${locale}/events`}>
-        <label>
-          {copy.events.search}
-          <input name="search" defaultValue={filters.search} placeholder={copy.events.searchPlaceholder} />
-        </label>
-        <label>
-          {copy.events.city}
-          <input name="city" defaultValue={filters.city} />
-        </label>
-        <label>
-          {copy.events.country}
-          <input name="country" defaultValue={filters.country} placeholder={copy.events.countryPlaceholder} />
-        </label>
-        <label>
-          {copy.events.source}
-          <input name="source" defaultValue={filters.source} placeholder={copy.events.sourcePlaceholder} />
-        </label>
-        <label>
-          {copy.events.status}
-          <select name="status" defaultValue={filters.status}>
-            <option value="">{copy.events.any}</option>
-            <option value="published">{copy.events.published}</option>
-            <option value="completed">{copy.events.completed}</option>
-          </select>
-        </label>
-        <label>
-          {copy.events.from}
-          <input type="date" name="from" defaultValue={filters.from} />
-        </label>
-        <label>
-          {copy.events.to}
-          <input type="date" name="to" defaultValue={filters.to} />
-        </label>
-        <button className="button" type="submit">
-          <Search size={18} aria-hidden="true" />
-          {copy.events.apply}
-        </button>
-      </form>
+      <details className="filter-panel">
+        <summary className="filter-panel-summary">
+          <span>{copy.events.filters}</span>
+          {activeFilterCount ? <span className="filter-panel-count">{activeFilterCount}</span> : null}
+        </summary>
+        <form className="filter-bar filter-panel-body" action={`/${locale}/events`}>
+          <label>
+            {copy.events.search}
+            <input name="search" defaultValue={filters.search} placeholder={copy.events.searchPlaceholder} />
+          </label>
+          <label>
+            {copy.events.city}
+            <input name="city" defaultValue={filters.city} />
+          </label>
+          <label>
+            {copy.events.country}
+            <input name="country" defaultValue={filters.country} placeholder={copy.events.countryPlaceholder} />
+          </label>
+          <label>
+            {copy.events.source}
+            <input name="source" defaultValue={filters.source} placeholder={copy.events.sourcePlaceholder} />
+          </label>
+          <label>
+            {copy.events.status}
+            <select name="status" defaultValue={filters.status}>
+              <option value="">{copy.events.any}</option>
+              <option value="published">{copy.events.published}</option>
+              <option value="completed">{copy.events.completed}</option>
+            </select>
+          </label>
+          <label>
+            {copy.events.from}
+            <input type="date" name="from" defaultValue={filters.from} />
+          </label>
+          <label>
+            {copy.events.to}
+            <input type="date" name="to" defaultValue={filters.to} />
+          </label>
+          <button className="button" type="submit">
+            <Search size={18} aria-hidden="true" />
+            {copy.events.apply}
+          </button>
+        </form>
+      </details>
 
       {error ? <div className="state state-warning">{copy.events.apiError}</div> : null}
       {!error && events.length === 0 ? <div className="state">{copy.events.empty}</div> : null}
