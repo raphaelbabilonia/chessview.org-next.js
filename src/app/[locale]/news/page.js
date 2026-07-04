@@ -5,7 +5,7 @@ import { NewsCard } from "@/components/NewsCard";
 import { TrackableForm } from "@/components/TrackableForm";
 import { isLocale, languageAlternates, localePath } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
-import { getNewsItems } from "@/lib/news";
+import { getNewsItems, hasRequiredNewsImage } from "@/lib/news";
 import { siteConfig } from "@/lib/site";
 
 export const revalidate = 900;
@@ -194,12 +194,12 @@ export default async function NewsPage({ params, searchParams }) {
     search: getParam(query, "search"),
     source: getParam(query, "source"),
   };
-  const { data, error, meta } = await getNewsItems({
+  const { data, error } = await getNewsItems({
     ...filters,
     limit: NEWS_FETCH_LIMIT,
   });
-  const allItems = Array.isArray(data) ? data : [];
-  const sources = Array.isArray(meta?.sources) && meta.sources.length ? meta.sources : getSourcesFromItems(allItems);
+  const allItems = Array.isArray(data) ? data.filter(hasRequiredNewsImage) : [];
+  const sources = getSourcesFromItems(allItems);
   const searchNeedle = normalize(filters.search);
   const sourceNeedle = normalize(filters.source);
   const items = allItems.filter((item) => {

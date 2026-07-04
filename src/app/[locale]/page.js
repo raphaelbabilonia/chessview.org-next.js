@@ -8,7 +8,7 @@ import land110m from "world-atlas/land-110m.json";
 import { EventCard } from "@/components/EventCard";
 import { JsonLd } from "@/components/JsonLd";
 import { getUpcomingEvents } from "@/lib/api";
-import { getFeaturedNews } from "@/lib/news";
+import { getFeaturedNews, hasRequiredNewsImage } from "@/lib/news";
 import { formatCountryName, formatDate } from "@/lib/format";
 import { siteConfig } from "@/lib/site";
 import { isLocale, languageAlternates, localePath } from "@/i18n/config";
@@ -216,7 +216,7 @@ function CountryTournamentVisual({ copy, stats }) {
 }
 
 function CompactNewsCard({ copy, item, locale }) {
-  const hasImage = typeof item.imageUrl === "string" && item.imageUrl.trim().length > 0;
+  if (!hasRequiredNewsImage(item)) return null;
 
   return (
     <article className="compact-news-card">
@@ -232,14 +232,7 @@ function CompactNewsCard({ copy, item, locale }) {
         rel="noreferrer"
         target="_blank"
       >
-        {hasImage ? (
-          <img alt="" loading="lazy" referrerPolicy="no-referrer" src={item.imageUrl} />
-        ) : (
-          <span className="compact-news-fallback" aria-hidden="true">
-            <Newspaper size={20} strokeWidth={1.9} />
-            <span>{item.sourceName || "News"}</span>
-          </span>
-        )}
+        <img alt="" loading="lazy" referrerPolicy="no-referrer" src={item.imageUrl} />
       </a>
       <div className="compact-news-body">
         <div className="compact-news-meta">
@@ -314,7 +307,7 @@ export default async function HomePage({ params }) {
   const publicEvents = Array.isArray(events) ? events : [];
   const countryStats = getCountryTournamentStats(publicEvents, locale);
   const featuredEvents = publicEvents.slice(0, 3);
-  const featuredNews = Array.isArray(news) ? news : [];
+  const featuredNews = Array.isArray(news) ? news.filter(hasRequiredNewsImage) : [];
   const websiteJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",

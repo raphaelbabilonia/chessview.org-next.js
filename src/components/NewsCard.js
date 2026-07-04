@@ -1,9 +1,11 @@
 /* eslint-disable @next/next/no-img-element */
-import { ExternalLink, Newspaper } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { formatDate } from "@/lib/format";
+import { hasRequiredNewsImage } from "@/lib/news";
 
 export function NewsCard({ copy, item, locale }) {
-  const hasImage = typeof item.imageUrl === "string" && item.imageUrl.trim().length > 0;
+  if (!hasRequiredNewsImage(item)) return null;
+
   const meta = [item.author, item.region, item.language].filter(Boolean).slice(0, 3);
   const tags = Array.isArray(item.tags) ? item.tags.slice(0, 4) : [];
   const relatedNames = Array.isArray(item.relatedPlayerNames) ? item.relatedPlayerNames.slice(0, 3) : [];
@@ -22,14 +24,7 @@ export function NewsCard({ copy, item, locale }) {
         rel="noreferrer"
         target="_blank"
       >
-        {hasImage ? (
-          <img alt="" loading="lazy" referrerPolicy="no-referrer" src={item.imageUrl} />
-        ) : (
-          <span className="news-image-fallback" aria-hidden="true">
-            <Newspaper size={34} strokeWidth={1.8} />
-            <span>{item.sourceName || "Chess news"}</span>
-          </span>
-        )}
+        <img alt="" loading="lazy" referrerPolicy="no-referrer" src={item.imageUrl} />
       </a>
       <div className="news-card-body">
         <div className="news-card-kicker">
