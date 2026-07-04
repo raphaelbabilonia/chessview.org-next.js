@@ -182,10 +182,13 @@ img {
   top: 0;
   z-index: 20;
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.75rem;
+  grid-template-areas:
+    "brand actions"
+    "nav nav";
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.55rem 0.65rem;
   align-items: center;
-  padding: 0.75rem;
+  padding: 0.62rem 0.75rem;
   background: color-mix(in srgb, var(--surface) 94%, transparent);
   border-bottom: 1px solid var(--border);
   backdrop-filter: blur(18px);
@@ -196,6 +199,7 @@ img {
 }
 
 .brand {
+  grid-area: brand;
   display: inline-flex;
   align-items: center;
   justify-self: start;
@@ -243,9 +247,15 @@ img {
 }
 
 .site-nav {
+  grid-area: nav;
+  flex-wrap: nowrap;
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
+}
+
+.site-nav::-webkit-scrollbar {
+  display: none;
 }
 
 .site-nav a,
@@ -280,7 +290,11 @@ img {
 }
 
 .header-actions {
+  grid-area: actions;
+  flex-wrap: nowrap;
   justify-content: flex-start;
+  justify-self: end;
+  min-width: max-content;
 }
 
 .button,
@@ -405,6 +419,7 @@ img {
 }
 
 .language-switcher {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -416,8 +431,17 @@ img {
   color: var(--text);
 }
 
+.language-switcher:focus-within {
+  border-color: var(--accent);
+  outline: 3px solid color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
 [data-theme="dark"] .language-switcher {
   background: rgba(253, 252, 253, 0.06);
+}
+
+.language-switcher-current {
+  display: none;
 }
 
 .language-switcher select {
@@ -430,6 +454,10 @@ img {
   background: transparent;
   color: var(--text);
   font-weight: 800;
+}
+
+.language-switcher select:focus {
+  outline: none;
 }
 
 .language-switcher option {
@@ -1898,11 +1926,63 @@ textarea:focus {
 @media (max-width: 699px) {
   .brand {
     min-height: 48px;
+    padding: 0.12rem 0.2rem;
   }
 
   .brand-logo {
     width: 168px;
     height: auto;
+  }
+
+  .site-nav {
+    gap: 0.45rem;
+  }
+
+  .site-nav a {
+    flex: 1 1 0;
+    justify-content: center;
+    min-width: 0;
+    min-height: 38px;
+    padding: 0.42rem 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  .header-actions {
+    gap: 0.4rem;
+  }
+
+  .header-actions .icon-button,
+  .header-actions .icon-link {
+    width: 38px;
+    height: 38px;
+  }
+
+  .language-switcher {
+    justify-content: center;
+    gap: 0.25rem;
+    width: 58px;
+    min-height: 38px;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .language-switcher-current {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.78rem;
+    font-weight: 950;
+    line-height: 1;
+  }
+
+  .language-switcher select {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    min-width: 0;
+    height: 100%;
+    min-height: 0;
+    opacity: 0;
+    cursor: pointer;
   }
 
   .hero-copy h1 {
@@ -1946,9 +2026,14 @@ textarea:focus {
 
 @media (min-width: 700px) {
   .site-header {
+    grid-template-areas: "brand nav actions";
     grid-template-columns: auto minmax(0, 1fr) auto;
     gap: 1rem;
     padding-inline: 1.25rem;
+  }
+
+  .site-nav {
+    justify-content: flex-start;
   }
 
   .header-actions {
@@ -2054,6 +2139,31 @@ textarea:focus {
 
   .footer-links {
     justify-content: flex-end;
+  }
+}
+
+@media (min-width: 700px) and (max-width: 899px) {
+  .site-header {
+    gap: 0.75rem;
+    padding-inline: 1rem;
+  }
+
+  .site-nav {
+    gap: 0.4rem;
+  }
+
+  .site-nav a {
+    min-height: 38px;
+    padding: 0.42rem 0.55rem;
+    font-size: 0.9rem;
+  }
+
+  .language-switcher {
+    padding-inline: 0.48rem;
+  }
+
+  .language-switcher select {
+    min-width: 5.9rem;
   }
 }
 
