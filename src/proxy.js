@@ -69,7 +69,13 @@ export function proxy(request) {
     );
   }
 
-  if (pathname === "/" || pathname === "/events" || pathname.startsWith("/events/") || pathname === "/news") {
+  if (
+    pathname === "/" ||
+    pathname === "/coverage" ||
+    pathname === "/events" ||
+    pathname.startsWith("/events/") ||
+    pathname === "/news"
+  ) {
     return redirectToLocale(request, preferredLocale(request), pathname);
   }
 

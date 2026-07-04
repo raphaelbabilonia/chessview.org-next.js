@@ -32,6 +32,12 @@ export default async function sitemap() {
         priority: 0.9,
       },
       {
+        url: absoluteUrl(localePath(locale, "/coverage")),
+        lastModified: now,
+        changeFrequency: "daily",
+        priority: 0.85,
+      },
+      {
         url: absoluteUrl(localePath(locale, "/news")),
         lastModified: now,
         changeFrequency: "daily",

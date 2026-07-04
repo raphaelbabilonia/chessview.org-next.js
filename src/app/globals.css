@@ -541,10 +541,12 @@ img {
 }
 
 .country-coverage {
-  display: none;
+  display: grid;
+  gap: 0.1rem;
   width: min(100%, 560px);
   align-self: center;
   justify-self: end;
+  margin-inline: auto;
   padding: 0.95rem;
   border: 1px solid rgba(253, 252, 253, 0.14);
   border-radius: var(--radius);
@@ -692,7 +694,7 @@ img {
 
 .country-coverage-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
   gap: 0.52rem;
 }
 
@@ -763,6 +765,427 @@ img {
 
 .country-coverage-chip.is-leading strong {
   color: var(--cv-color-white);
+}
+
+.country-coverage-cta {
+  justify-self: start;
+  border-color: rgba(186, 155, 74, 0.5);
+  background: rgba(186, 155, 74, 0.16);
+  color: var(--cv-color-white);
+}
+
+.country-coverage-cta:hover,
+.country-coverage-cta:focus-visible {
+  background: var(--accent);
+  color: var(--cv-color-navy-900);
+}
+
+.coverage-page {
+  gap: 1.1rem;
+}
+
+.coverage-hero {
+  display: grid;
+  gap: 1rem;
+  align-items: end;
+}
+
+.coverage-hero-copy {
+  max-width: 760px;
+}
+
+.coverage-hero h1 {
+  margin-top: 0.24rem;
+  color: var(--primary);
+  font-size: 2.6rem;
+  line-height: 0.96;
+}
+
+.coverage-hero-copy p:not(.eyebrow) {
+  margin-top: 0.8rem;
+  color: var(--muted);
+  font-size: 1.05rem;
+  font-weight: 650;
+}
+
+.coverage-stat-strip,
+.coverage-country-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.coverage-stat-strip span,
+.coverage-country-stats span {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.42rem 0.58rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.coverage-stat-strip strong,
+.coverage-country-stats strong {
+  color: var(--primary);
+  font-size: 1.08rem;
+  line-height: 1;
+}
+
+.coverage-explorer {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.coverage-map-shell,
+.coverage-panel,
+.coverage-country-browser,
+.coverage-unmapped {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.coverage-map-shell {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--cv-color-navy-900) 94%, #000000);
+}
+
+.coverage-map-toolbar {
+  position: absolute;
+  z-index: 3;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: inline-flex;
+  gap: 0.42rem;
+  padding: 0.35rem;
+  border: 1px solid rgba(253, 252, 253, 0.14);
+  border-radius: var(--radius);
+  background: rgba(3, 32, 68, 0.78);
+  backdrop-filter: blur(12px);
+}
+
+.coverage-map-toolbar .icon-button {
+  width: 36px;
+  height: 36px;
+  border-color: rgba(253, 252, 253, 0.18);
+  background: rgba(253, 252, 253, 0.08);
+  color: var(--cv-color-white);
+}
+
+.coverage-map-toolbar .icon-button:hover,
+.coverage-map-toolbar .icon-button:focus-visible {
+  background: var(--accent);
+  color: var(--cv-color-navy-900);
+}
+
+.coverage-map-stage {
+  position: relative;
+  min-height: 300px;
+  aspect-ratio: 2 / 1;
+  cursor: grab;
+  overflow: hidden;
+}
+
+.coverage-map-stage.is-dragging {
+  cursor: grabbing;
+}
+
+.coverage-map {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  touch-action: none;
+}
+
+.coverage-map-panel {
+  fill: color-mix(in srgb, var(--cv-color-navy-900) 96%, #000000);
+}
+
+.coverage-map-sphere {
+  fill: rgba(253, 252, 253, 0.03);
+  stroke: rgba(253, 252, 253, 0.13);
+  stroke-width: 1.2;
+}
+
+.coverage-map-graticule {
+  fill: none;
+  stroke: rgba(253, 252, 253, 0.08);
+  stroke-linecap: round;
+  stroke-width: 1;
+}
+
+.coverage-map-land {
+  fill: rgba(253, 252, 253, 0.12);
+  stroke: rgba(253, 252, 253, 0.2);
+  stroke-width: 1;
+}
+
+.coverage-map-scan {
+  fill: none;
+  stroke: url(#coverageExplorerScan);
+  stroke-dasharray: 90 430;
+  stroke-linecap: round;
+  stroke-width: 2.2;
+  opacity: 0.6;
+}
+
+.coverage-country-highlight {
+  fill: rgba(186, 155, 74, 0.2);
+  stroke: rgba(253, 252, 253, 0.64);
+  stroke-width: 1.8;
+}
+
+.coverage-map-marker {
+  cursor: pointer;
+}
+
+.coverage-marker-target {
+  fill: transparent;
+  stroke: transparent;
+  stroke-width: 3;
+}
+
+.coverage-marker-halo {
+  fill: rgba(186, 155, 74, 0.16);
+  stroke: rgba(186, 155, 74, 0.24);
+  stroke-width: 1.2;
+}
+
+.coverage-marker-core {
+  fill: rgba(186, 155, 74, 0.86);
+  stroke: rgba(253, 252, 253, 0.92);
+  stroke-width: 2;
+}
+
+.coverage-marker-dot {
+  fill: var(--cv-color-white);
+  pointer-events: none;
+}
+
+.coverage-map-marker.is-active .coverage-marker-core,
+.coverage-map-marker:focus .coverage-marker-core {
+  fill: var(--accent);
+  stroke: var(--cv-color-white);
+  stroke-width: 2.7;
+}
+
+.coverage-map-marker.is-selected .coverage-marker-halo,
+.coverage-map-marker:focus .coverage-marker-target {
+  stroke: rgba(253, 252, 253, 0.8);
+}
+
+.coverage-tooltip {
+  position: absolute;
+  z-index: 2;
+  width: min(310px, calc(100% - 1.5rem));
+  padding: 0.75rem;
+  border: 1px solid rgba(253, 252, 253, 0.18);
+  border-radius: var(--radius);
+  background: rgba(5, 24, 51, 0.94);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.32);
+  color: var(--cv-color-white);
+  pointer-events: none;
+  transform: translate(-8%, -104%);
+}
+
+.coverage-tooltip-heading,
+.coverage-panel-heading,
+.coverage-browser-heading {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.coverage-tooltip-heading {
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.coverage-tooltip .coverage-country-stats {
+  gap: 0.35rem;
+  margin-top: 0.58rem;
+}
+
+.coverage-tooltip .coverage-country-stats span {
+  min-height: 29px;
+  padding: 0.25rem 0.38rem;
+  border-color: rgba(253, 252, 253, 0.14);
+  background: rgba(253, 252, 253, 0.08);
+  color: rgba(253, 252, 253, 0.76);
+  font-size: 0.72rem;
+}
+
+.coverage-tooltip .coverage-country-stats strong {
+  color: var(--cv-color-white);
+  font-size: 0.86rem;
+}
+
+.coverage-tooltip .coverage-event-list {
+  margin-top: 0.58rem;
+}
+
+.coverage-tooltip .coverage-event-link {
+  border-color: rgba(253, 252, 253, 0.13);
+  background: rgba(253, 252, 253, 0.06);
+  color: var(--cv-color-white);
+}
+
+.coverage-panel,
+.coverage-country-browser,
+.coverage-unmapped {
+  min-width: 0;
+  padding: 0.95rem;
+}
+
+.coverage-panel {
+  display: grid;
+  align-content: start;
+  gap: 0.9rem;
+}
+
+.coverage-panel h2 {
+  margin-top: 0.12rem;
+  font-size: 1.45rem;
+  line-height: 1.08;
+}
+
+.coverage-event-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.coverage-event-link {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+  padding: 0.62rem 0.68rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-inset);
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.coverage-event-link:hover,
+.coverage-event-link:focus-visible {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  outline: none;
+}
+
+.coverage-event-title {
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 900;
+  line-height: 1.18;
+}
+
+.coverage-tooltip .coverage-event-title {
+  color: var(--cv-color-white);
+}
+
+.coverage-event-meta {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.coverage-tooltip .coverage-event-meta {
+  color: rgba(253, 252, 253, 0.66);
+}
+
+.coverage-country-browser {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.coverage-browser-heading {
+  align-items: center;
+}
+
+.coverage-browser-heading strong {
+  color: var(--primary);
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.coverage-country-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.5rem;
+}
+
+.coverage-country-button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.48rem;
+  align-items: center;
+  min-height: 40px;
+  padding: 0.46rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-inset);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 850;
+  text-align: left;
+}
+
+.coverage-country-button span:nth-child(2) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.coverage-country-button strong {
+  color: var(--accent);
+}
+
+.coverage-country-button:hover,
+.coverage-country-button:focus-visible,
+.coverage-country-button.is-selected {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--border));
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  outline: none;
+}
+
+.coverage-unmapped {
+  display: grid;
+  gap: 0.7rem;
+  color: var(--muted);
+}
+
+.coverage-unmapped-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.42rem;
+}
+
+.coverage-unmapped-list span {
+  min-height: 30px;
+  padding: 0.24rem 0.48rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-inset);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 800;
 }
 
 .discovery-preview {
@@ -2612,6 +3035,14 @@ textarea:focus {
     font-size: 3.55rem;
   }
 
+  .coverage-hero {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .coverage-hero h1 {
+    font-size: 3.55rem;
+  }
+
   .event-grid,
   .news-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2731,6 +3162,28 @@ textarea:focus {
     min-height: 430px;
   }
 
+  .coverage-explorer {
+    grid-template-columns: minmax(0, 1.45fr) minmax(310px, 0.55fr);
+    align-items: start;
+  }
+
+  .coverage-map-shell {
+    min-height: 560px;
+  }
+
+  .coverage-map-stage {
+    min-height: 560px;
+  }
+
+  .coverage-panel {
+    min-height: 560px;
+  }
+
+  .coverage-country-browser,
+  .coverage-unmapped {
+    grid-column: 1 / -1;
+  }
+
   .country-coverage {
     display: grid;
   }
@@ -2822,6 +3275,403 @@ textarea:focus {
   }
 }
 
+.coverage-explorer {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.9rem;
+}
+
+.coverage-mode-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.coverage-breadcrumbs,
+.coverage-type-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.coverage-breadcrumbs button {
+  min-height: 36px;
+  padding: 0.38rem 0.64rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.coverage-breadcrumbs button:hover,
+.coverage-breadcrumbs button:focus-visible,
+.coverage-breadcrumbs button.is-current {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--border));
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  color: var(--text);
+  outline: none;
+}
+
+.coverage-type-badge {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.18rem 0.44rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-inset);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.coverage-type-badge::before {
+  width: 0.52rem;
+  height: 0.52rem;
+  border-radius: 50%;
+  content: "";
+}
+
+.coverage-type-badge.is-classical::before,
+.coverage-tournament-dot.is-classical .coverage-dot-core {
+  background: #2f80ed;
+  fill: #2f80ed;
+}
+
+.coverage-type-badge.is-rapid::before,
+.coverage-tournament-dot.is-rapid .coverage-dot-core {
+  background: #20b26b;
+  fill: #20b26b;
+}
+
+.coverage-type-badge.is-blitz::before,
+.coverage-tournament-dot.is-blitz .coverage-dot-core {
+  background: #ffb02e;
+  fill: #ffb02e;
+}
+
+.coverage-type-badge.is-other::before,
+.coverage-tournament-dot.is-other .coverage-dot-core {
+  background: #d977d8;
+  fill: #d977d8;
+}
+
+.coverage-map-shell,
+.coverage-panel,
+.coverage-country-browser,
+.coverage-unmapped {
+  grid-column: 1 / -1;
+}
+
+.coverage-map-shell {
+  min-height: auto;
+  scroll-margin-top: 6rem;
+}
+
+.coverage-map-stage {
+  min-height: clamp(360px, 58vw, 680px);
+  aspect-ratio: 16 / 9;
+}
+
+.coverage-map-stage.is-country-mode {
+  background:
+    linear-gradient(90deg, rgba(253, 252, 253, 0.035), rgba(253, 252, 253, 0)),
+    color-mix(in srgb, var(--cv-color-navy-900) 94%, #000000);
+}
+
+.coverage-map-country-land,
+.coverage-country-flat-boundary {
+  fill: rgba(253, 252, 253, 0.17);
+  stroke: rgba(253, 252, 253, 0.32);
+  stroke-linejoin: round;
+  stroke-width: 1.25;
+}
+
+.coverage-country-flat-boundary {
+  fill: rgba(186, 155, 74, 0.13);
+  stroke: rgba(253, 252, 253, 0.62);
+  stroke-width: 1.7;
+}
+
+.coverage-country-cluster,
+.coverage-region-marker,
+.coverage-tournament-dot {
+  cursor: pointer;
+  outline: none;
+}
+
+.coverage-region-halo {
+  fill: rgba(32, 178, 107, 0.15);
+  stroke: rgba(32, 178, 107, 0.3);
+  stroke-width: 1.2;
+}
+
+.coverage-region-core {
+  fill: rgba(32, 178, 107, 0.9);
+  stroke: rgba(253, 252, 253, 0.92);
+  stroke-width: 1.8;
+}
+
+.coverage-region-count {
+  fill: var(--cv-color-white);
+  font-size: 0.78rem;
+  font-weight: 950;
+  pointer-events: none;
+}
+
+.coverage-region-marker:hover .coverage-region-core,
+.coverage-region-marker:focus .coverage-region-core,
+.coverage-region-marker.is-selected .coverage-region-core {
+  fill: var(--accent);
+}
+
+.coverage-dot-target {
+  fill: transparent;
+}
+
+.coverage-dot-core {
+  stroke: var(--cv-color-white);
+  stroke-width: 1.7;
+}
+
+.coverage-dot-ring {
+  fill: transparent;
+  stroke: rgba(253, 252, 253, 0.72);
+  stroke-width: 1.1;
+}
+
+.coverage-tournament-dot:hover .coverage-dot-ring,
+.coverage-tournament-dot:focus .coverage-dot-ring {
+  stroke: var(--accent);
+  stroke-width: 2.2;
+}
+
+.coverage-tournament-dot.is-classical .coverage-dot-ring {
+  stroke: rgba(47, 128, 237, 0.75);
+}
+
+.coverage-tournament-dot.is-rapid .coverage-dot-ring {
+  stroke: rgba(32, 178, 107, 0.75);
+}
+
+.coverage-tournament-dot.is-blitz .coverage-dot-ring {
+  stroke: rgba(255, 176, 46, 0.82);
+}
+
+.coverage-tournament-dot.is-other .coverage-dot-ring {
+  stroke: rgba(217, 119, 216, 0.8);
+}
+
+.coverage-tooltip {
+  pointer-events: none;
+}
+
+.coverage-tooltip-subtitle,
+.coverage-tooltip-meta {
+  margin: 0.35rem 0 0;
+  color: rgba(253, 252, 253, 0.68);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.coverage-tooltip-meta {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.coverage-tooltip-link {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  margin-top: 0.62rem;
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 950;
+  pointer-events: auto;
+}
+
+.coverage-map-note {
+  position: absolute;
+  z-index: 2;
+  left: 1rem;
+  bottom: 1rem;
+  display: inline-flex;
+  max-width: min(440px, calc(100% - 2rem));
+  gap: 0.45rem;
+  align-items: center;
+  padding: 0.56rem 0.7rem;
+  border: 1px solid rgba(253, 252, 253, 0.16);
+  border-radius: var(--radius);
+  background: rgba(5, 24, 51, 0.86);
+  color: rgba(253, 252, 253, 0.82);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.coverage-panel {
+  min-height: auto;
+}
+
+.coverage-panel-heading {
+  align-items: center;
+}
+
+.coverage-region-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.55rem;
+}
+
+.coverage-region-card {
+  display: flex;
+  min-width: 0;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.68rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-inset);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.coverage-region-card:hover,
+.coverage-region-card:focus-visible,
+.coverage-region-card.is-selected {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--border));
+  background: color-mix(in srgb, var(--accent) 11%, var(--surface));
+  outline: none;
+}
+
+.coverage-region-card-main {
+  display: grid;
+  min-width: 0;
+  gap: 0.12rem;
+}
+
+.coverage-region-card-main strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.94rem;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.coverage-region-card-main span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.coverage-region-card-count {
+  color: var(--accent);
+  font-size: 1.15rem;
+  font-weight: 950;
+}
+
+.coverage-coordinate-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.coverage-event-row-main {
+  display: flex;
+  min-width: 0;
+  gap: 0.5rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.coverage-event-row-main .coverage-type-badge {
+  flex: 0 0 auto;
+}
+
+@media (min-width: 1080px) {
+  .coverage-map-stage {
+    min-height: 640px;
+  }
+
+  .coverage-country-buttons {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .coverage-hero h1 {
+    font-size: 2.45rem;
+  }
+
+  .coverage-mode-bar {
+    align-items: stretch;
+  }
+
+  .coverage-breadcrumbs,
+  .coverage-type-legend {
+    width: 100%;
+  }
+
+  .coverage-type-legend {
+    overflow-x: auto;
+    padding-bottom: 0.1rem;
+    flex-wrap: nowrap;
+  }
+
+  .coverage-map-toolbar {
+    top: 0.55rem;
+    right: 0.55rem;
+  }
+
+  .coverage-map-shell {
+    scroll-margin-top: 9rem;
+  }
+
+  .coverage-map-toolbar .icon-button {
+    width: 34px;
+    height: 34px;
+  }
+
+  .coverage-map-stage {
+    min-height: 380px;
+    aspect-ratio: 4 / 5;
+  }
+
+  .coverage-tooltip {
+    position: absolute;
+    left: 0.75rem !important;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    top: auto !important;
+    display: block;
+    width: auto;
+    max-height: 46%;
+    overflow: auto;
+    transform: none;
+  }
+
+  .coverage-country-buttons,
+  .coverage-region-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .coverage-event-row-main {
+    display: grid;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -2834,7 +3684,8 @@ textarea:focus {
 
   .country-coverage-shimmer,
   .country-coverage-marker,
-  .country-coverage-marker-pulse {
+  .country-coverage-marker-pulse,
+  .coverage-map-scan {
     animation: none !important;
   }
 }
