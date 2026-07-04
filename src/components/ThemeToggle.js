@@ -1,6 +1,7 @@
 "use client";
 
 import { Moon, Sun } from "lucide-react";
+import { trackAnalyticsEvent } from "@/lib/tracking";
 
 const storageKey = "chessview_theme";
 
@@ -10,6 +11,9 @@ export function ThemeToggle({ label }) {
     const nextTheme = currentTheme === "dark" ? "light" : "dark";
     localStorage.setItem(storageKey, nextTheme);
     document.documentElement.dataset.theme = nextTheme;
+    trackAnalyticsEvent("theme_change", {
+      metadata: { theme: nextTheme },
+    });
   };
 
   return (

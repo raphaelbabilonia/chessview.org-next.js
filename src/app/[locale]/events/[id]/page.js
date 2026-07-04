@@ -263,6 +263,7 @@ export default async function EventDetailPage({ params }) {
   const sectionNames = uniqueValues((event.sections || []).map((section) => section.name)).join(", ");
   const primaryLink = originalSiteLink(event, copy);
   const announcementDocument = announcementDocumentFor(event, copy);
+  const announcementHref = announcementDocument ? documentHref(announcementDocument) : "";
   const sourceName = event.source?.name || primaryLink?.label || copy.event.tba;
   const metadata = isPlainObject(event.metadata) ? event.metadata : {};
   const metadataGroups = metadataGroupsFor(metadata, copy);
@@ -320,13 +321,37 @@ export default async function EventDetailPage({ params }) {
           {description ? <p className="event-detail-lead">{description}</p> : null}
           <div className="event-detail-actions">
             {primaryLink ? (
-              <a className="button" href={primaryLink.href} rel="noreferrer" target="_blank">
+              <a
+                className="button"
+                data-tracking-entity-id={event._id}
+                data-tracking-entity-slug={event.slug}
+                data-tracking-entity-title={event.title}
+                data-tracking-entity-type="event"
+                data-tracking-event="event_original_click"
+                data-tracking-outbound-url={primaryLink.href}
+                data-tracking-placement="event_detail_header"
+                href={primaryLink.href}
+                rel="noreferrer"
+                target="_blank"
+              >
                 <ExternalLink size={18} aria-hidden="true" />
                 {copy.event.goToOriginalSite}
               </a>
             ) : null}
             {announcementDocument ? (
-              <a className="button button-ghost" href={documentHref(announcementDocument)} rel="noreferrer" target="_blank">
+              <a
+                className="button button-ghost"
+                data-tracking-entity-id={event._id}
+                data-tracking-entity-slug={event.slug}
+                data-tracking-entity-title={event.title}
+                data-tracking-entity-type="event"
+                data-tracking-event="event_announcement_open"
+                data-tracking-outbound-url={announcementHref}
+                data-tracking-placement="event_detail_header"
+                href={announcementHref}
+                rel="noreferrer"
+                target="_blank"
+              >
                 <FileText size={18} aria-hidden="true" />
                 {copy.event.openAnnouncement}
               </a>
@@ -379,7 +404,18 @@ export default async function EventDetailPage({ params }) {
           </dl>
           <div className="link-list">
             {primaryLink ? (
-              <a href={primaryLink.href} rel="noreferrer" target="_blank">
+              <a
+                data-tracking-entity-id={event._id}
+                data-tracking-entity-slug={event.slug}
+                data-tracking-entity-title={event.title}
+                data-tracking-entity-type="event"
+                data-tracking-event="event_original_click"
+                data-tracking-outbound-url={primaryLink.href}
+                data-tracking-placement="event_registration_panel"
+                href={primaryLink.href}
+                rel="noreferrer"
+                target="_blank"
+              >
                 <ExternalLink size={16} aria-hidden="true" />
                 {copy.event.goToOriginalSite}
               </a>
@@ -394,7 +430,18 @@ export default async function EventDetailPage({ params }) {
             <h2>{copy.event.announcement}</h2>
             <p>{copy.event.announcementBody}</p>
             <div className="link-list document-list">
-              <a href={documentHref(announcementDocument)} rel="noreferrer" target="_blank">
+              <a
+                data-tracking-entity-id={event._id}
+                data-tracking-entity-slug={event.slug}
+                data-tracking-entity-title={event.title}
+                data-tracking-entity-type="event"
+                data-tracking-event="event_announcement_open"
+                data-tracking-outbound-url={announcementHref}
+                data-tracking-placement="event_document_panel"
+                href={announcementHref}
+                rel="noreferrer"
+                target="_blank"
+              >
                 <FileText size={16} aria-hidden="true" />
                 <span>{copy.event.openAnnouncement}</span>
               </a>

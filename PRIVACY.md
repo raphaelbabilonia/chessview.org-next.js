@@ -1,6 +1,6 @@
 # ChessView Privacy Policy
 
-Last updated: 2026-07-03
+Last updated: 2026-07-04
 
 This policy is a project baseline for the official ChessView hosted service. It should be reviewed by a qualified lawyer before public commercial launch, especially before processing EU/EEA personal data or data about minors.
 
@@ -36,6 +36,10 @@ Organizers are responsible for having the rights and legal basis to submit perso
 
 ChessView may use service data to build search indexes, analytics, recommendations, and AI-assisted features. Private personal data should be minimized, protected, and excluded from public or commercial datasets unless a lawful basis and proper notices exist.
 
+## First-Party Website Tracking
+
+ChessView may collect first-party website analytics such as visited pages, event detail views, filter usage, outbound source clicks, referrer domain, UTM campaign tags, device/browser class, language/theme changes, and coarse country headers provided by the hosting layer. Browser visitor and session identifiers are generated for analytics continuity and hashed before storage by the ChessView API. Raw search text is minimized before storage.
+
 ## Sharing
 
 ChessView may share information with:
@@ -49,7 +53,7 @@ ChessView does not sell personal data as a standalone data product.
 
 ## Cookies And Local Storage
 
-ChessView may use cookies or local storage for language preference, theme preference, authentication, security, and service operation.
+ChessView may use cookies or local storage for language preference, theme preference, first-party analytics, authentication, security, and service operation.
 
 ## Retention
 

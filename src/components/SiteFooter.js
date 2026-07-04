@@ -29,6 +29,10 @@ export function SiteFooter({ copy, locale }) {
             Privacy
           </Link>
           <a
+            data-tracking-event="github_source_click"
+            data-tracking-label={copy.nav.source}
+            data-tracking-outbound-url="https://github.com/raphaelbabilonia/chessview.org-next.js"
+            data-tracking-placement="footer"
             href="https://github.com/raphaelbabilonia/chessview.org-next.js"
             rel="noreferrer"
             target="_blank"

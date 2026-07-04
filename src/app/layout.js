@@ -1,7 +1,9 @@
 import { ThemeScript } from "@/components/ThemeScript";
+import { TrackingProvider } from "@/components/TrackingProvider";
 import { defaultLocale, isLocale } from "@/i18n/config";
 import { siteConfig } from "@/lib/site";
 import { headers } from "next/headers";
+import { Suspense } from "react";
 import "flag-icons/css/flag-icons.min.css";
 import "./globals.css";
 
@@ -54,6 +56,9 @@ export default async function RootLayout({ children }) {
     <html lang={locale} suppressHydrationWarning>
       <body>
         <ThemeScript />
+        <Suspense fallback={null}>
+          <TrackingProvider />
+        </Suspense>
         {children}
       </body>
     </html>

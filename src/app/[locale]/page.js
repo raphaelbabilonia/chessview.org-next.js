@@ -220,7 +220,18 @@ function CompactNewsCard({ copy, item, locale }) {
 
   return (
     <article className="compact-news-card">
-      <a className="compact-news-image" href={item.url} rel="noreferrer" target="_blank">
+      <a
+        className="compact-news-image"
+        data-tracking-entity-id={item.id}
+        data-tracking-entity-title={item.title}
+        data-tracking-entity-type="news"
+        data-tracking-event="news_original_click"
+        data-tracking-outbound-url={item.url}
+        data-tracking-placement="home_news_image"
+        href={item.url}
+        rel="noreferrer"
+        target="_blank"
+      >
         {hasImage ? (
           <img alt="" loading="lazy" referrerPolicy="no-referrer" src={item.imageUrl} />
         ) : (
@@ -236,11 +247,32 @@ function CompactNewsCard({ copy, item, locale }) {
           <span>{formatDate(item.publishedAt, locale)}</span>
         </div>
         <h3>
-          <a href={item.url} rel="noreferrer" target="_blank">
+          <a
+            data-tracking-entity-id={item.id}
+            data-tracking-entity-title={item.title}
+            data-tracking-entity-type="news"
+            data-tracking-event="news_original_click"
+            data-tracking-outbound-url={item.url}
+            data-tracking-placement="home_news_title"
+            href={item.url}
+            rel="noreferrer"
+            target="_blank"
+          >
             {item.title}
           </a>
         </h3>
-        <a className="compact-news-link" href={item.url} rel="noreferrer" target="_blank">
+        <a
+          className="compact-news-link"
+          data-tracking-entity-id={item.id}
+          data-tracking-entity-title={item.title}
+          data-tracking-entity-type="news"
+          data-tracking-event="news_original_click"
+          data-tracking-outbound-url={item.url}
+          data-tracking-placement="home_news_cta"
+          href={item.url}
+          rel="noreferrer"
+          target="_blank"
+        >
           <ExternalLink size={14} aria-hidden="true" />
           {copy.news.readOriginal}
         </a>

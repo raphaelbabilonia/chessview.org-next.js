@@ -83,11 +83,27 @@ In development, API fetches use `cache: "no-store"` so scraper imports appear im
 ```env
 API_BASE_URL=http://127.0.0.1:5000/api
 NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3001
+NEXT_PUBLIC_TRACKING_ENABLED=false
+NEXT_PUBLIC_TRACKING_API_URL=http://127.0.0.1:5000/api/tracking/events
 ```
 
 `API_BASE_URL` is server-only. Do not put secrets in variables prefixed with `NEXT_PUBLIC_`; those are exposed to browsers.
 
-Production domain and production API URL are intentionally unset for now. Set them per deployment once the domain and API host are decided.
+`NEXT_PUBLIC_TRACKING_ENABLED` and `NEXT_PUBLIC_TRACKING_API_URL` are public browser settings. Keep tracking disabled locally unless you intentionally want to send development events to your local API.
+
+## First-Party Tracking
+
+The public site sends first-party analytics events directly to the ChessView API when `NEXT_PUBLIC_TRACKING_ENABLED=true`.
+
+Captured signals include pageviews, event detail views, country/source page views, event and news outbound clicks, filter submissions, language changes, theme changes, referrer domain, UTM tags, browser/device class, and coarse country headers when the API host provides them. Raw search text is reduced to `search=used`, and visitor/session ids are generated in browser storage then hashed by the backend.
+
+Hidden dashboard:
+
+```text
+/tracking/cv-tracking-4f7e9d2b-2026
+```
+
+The dashboard code should be changed with `TRACKING_DASHBOARD_CODE` before this becomes sensitive operational data.
 
 ## Production Deployment
 
@@ -102,6 +118,8 @@ The workflow builds with:
 ```env
 API_BASE_URL=https://api.chessview.org/api
 NEXT_PUBLIC_SITE_URL=https://chessview.org
+NEXT_PUBLIC_TRACKING_ENABLED=true
+NEXT_PUBLIC_TRACKING_API_URL=https://api.chessview.org/api/tracking/events
 ```
 
 It assumes CloudPanel has a Node.js site for `chessview.org` using site user `chessview`, with nginx proxying to port `3001`. If CloudPanel creates a different site user or path, update `SITE_USER` and `TARGET_DIR` in `.github/workflows/deploy-website.yml`.

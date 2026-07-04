@@ -26,6 +26,10 @@ export function SiteHeader({ copy, locale }) {
         <ThemeToggle label={copy.nav.theme} />
         <a
           className="icon-link"
+          data-tracking-event="github_source_click"
+          data-tracking-label={copy.nav.source}
+          data-tracking-outbound-url="https://github.com/raphaelbabilonia/chessview.org-next.js"
+          data-tracking-placement="header"
           href="https://github.com/raphaelbabilonia/chessview.org-next.js"
           rel="noreferrer"
           target="_blank"

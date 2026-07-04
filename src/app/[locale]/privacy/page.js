@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { isLocale, languageAlternates, localePath } from "@/i18n/config";
 
-const updatedAt = "2026-07-03";
+const updatedAt = "2026-07-04";
 
 const sections = [
   {
@@ -25,6 +25,11 @@ const sections = [
       "ChessView may use service data to build search indexes, analytics, recommendations, and AI-assisted features. Private personal data should be minimized and protected.",
   },
   {
+    title: "First-party website tracking",
+    body:
+      "ChessView may collect first-party website analytics such as visited pages, event detail views, filter usage, outbound source clicks, referrer domain, UTM tags, device/browser class, language/theme changes, and coarse country headers. Browser visitor and session identifiers are generated for analytics continuity and hashed before storage by the ChessView API. Raw search text is minimized before storage.",
+  },
+  {
     title: "Sharing",
     body:
       "ChessView may share information with service providers, public visitors when information is part of a public page, organizers when needed for event administration, and legal authorities when required by law.",
@@ -32,7 +37,7 @@ const sections = [
   {
     title: "Cookies and local storage",
     body:
-      "ChessView may use cookies or local storage for language preference, theme preference, authentication, security, and service operation.",
+      "ChessView may use cookies or local storage for language preference, theme preference, first-party analytics, authentication, security, and service operation.",
   },
   {
     title: "Your rights",

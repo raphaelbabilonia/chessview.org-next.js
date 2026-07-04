@@ -88,11 +88,32 @@ export function EventCard({ copy, event, locale }) {
         </span>
       </div>
       <div className="event-card-actions">
-        <Link className="button button-small" href={localizedEventHref(locale, event)}>
+        <Link
+          className="button button-small"
+          data-tracking-entity-id={event._id}
+          data-tracking-entity-slug={event.slug}
+          data-tracking-entity-title={event.title}
+          data-tracking-entity-type="event"
+          data-tracking-event="event_view_details"
+          data-tracking-placement="event_card"
+          href={localizedEventHref(locale, event)}
+        >
           {copy.card.seeMore}
         </Link>
         {sourceInfo ? (
-          <a className="button button-small button-ghost event-source-button" href={sourceInfo.href} rel="noreferrer" target="_blank">
+          <a
+            className="button button-small button-ghost event-source-button"
+            data-tracking-entity-id={event._id}
+            data-tracking-entity-slug={event.slug}
+            data-tracking-entity-title={event.title}
+            data-tracking-entity-type="event"
+            data-tracking-event="event_original_click"
+            data-tracking-outbound-url={sourceInfo.href}
+            data-tracking-placement="event_card"
+            href={sourceInfo.href}
+            rel="noreferrer"
+            target="_blank"
+          >
             {sourceInfo.iconUrl ? (
               <span
                 aria-hidden="true"

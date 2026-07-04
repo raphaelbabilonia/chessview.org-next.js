@@ -1,6 +1,7 @@
 import { Search } from "lucide-react";
 import { notFound } from "next/navigation";
 import { EventCard } from "@/components/EventCard";
+import { TrackableForm } from "@/components/TrackableForm";
 import { getEvents, todayIsoDate } from "@/lib/api";
 import { isLocale, languageAlternates, localePath } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
@@ -194,7 +195,12 @@ export default async function EventsPage({ params, searchParams }) {
           <span>{copy.events.filters}</span>
           {activeFilterCount ? <span className="filter-panel-count">{activeFilterCount}</span> : null}
         </summary>
-        <form className="filter-bar filter-panel-body" action={`/${locale}/events`}>
+        <TrackableForm
+          action={`/${locale}/events`}
+          className="filter-bar filter-panel-body"
+          eventName="events_filter_apply"
+          routeType="events"
+        >
           <label>
             {copy.events.search}
             <input name="search" defaultValue={filters.search} placeholder={copy.events.searchPlaceholder} />
@@ -231,7 +237,7 @@ export default async function EventsPage({ params, searchParams }) {
             <Search size={18} aria-hidden="true" />
             {copy.events.apply}
           </button>
-        </form>
+        </TrackableForm>
       </details>
 
       {error ? <div className="state state-warning">{copy.events.apiError}</div> : null}

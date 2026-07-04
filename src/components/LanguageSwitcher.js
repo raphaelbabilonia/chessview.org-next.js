@@ -3,6 +3,7 @@
 import { Languages } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { locales, localeNames, pathWithoutLocale } from "@/i18n/config";
+import { trackAnalyticsEvent } from "@/lib/tracking";
 
 const storageKey = "chessview_locale";
 const cookieName = "chessview_locale";
@@ -19,6 +20,9 @@ export function LanguageSwitcher({ label, locale }) {
     localStorage.setItem(storageKey, nextLocale);
     document.cookie = `${cookieName}=${nextLocale}; Path=/; Max-Age=31536000; SameSite=Lax`;
     document.documentElement.lang = nextLocale;
+    trackAnalyticsEvent("language_change", {
+      metadata: { from: locale, to: nextLocale },
+    });
     router.push(nextPath);
   };
 

@@ -10,7 +10,18 @@ export function NewsCard({ copy, item, locale }) {
 
   return (
     <article className="news-card">
-      <a className="news-card-image" href={item.url} rel="noreferrer" target="_blank">
+      <a
+        className="news-card-image"
+        data-tracking-entity-id={item.id}
+        data-tracking-entity-title={item.title}
+        data-tracking-entity-type="news"
+        data-tracking-event="news_original_click"
+        data-tracking-outbound-url={item.url}
+        data-tracking-placement="news_card_image"
+        href={item.url}
+        rel="noreferrer"
+        target="_blank"
+      >
         {hasImage ? (
           <img alt="" loading="lazy" referrerPolicy="no-referrer" src={item.imageUrl} />
         ) : (
@@ -26,7 +37,17 @@ export function NewsCard({ copy, item, locale }) {
           <span>{item.category}</span>
         </div>
         <h3>
-          <a href={item.url} rel="noreferrer" target="_blank">
+          <a
+            data-tracking-entity-id={item.id}
+            data-tracking-entity-title={item.title}
+            data-tracking-entity-type="news"
+            data-tracking-event="news_original_click"
+            data-tracking-outbound-url={item.url}
+            data-tracking-placement="news_card_title"
+            href={item.url}
+            rel="noreferrer"
+            target="_blank"
+          >
             {item.title}
           </a>
         </h3>
@@ -46,7 +67,18 @@ export function NewsCard({ copy, item, locale }) {
         ) : null}
         <div className="news-card-footer">
           <span>{formatDate(item.publishedAt, locale)}</span>
-          <a className="button button-small button-ghost" href={item.url} rel="noreferrer" target="_blank">
+          <a
+            className="button button-small button-ghost"
+            data-tracking-entity-id={item.id}
+            data-tracking-entity-title={item.title}
+            data-tracking-entity-type="news"
+            data-tracking-event="news_original_click"
+            data-tracking-outbound-url={item.url}
+            data-tracking-placement="news_card_cta"
+            href={item.url}
+            rel="noreferrer"
+            target="_blank"
+          >
             <ExternalLink size={16} aria-hidden="true" />
             {copy.news.readOriginal}
           </a>

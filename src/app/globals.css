@@ -1360,6 +1360,246 @@ img {
   margin: 1rem 0 0;
 }
 
+.tracking-dashboard {
+  gap: var(--cv-space-8);
+}
+
+.tracking-header {
+  align-items: flex-start;
+}
+
+.tracking-range {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cv-space-2);
+  margin-top: var(--cv-space-4);
+}
+
+.tracking-range a {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0 var(--cv-space-4);
+  color: var(--text);
+  background: var(--surface);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.tracking-range a.is-active {
+  border-color: var(--primary);
+  color: var(--surface);
+  background: var(--primary);
+}
+
+.tracking-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--cv-space-3);
+}
+
+.tracking-stat,
+.tracking-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.tracking-stat {
+  display: grid;
+  gap: var(--cv-space-2);
+  min-height: 120px;
+  padding: var(--cv-space-6);
+}
+
+.tracking-stat span,
+.tracking-panel-heading span {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.tracking-stat strong {
+  color: var(--primary);
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  line-height: 1;
+}
+
+.tracking-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--cv-space-4);
+}
+
+.tracking-panel {
+  min-width: 0;
+  padding: var(--cv-space-6);
+}
+
+.tracking-panel h2 {
+  margin-bottom: var(--cv-space-4);
+  color: var(--primary);
+  font-size: 1.1rem;
+}
+
+.tracking-panel-wide {
+  grid-column: 1 / -1;
+}
+
+.tracking-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cv-space-4);
+  margin-bottom: var(--cv-space-4);
+}
+
+.tracking-panel-heading h2 {
+  margin: 0;
+}
+
+.tracking-ranked-list {
+  display: grid;
+  gap: var(--cv-space-4);
+  list-style: none;
+}
+
+.tracking-ranked-list li {
+  display: grid;
+  gap: var(--cv-space-2);
+}
+
+.tracking-ranked-list li > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--cv-space-4);
+}
+
+.tracking-ranked-list span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.tracking-ranked-list strong {
+  color: var(--primary);
+  white-space: nowrap;
+}
+
+.tracking-bar {
+  position: relative;
+  display: block;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-strong);
+}
+
+.tracking-bar::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--tracking-bar-width);
+  border-radius: inherit;
+  background: var(--accent);
+  content: "";
+}
+
+.tracking-trend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(24px, 1fr));
+  align-items: end;
+  gap: var(--cv-space-2);
+  min-height: 220px;
+}
+
+.tracking-trend-day {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  align-items: end;
+  gap: var(--cv-space-2);
+  min-width: 0;
+  min-height: 220px;
+}
+
+.tracking-trend-day > span {
+  display: block;
+  width: 100%;
+  height: var(--tracking-trend-height);
+  min-height: 8px;
+  border-radius: 999px 999px 2px 2px;
+  background: var(--primary);
+}
+
+.tracking-trend-day small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.tracking-empty {
+  color: var(--muted);
+}
+
+.tracking-table-wrap {
+  overflow-x: auto;
+}
+
+.tracking-table {
+  width: 100%;
+  min-width: 820px;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.tracking-table th,
+.tracking-table td {
+  border-bottom: 1px solid var(--border);
+  padding: var(--cv-space-3);
+  text-align: left;
+  vertical-align: top;
+}
+
+.tracking-table th {
+  color: var(--primary);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+}
+
+.tracking-table td {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  .tracking-stat-grid,
+  .tracking-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tracking-stat {
+    min-height: 96px;
+    padding: var(--cv-space-4);
+  }
+
+  .tracking-panel {
+    padding: var(--cv-space-4);
+  }
+
+  .tracking-trend {
+    grid-template-columns: repeat(auto-fit, minmax(18px, 1fr));
+  }
+
+  .tracking-trend-day small {
+    display: none;
+  }
+}
+
 .source-strip p {
   font-size: 0.84rem;
   font-weight: 950;

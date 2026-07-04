@@ -2,6 +2,7 @@ import { ExternalLink, Search } from "lucide-react";
 import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/JsonLd";
 import { NewsCard } from "@/components/NewsCard";
+import { TrackableForm } from "@/components/TrackableForm";
 import { isLocale, languageAlternates, localePath } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
 import { getNewsItems } from "@/lib/news";
@@ -248,7 +249,12 @@ export default async function NewsPage({ params, searchParams }) {
           <span>{copy.news.filters}</span>
           {activeFilterCount ? <span className="filter-panel-count">{activeFilterCount}</span> : null}
         </summary>
-        <form className="filter-bar filter-bar-compact filter-panel-body" action={`/${locale}/news`}>
+        <TrackableForm
+          action={`/${locale}/news`}
+          className="filter-bar filter-bar-compact filter-panel-body"
+          eventName="news_filter_apply"
+          routeType="news"
+        >
           <label>
             {copy.news.search}
             <input name="search" defaultValue={filters.search} placeholder={copy.news.searchPlaceholder} />
@@ -269,7 +275,7 @@ export default async function NewsPage({ params, searchParams }) {
             <Search size={18} aria-hidden="true" />
             {copy.news.apply}
           </button>
-        </form>
+        </TrackableForm>
       </details>
 
       {error ? <div className="state state-warning">{copy.news.apiError}</div> : null}
@@ -294,7 +300,17 @@ export default async function NewsPage({ params, searchParams }) {
           <p>{copy.news.sources}</p>
           <div>
             {sources.map((source) => (
-              <a href={source.url} key={source.name} rel="noreferrer" target="_blank">
+              <a
+                data-tracking-entity-title={source.name}
+                data-tracking-entity-type="news_source"
+                data-tracking-event="news_original_click"
+                data-tracking-outbound-url={source.url}
+                data-tracking-placement="news_source_strip"
+                href={source.url}
+                key={source.name}
+                rel="noreferrer"
+                target="_blank"
+              >
                 {source.name}
                 <span>{source.count}</span>
                 <ExternalLink size={14} aria-hidden="true" />

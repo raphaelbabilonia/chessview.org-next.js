@@ -35,6 +35,8 @@ jobs:
         env:
           API_BASE_URL: https://api.chessview.org/api
           NEXT_PUBLIC_SITE_URL: https://chessview.org
+          NEXT_PUBLIC_TRACKING_ENABLED: "true"
+          NEXT_PUBLIC_TRACKING_API_URL: https://api.chessview.org/api/tracking/events
           DEPLOYMENT_VERSION: ${{ github.sha }}
         run: npm run build
 
@@ -138,7 +140,9 @@ jobs:
                     PORT: "3011",
                     HOSTNAME: "127.0.0.1",
                     API_BASE_URL: "https://api.chessview.org/api",
-                    NEXT_PUBLIC_SITE_URL: "https://chessview.org"
+                    NEXT_PUBLIC_SITE_URL: "https://chessview.org",
+                    NEXT_PUBLIC_TRACKING_ENABLED: "true",
+                    NEXT_PUBLIC_TRACKING_API_URL: "https://api.chessview.org/api/tracking/events"
                   }
                 }
               ]
