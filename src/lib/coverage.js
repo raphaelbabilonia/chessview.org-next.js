@@ -55,13 +55,16 @@ const cleanCountry = (value) => {
 const countryAlias = {
   Andorra: { atlasName: "Andorra", coordinates: [1.5218, 42.5063], flagCode: "ad" },
   Argentina: { atlasName: "Argentina", flagCode: "ar" },
+  Australia: { atlasName: "Australia", flagCode: "au" },
   Austria: { atlasName: "Austria", flagCode: "at" },
   Bahrain: { atlasName: "Bahrain", coordinates: [50.5577, 26.0667], flagCode: "bh" },
   Belgium: { atlasName: "Belgium", flagCode: "be" },
   Brazil: { atlasName: "Brazil", flagCode: "br" },
   Bulgaria: { atlasName: "Bulgaria", flagCode: "bg" },
   Canada: { atlasName: "Canada", flagCode: "ca" },
+  China: { atlasName: "China", flagCode: "cn" },
   Colombia: { atlasName: "Colombia", flagCode: "co" },
+  "Costa Rica": { atlasName: "Costa Rica", flagCode: "cr" },
   Croatia: { atlasName: "Croatia", flagCode: "hr" },
   "Czech Republic": { atlasName: "Czechia", flagCode: "cz" },
   England: {
@@ -70,6 +73,7 @@ const countryAlias = {
     flagCode: "gb-eng",
     focusFeatureName: "United Kingdom",
   },
+  Estonia: { atlasName: "Estonia", flagCode: "ee" },
   Finland: { atlasName: "Finland", flagCode: "fi" },
   France: { atlasName: "France", flagCode: "fr" },
   Georgia: { atlasName: "Georgia", flagCode: "ge" },
@@ -80,12 +84,18 @@ const countryAlias = {
   Hungary: { atlasName: "Hungary", flagCode: "hu" },
   India: { atlasName: "India", flagCode: "in" },
   Italy: { atlasName: "Italy", flagCode: "it" },
+  Japan: { atlasName: "Japan", flagCode: "jp" },
+  Jordan: { atlasName: "Jordan", flagCode: "jo" },
+  Kazakhstan: { atlasName: "Kazakhstan", flagCode: "kz" },
   "Ivory Coast": { atlasName: "Côte d'Ivoire", flagCode: "ci" },
   Latvia: { atlasName: "Latvia", flagCode: "lv" },
+  Lebanon: { atlasName: "Lebanon", flagCode: "lb" },
+  Lithuania: { atlasName: "Lithuania", flagCode: "lt" },
   Malta: { atlasName: "Malta", coordinates: [14.3754, 35.9375], flagCode: "mt" },
   Mexico: { atlasName: "Mexico", flagCode: "mx" },
   Monaco: { atlasName: "Monaco", coordinates: [7.4246, 43.7384], flagCode: "mc" },
   Montenegro: { atlasName: "Montenegro", flagCode: "me" },
+  Morocco: { atlasName: "Morocco", flagCode: "ma" },
   Netherlands: { atlasName: "Netherlands", flagCode: "nl" },
   Nigeria: { atlasName: "Nigeria", flagCode: "ng" },
   Poland: { atlasName: "Poland", flagCode: "pl" },
@@ -95,14 +105,20 @@ const countryAlias = {
   Serbia: { atlasName: "Serbia", flagCode: "rs" },
   Singapore: { atlasName: "Singapore", coordinates: [103.8198, 1.3521], flagCode: "sg" },
   Slovakia: { atlasName: "Slovakia", flagCode: "sk" },
+  Slovenia: { atlasName: "Slovenia", flagCode: "si" },
+  "South Africa": { atlasName: "South Africa", flagCode: "za" },
   Spain: { atlasName: "Spain", flagCode: "es" },
   Sweden: { atlasName: "Sweden", flagCode: "se" },
   Switzerland: { atlasName: "Switzerland", flagCode: "ch" },
+  Thailand: { atlasName: "Thailand", flagCode: "th" },
+  Tunisia: { atlasName: "Tunisia", flagCode: "tn" },
   Turkey: { atlasName: "Turkey", coordinates: [35.2433, 38.9637], flagCode: "tr" },
+  "United Arab Emirates": { atlasName: "United Arab Emirates", flagCode: "ae" },
   "United Kingdom": { atlasName: "United Kingdom", flagCode: "gb" },
   "United States": { atlasName: "United States of America", flagCode: "us" },
   Uruguay: { atlasName: "Uruguay", flagCode: "uy" },
   Uzbekistan: { atlasName: "Uzbekistan", flagCode: "uz" },
+  Vietnam: { atlasName: "Vietnam", flagCode: "vn" },
   Wales: {
     atlasName: "United Kingdom",
     coordinates: [-3.8, 52.3],
@@ -145,6 +161,46 @@ const locationRows = [
   ["Lugo", "Spain", "Galicia", [-7.5559, 43.0097]],
   ["Pontevedra", "Spain", "Galicia", [-8.6444, 42.431]],
   ["Sitges", "Spain", "Catalonia", [1.8113, 41.2372]],
+  ["A Guarda", "Spain", "Galicia", [-8.8744, 41.9013]],
+  ["Alacant", "Spain", "Valencian Community", [-0.4907, 38.3452]],
+  ["Alicante", "Spain", "Valencian Community", [-0.4907, 38.3452]],
+  ["Azkoitia", "Spain", "Basque Country", [-2.311, 43.177]],
+  ["Badalona", "Spain", "Catalonia", [2.245, 41.45]],
+  ["Bormujos", "Spain", "Andalusia", [-6.0701, 37.3733]],
+  ["Bormujos (Sevilla)", "Spain", "Andalusia", [-6.0701, 37.3733]],
+  ["Calvia", "Spain", "Balearic Islands", [2.5066, 39.5653]],
+  ["Cerceda", "Spain", "Galicia", [-8.4701, 43.1886]],
+  ["Chipiona", "Spain", "Andalusia", [-6.432, 36.7366]],
+  ["Chipiona, Cadiz", "Spain", "Andalusia", [-6.432, 36.7366]],
+  ["Collado Villalba", "Spain", "Community of Madrid", [-4.0067, 40.6266]],
+  ["Colunga", "Spain", "Asturias", [-5.2706, 43.4859]],
+  ["El Vendrell", "Spain", "Catalonia", [1.5349, 41.2207]],
+  ["Ferrol", "Spain", "Galicia", [-8.2333, 43.4832]],
+  ["Granada", "Spain", "Andalusia", [-3.5986, 37.1773]],
+  ["Ibiza", "Spain", "Balearic Islands", [1.4329, 38.9067]],
+  ["Ibiza (Baleares)", "Spain", "Balearic Islands", [1.4329, 38.9067]],
+  ["L'Escala", "Spain", "Catalonia", [3.1324, 42.1246]],
+  ["La Pobla de Lillet", "Spain", "Catalonia", [1.9748, 42.2444]],
+  ["La Pobla de Lillet (Barcelona)", "Spain", "Catalonia", [1.9748, 42.2444]],
+  ["La Puerta de Segura", "Spain", "Andalusia", [-2.7396, 38.3522]],
+  ["Lanzarote", "Spain", "Canary Islands", [-13.5899, 29.0469]],
+  ["Meis", "Spain", "Galicia", [-8.7078, 42.5155]],
+  ["O Mosteiro, Meis", "Spain", "Galicia", [-8.7078, 42.5155]],
+  ["Padul", "Spain", "Andalusia", [-3.625, 37.0244]],
+  ["San Vicente de Raspeig", "Spain", "Valencian Community", [-0.5255, 38.3964]],
+  ["Sant Adria de Besos", "Spain", "Catalonia", [2.2232, 41.4306]],
+  ["Sant Boi de Llobregat", "Spain", "Catalonia", [2.043, 41.3436]],
+  ["Sant Vicent del Raspeig", "Spain", "Valencian Community", [-0.5255, 38.3964]],
+  ["Santa Pola", "Spain", "Valencian Community", [-0.5555, 38.1917]],
+  ["Sestao", "Spain", "Basque Country", [-2.9896, 43.3098]],
+  ["Sestao, Basque Country", "Spain", "Basque Country", [-2.9896, 43.3098]],
+  ["Sevilla", "Spain", "Andalusia", [-5.9845, 37.3891]],
+  ["Toledo", "Spain", "Castilla-La Mancha", [-4.0273, 39.8628]],
+  ["Valencia", "Spain", "Valencian Community", [-0.3763, 39.4699]],
+  ["Villanueva de la Reina", "Spain", "Andalusia", [-3.9168, 38.0044]],
+  ["Vitoria Gasteiz", "Spain", "Basque Country", [-2.6727, 42.8467]],
+  ["Vitoria-Gasteiz", "Spain", "Basque Country", [-2.6727, 42.8467]],
+  ["Zaragoza", "Spain", "Aragon", [-0.8891, 41.6488]],
   ["Valdepeñas", "Spain", "Castilla-La Mancha", [-3.3844, 38.7621]],
   ["Paris", "France", "Ile-de-France", [2.3522, 48.8566]],
   ["Aix-En-Provence", "France", "Provence-Alpes-Cote d'Azur", [5.4474, 43.5297]],
@@ -253,8 +309,8 @@ const isActiveOrUpcoming = (event, today = todayStartUtc()) => {
 };
 
 const locationFromEvent = (event) => {
-  const country = cleanCountry(event.country || event.metadata?.logistics?.country || event.location?.country);
-  const city = String(event.city || event.metadata?.logistics?.city || event.location?.city || "").trim();
+  const country = cleanCountry(event.country || event.location?.country || event.metadata?.logistics?.country);
+  const city = String(event.city || event.location?.city || event.metadata?.logistics?.city || "").trim();
   const directCoordinates = coordinatesFromEvent(event);
   const cityLocation =
     locationByCityAndCountry.get(`${normalizeText(city)}|${normalizeText(country)}`) ||
@@ -266,9 +322,10 @@ const locationFromEvent = (event) => {
     region:
       String(
         event.region ||
+          event.location?.region ||
+          event.location?.province ||
           event.metadata?.logistics?.province ||
           event.metadata?.logistics?.region ||
-          event.location?.region ||
           "",
       ).trim() ||
       cityLocation?.region ||
@@ -277,20 +334,37 @@ const locationFromEvent = (event) => {
   };
 };
 
+const coordinatesFromValue = (value) => {
+  if (Array.isArray(value)) {
+    const [lon, lat] = value.map(Number);
+    if (Number.isFinite(lon) && Number.isFinite(lat)) return [lon, lat];
+  }
+
+  if (value && typeof value === "object") {
+    const lon = Number(value.longitude ?? value.lng ?? value.lon);
+    const lat = Number(value.latitude ?? value.lat);
+    if (Number.isFinite(lon) && Number.isFinite(lat)) return [lon, lat];
+  }
+
+  return null;
+};
+
 function coordinatesFromEvent(event) {
   const candidates = [
+    event.coordinates,
+    event.location?.coordinates,
+    event.metadata?.logistics?.coordinates,
     [event.longitude, event.latitude],
     [event.lng, event.lat],
     [event.location?.longitude, event.location?.latitude],
     [event.location?.lng, event.location?.lat],
-    event.coordinates,
-    event.location?.coordinates,
+    [event.metadata?.logistics?.longitude, event.metadata?.logistics?.latitude],
+    [event.metadata?.logistics?.lng, event.metadata?.logistics?.lat],
   ];
 
   for (const candidate of candidates) {
-    if (!Array.isArray(candidate)) continue;
-    const [lon, lat] = candidate.map(Number);
-    if (Number.isFinite(lon) && Number.isFinite(lat)) return [lon, lat];
+    const coordinates = coordinatesFromValue(candidate);
+    if (coordinates) return coordinates;
   }
 
   return null;

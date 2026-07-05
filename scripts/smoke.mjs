@@ -176,8 +176,8 @@ await check("coverage map pages render", async () => {
     assert(htmlIncludesText(text, title), `/${locale}/coverage did not include title`);
     assert(htmlIncludesText(text, firstEvent.title), `/${locale}/coverage did not include first event title`);
     assert(text.includes("coverage-country-button"), `/${locale}/coverage did not include country controls`);
+    assert(text.includes("coverage-filter-bar"), `/${locale}/coverage did not include map filters`);
     assert(text.includes("coverage-world-event-dot"), `/${locale}/coverage did not include world event dots`);
-    assert(text.includes("coverage-country-cluster"), `/${locale}/coverage did not include country map markers`);
     assert(text.includes("coverage-type-legend"), `/${locale}/coverage did not include tournament type legend`);
   }
 });

@@ -1,5 +1,6 @@
 import { MapPinned } from "lucide-react";
 import Link from "next/link";
+import { CountryFlag } from "@/components/CountryFlag";
 
 export function CountryCoverageSummary({ copy, coverage, locale }) {
   const coverageCopy = copy.home.coverage;
@@ -62,7 +63,7 @@ export function CountryCoverageSummary({ copy, coverage, locale }) {
                 key={stat.country}
               >
                 <span className="country-coverage-label">
-                  <span className={`country-coverage-flag fi fi-${stat.flagCode}`} aria-hidden="true" />
+                  <CountryFlag country={stat} />
                   <span className="country-coverage-country">{stat.label}</span>
                 </span>
                 <strong>{stat.count}</strong>

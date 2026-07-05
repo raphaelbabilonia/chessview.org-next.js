@@ -2,7 +2,8 @@
 
 import { ArrowLeft, ExternalLink, MapPinned, Minus, Plus, RotateCcw } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CountryFlag } from "@/components/CountryFlag";
 import { formatDateRange } from "@/lib/format";
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -18,10 +19,90 @@ const clampOffset = (offset, zoom, mapSize) => {
 };
 
 const activationKeys = new Set(["Enter", " "]);
+const tournamentTypes = ["classical", "rapid", "blitz", "other"];
+const datePresets = ["oneMonth", "threeMonths", "year", "nextYear", "custom"];
+
+const dateValue = (date) => date.toISOString().slice(0, 10);
+
+const addMonths = (value, months) => {
+  const [year, month, day] = String(value).split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day || 1));
+  date.setUTCMonth(date.getUTCMonth() + months);
+  return dateValue(date);
+};
+
+const endOfYear = (value) => `${String(value).slice(0, 4)}-12-31`;
+
+const nextYearRange = (value) => {
+  const year = Number(String(value).slice(0, 4)) + 1;
+  return {
+    end: `${year}-12-31`,
+    start: `${year}-01-01`,
+  };
+};
+
+const cleanRange = (start, end) => {
+  const safeStart = /^\d{4}-\d{2}-\d{2}$/.test(start) ? start : dateValue(new Date());
+  const safeEnd = /^\d{4}-\d{2}-\d{2}$/.test(end) ? end : safeStart;
+
+  return safeStart <= safeEnd ? { start: safeStart, end: safeEnd } : { start: safeEnd, end: safeStart };
+};
+
+const rangeForPreset = (preset, today, customStart, customEnd) => {
+  if (preset === "threeMonths") return cleanRange(today, addMonths(today, 3));
+  if (preset === "year") return cleanRange(today, endOfYear(today));
+  if (preset === "nextYear") return nextYearRange(today);
+  if (preset === "custom") return cleanRange(customStart, customEnd);
+  return cleanRange(today, addMonths(today, 1));
+};
+
+const eventDateKey = (value) => String(value || "").slice(0, 10);
+
+const eventMatchesRange = (event, range) => {
+  const start = eventDateKey(event.startDate || event.endDate);
+  const end = eventDateKey(event.endDate || event.startDate || start);
+  if (!start || !end) return false;
+  return end >= range.start && start <= range.end;
+};
+
+const sortEvents = (a, b) =>
+  Number(b.liveNow) - Number(a.liveNow) ||
+  String(a.startDate || "").localeCompare(String(b.startDate || "")) ||
+  String(a.title || "").localeCompare(String(b.title || ""));
+
+const countLive = (events) => events.filter((event) => event.liveNow).length;
+
+const regionRadius = (count) => Number(Math.max(5.5, Math.min(12, 4.6 + Math.sqrt(count) * 1.6)).toFixed(2));
+
+const averageMarker = (events) => {
+  const plottedEvents = events.filter((event) => event.marker);
+  if (!plottedEvents.length) return null;
+
+  return {
+    x: Number((plottedEvents.reduce((sum, event) => sum + event.marker.x, 0) / plottedEvents.length).toFixed(2)),
+    y: Number((plottedEvents.reduce((sum, event) => sum + event.marker.y, 0) / plottedEvents.length).toFixed(2)),
+    radius: regionRadius(events.length),
+  };
+};
 
 function TypeBadge({ copy, type }) {
   const labels = copy.coverage.types || {};
   return <span className={`coverage-type-badge is-${type || "other"}`}>{labels[type] || labels.other || type}</span>;
+}
+
+function TypeFilterButton({ active, copy, onToggle, type }) {
+  const labels = copy.coverage.types || {};
+
+  return (
+    <button
+      aria-pressed={active}
+      className={`coverage-type-badge coverage-type-filter is-${type}${active ? " is-active" : ""}`}
+      type="button"
+      onClick={() => onToggle(type)}
+    >
+      {labels[type] || type}
+    </button>
+  );
 }
 
 function CountStats({ copy, item }) {
@@ -78,7 +159,7 @@ function CoverageTooltip({ copy, locale, payload, style }) {
     return (
       <div className="coverage-tooltip" style={style}>
         <div className="coverage-tooltip-heading">
-          <span className={`country-coverage-flag fi fi-${country.flagCode}`} aria-hidden="true" />
+          <CountryFlag country={country} />
           <strong>{event.title}</strong>
         </div>
         <div className="coverage-tooltip-meta">
@@ -100,7 +181,7 @@ function CoverageTooltip({ copy, locale, payload, style }) {
     return (
       <div className="coverage-tooltip" style={style}>
         <div className="coverage-tooltip-heading">
-          <span className={`country-coverage-flag fi fi-${country.flagCode}`} aria-hidden="true" />
+          <CountryFlag country={country} />
           <strong>{region.label}</strong>
         </div>
         <p className="coverage-tooltip-subtitle">{country.label}</p>
@@ -115,7 +196,7 @@ function CoverageTooltip({ copy, locale, payload, style }) {
   return (
     <div className="coverage-tooltip" style={style}>
       <div className="coverage-tooltip-heading">
-        <span className={`country-coverage-flag fi fi-${country.flagCode}`} aria-hidden="true" />
+        <CountryFlag country={country} />
         <strong>{country.label}</strong>
       </div>
       <CountStats copy={copy} item={country} />
@@ -141,7 +222,7 @@ function RegionCard({ copy, country, isSelected, onSelect, region }) {
 function CountryButton({ country, isSelected, onSelect }) {
   return (
     <button className={`coverage-country-button${isSelected ? " is-selected" : ""}`} type="button" onClick={() => onSelect(country)}>
-      <span className={`country-coverage-flag fi fi-${country.flagCode}`} aria-hidden="true" />
+      <CountryFlag country={country} />
       <span>{country.label}</span>
       <strong>{country.count}</strong>
     </button>
@@ -152,42 +233,112 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   const mapRef = useRef(null);
   const shellRef = useRef(null);
   const dragRef = useRef(null);
-  const countryByKey = useMemo(
-    () => new Map((coverage.allCountries || []).map((country) => [country.countryKey, country])),
-    [coverage.allCountries],
-  );
-  const worldEvents = useMemo(
-    () =>
-      (coverage.worldEvents || [])
-        .map((event) => ({
-          ...event,
-          country: countryByKey.get(event.countryKey),
-        }))
-        .filter((event) => event.country && event.marker),
-    [coverage.worldEvents, countryByKey],
-  );
-  const allEvents = useMemo(
-    () =>
-      (coverage.allCountries || [])
-        .flatMap((country) => country.events.map((event) => ({ ...event, country })))
-        .sort((a, b) => Number(b.liveNow) - Number(a.liveNow) || String(a.startDate).localeCompare(String(b.startDate))),
-    [coverage.allCountries],
-  );
+  const today = useMemo(() => eventDateKey(coverage.today) || "1970-01-01", [coverage.today]);
 
   const [selectedCountryKey, setSelectedCountryKey] = useState("");
   const [selectedRegionKey, setSelectedRegionKey] = useState("");
   const [hovered, setHovered] = useState(null);
   const [pinned, setPinned] = useState(null);
+  const [activeTypes, setActiveTypes] = useState(tournamentTypes);
+  const [datePreset, setDatePreset] = useState("oneMonth");
+  const [customStart, setCustomStart] = useState(today);
+  const [customEnd, setCustomEnd] = useState(addMonths(today, 1));
+  const [showCountryMarkers, setShowCountryMarkers] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [didDrag, setDidDrag] = useState(false);
   const [revealMapRequest, setRevealMapRequest] = useState(0);
 
-  const selectedCountry = countryByKey.get(selectedCountryKey) || null;
+  const activeTypeSet = useMemo(() => new Set(activeTypes), [activeTypes]);
+  const dateRange = useMemo(() => rangeForPreset(datePreset, today, customStart, customEnd), [customEnd, customStart, datePreset, today]);
+  const rawCountryByKey = useMemo(
+    () => new Map((coverage.allCountries || []).map((country) => [country.countryKey, country])),
+    [coverage.allCountries],
+  );
+  const eventMatchesFilters = useCallback(
+    (event) => activeTypeSet.has(event.tournamentType || "other") && eventMatchesRange(event, dateRange),
+    [activeTypeSet, dateRange],
+  );
+  const filteredCountries = useMemo(
+    () =>
+      (coverage.allCountries || [])
+        .map((country) => {
+          const events = country.events.filter(eventMatchesFilters).sort(sortEvents);
+          if (!events.length) return null;
+
+          const regions = (country.regions || [])
+            .map((region) => {
+              const regionEvents = region.events.filter(eventMatchesFilters).sort(sortEvents);
+              if (!regionEvents.length) return null;
+              const liveCount = countLive(regionEvents);
+              const plottedEvents = regionEvents.filter((event) => event.marker);
+
+              return {
+                ...region,
+                count: regionEvents.length,
+                events: regionEvents,
+                liveCount,
+                marker: averageMarker(regionEvents),
+                plottedCount: plottedEvents.length,
+                unmappedCount: regionEvents.length - plottedEvents.length,
+                upcomingCount: regionEvents.length - liveCount,
+              };
+            })
+            .filter(Boolean)
+            .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+          const liveCount = countLive(events);
+
+          return {
+            ...country,
+            count: events.length,
+            events,
+            liveCount,
+            regions,
+            unmappedEvents: country.unmappedEvents.filter(eventMatchesFilters),
+            upcomingCount: events.length - liveCount,
+          };
+        })
+        .filter(Boolean)
+        .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label)),
+    [coverage.allCountries, eventMatchesFilters],
+  );
+  const filteredCountryByKey = useMemo(() => new Map(filteredCountries.map((country) => [country.countryKey, country])), [filteredCountries]);
+  const worldEvents = useMemo(
+    () =>
+      (coverage.worldEvents || [])
+        .filter(eventMatchesFilters)
+        .map((event) => ({
+          ...event,
+          country: filteredCountryByKey.get(event.countryKey) || rawCountryByKey.get(event.countryKey),
+        }))
+        .filter((event) => event.country && event.marker),
+    [coverage.worldEvents, eventMatchesFilters, filteredCountryByKey, rawCountryByKey],
+  );
+  const allEvents = useMemo(
+    () =>
+      filteredCountries
+        .flatMap((country) => country.events.map((event) => ({ ...event, country })))
+        .sort(sortEvents),
+    [filteredCountries],
+  );
+  const filteredTotals = useMemo(() => {
+    const totalTournaments = filteredCountries.reduce((sum, country) => sum + country.count, 0);
+
+    return {
+      totalCountries: filteredCountries.length,
+      totalLive: filteredCountries.reduce((sum, country) => sum + country.liveCount, 0),
+      totalTournaments,
+      totalUpcoming: filteredCountries.reduce((sum, country) => sum + country.upcomingCount, 0),
+    };
+  }, [filteredCountries]);
+  const filteredUnmappedCountries = useMemo(() => filteredCountries.filter((country) => !country.marker), [filteredCountries]);
+
+  const selectedCountry = filteredCountryByKey.get(selectedCountryKey) || null;
   const selectedRegion = selectedCountry?.regions?.find((region) => region.key === selectedRegionKey) || null;
   const isCountryMode = Boolean(selectedCountry);
   const isRegionMode = Boolean(selectedCountry && selectedRegion);
+  const showWorldCountrySelectors = !selectedCountry && (showCountryMarkers || zoom >= 4.95);
   const mapPaths = selectedCountry?.flatMapPaths || coverage.mapPaths;
   const activePayload = hovered || pinned;
   const activePoint = activePayload?.point;
@@ -207,6 +358,24 @@ export function CoverageExplorer({ copy, coverage, locale }) {
     if (!revealMapRequest) return;
     shellRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
   }, [revealMapRequest]);
+
+  const clearPinnedDetails = () => {
+    setHovered(null);
+    setPinned(null);
+  };
+
+  const toggleType = (type) => {
+    clearPinnedDetails();
+    setActiveTypes((currentTypes) => {
+      const isActive = currentTypes.includes(type);
+      return tournamentTypes.filter((item) => (item === type ? !isActive : currentTypes.includes(item)));
+    });
+  };
+
+  const selectDatePreset = (preset) => {
+    setDatePreset(preset);
+    clearPinnedDetails();
+  };
 
   const applyZoom = (nextZoom) => {
     const cleanZoom = clamp(nextZoom, 1, 5);
@@ -346,7 +515,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
     });
 
   const renderWorldCountrySelectors = () =>
-    coverage.allCountries
+    filteredCountries
       .filter((country) => country.marker)
       .map((country) => {
         const visualRadius = Number(Math.max(2.4, Math.min(5.2, 2 + Math.sqrt(country.count) * 0.32)).toFixed(2));
@@ -482,12 +651,88 @@ export function CoverageExplorer({ copy, coverage, locale }) {
             </button>
           ) : null}
         </div>
-        <div className="coverage-type-legend" aria-label={copy.coverage.tournamentTypes}>
-          {["classical", "rapid", "blitz", "other"].map((type) => (
-            <TypeBadge copy={copy} key={type} type={type} />
-          ))}
+        <div className="coverage-visible-summary" aria-label={copy.coverage.visibleResults}>
+          <span className="coverage-filter-label">{copy.coverage.visibleResults}</span>
+          <div className="coverage-filter-stats">
+            <span>
+              <strong>{filteredTotals.totalCountries}</strong>
+              {copy.coverage.activeCountries}
+            </span>
+            <span>
+              <strong>{filteredTotals.totalTournaments}</strong>
+              {copy.coverage.tournaments}
+            </span>
+            <span>
+              <strong>{filteredTotals.totalLive}</strong>
+              {copy.coverage.liveNow}
+            </span>
+            <span>
+              <strong>{filteredTotals.totalUpcoming}</strong>
+              {copy.coverage.upcoming}
+            </span>
+          </div>
         </div>
       </div>
+
+      <section className="coverage-filter-bar" aria-label={copy.coverage.filters}>
+        <div className="coverage-filter-group">
+          <span className="coverage-filter-label">{copy.coverage.dateRange}</span>
+          <div className="coverage-date-presets">
+            {datePresets.map((preset) => (
+              <button
+                aria-pressed={datePreset === preset}
+                className={`coverage-filter-pill${datePreset === preset ? " is-active" : ""}`}
+                key={preset}
+                type="button"
+                onClick={() => selectDatePreset(preset)}
+              >
+                {copy.coverage.datePresets[preset]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {datePreset === "custom" ? (
+          <div className="coverage-custom-dates">
+            <label>
+              <span>{copy.coverage.customStart}</span>
+              <input
+                type="date"
+                value={customStart}
+                onChange={(event) => {
+                  setCustomStart(event.target.value);
+                  clearPinnedDetails();
+                }}
+              />
+            </label>
+            <label>
+              <span>{copy.coverage.customEnd}</span>
+              <input
+                type="date"
+                value={customEnd}
+                onChange={(event) => {
+                  setCustomEnd(event.target.value);
+                  clearPinnedDetails();
+                }}
+              />
+            </label>
+          </div>
+        ) : null}
+
+        <div className="coverage-filter-group">
+          <span className="coverage-filter-label">{copy.coverage.tournamentTypes}</span>
+          <div className="coverage-type-legend" aria-label={copy.coverage.tournamentTypes}>
+            {tournamentTypes.map((type) => (
+              <TypeFilterButton active={activeTypes.includes(type)} copy={copy} key={type} onToggle={toggleType} type={type} />
+            ))}
+          </div>
+        </div>
+
+        <label className="coverage-marker-toggle">
+          <input type="checkbox" checked={showCountryMarkers} onChange={(event) => setShowCountryMarkers(event.target.checked)} />
+          <span>{copy.coverage.showCountryMarkers}</span>
+        </label>
+      </section>
 
       <div className="coverage-map-shell" ref={shellRef}>
         <div className="coverage-map-toolbar" aria-label={copy.coverage.mapLabel}>
@@ -536,7 +781,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
               {!isCountryMode ? <path className="coverage-map-scan" d="M104 410H856" /> : null}
               {selectedCountry?.flatMapPaths?.boundary ? <path className="coverage-country-flat-boundary" d={selectedCountry.flatMapPaths.boundary} /> : null}
               {!selectedCountry ? renderWorldEventDots() : null}
-              {!selectedCountry ? renderWorldCountrySelectors() : null}
+              {showWorldCountrySelectors ? renderWorldCountrySelectors() : null}
               {selectedCountry && !selectedRegion ? renderRegionMarkers() : null}
               {selectedCountry && selectedRegion ? renderTournamentDots() : null}
             </g>
@@ -611,23 +856,23 @@ export function CoverageExplorer({ copy, coverage, locale }) {
       <aside className="coverage-country-browser" aria-label={copy.coverage.countryList}>
         <div className="coverage-browser-heading">
           <p className="eyebrow">{copy.coverage.countryList}</p>
-          <strong>{coverage.totalCountries}</strong>
+          <strong>{filteredTotals.totalCountries}</strong>
         </div>
         <div className="coverage-country-buttons">
-          {coverage.allCountries.map((country) => (
+          {filteredCountries.map((country) => (
             <CountryButton country={country} isSelected={selectedCountry?.countryKey === country.countryKey} key={country.countryKey} onSelect={selectCountry} />
           ))}
         </div>
       </aside>
 
-      {coverage.unmappedCountries.length ? (
+      {filteredUnmappedCountries.length ? (
         <aside className="coverage-unmapped">
           <div>
             <p className="eyebrow">{copy.coverage.unmappedTitle}</p>
             <p>{copy.coverage.unmappedBody}</p>
           </div>
           <div className="coverage-unmapped-list">
-            {coverage.unmappedCountries.map((country) => (
+            {filteredUnmappedCountries.map((country) => (
               <span key={country.countryKey}>
                 {country.label} ({country.count})
               </span>
