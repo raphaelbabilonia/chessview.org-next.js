@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ExternalLink, MapPinned, Minus, Plus, RotateCcw, X } from "lucide-react";
+import { ArrowLeft, ExternalLink, MapPinned, Maximize2, Minimize2, Minus, Plus, RotateCcw, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CountryFlag } from "@/components/CountryFlag";
@@ -10,7 +10,7 @@ const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
 const mapZoom = {
   doubleStep: 0.7,
-  max: 25,
+  max: 30,
   min: 1,
   step: 0.45,
 };
@@ -448,6 +448,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [didDrag, setDidDrag] = useState(false);
+  const [isFullscreenView, setIsFullscreenView] = useState(false);
   const [revealMapRequest, setRevealMapRequest] = useState(0);
 
   const activeTypeSet = useMemo(() => new Set(activeTypes), [activeTypes]);
@@ -560,9 +561,73 @@ export function CoverageExplorer({ copy, coverage, locale }) {
     shellRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
   }, [revealMapRequest]);
 
+  useEffect(() => {
+    const updateFullscreenState = () => {
+      const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
+      setIsFullscreenView(fullscreenElement === shellRef.current);
+    };
+
+    document.addEventListener("fullscreenchange", updateFullscreenState);
+    document.addEventListener("webkitfullscreenchange", updateFullscreenState);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", updateFullscreenState);
+      document.removeEventListener("webkitfullscreenchange", updateFullscreenState);
+    };
+  }, []);
+
+  useEffect(() => {
+    document.body.classList.toggle("coverage-fullscreen-lock", isFullscreenView);
+
+    return () => {
+      document.body.classList.remove("coverage-fullscreen-lock");
+    };
+  }, [isFullscreenView]);
+
   const clearPinnedDetails = () => {
     setHovered(null);
     setPinned(null);
+  };
+
+  const enterFullscreenView = () => {
+    clearPinnedDetails();
+    const shell = shellRef.current;
+    if (!shell) return;
+
+    const requestFullscreen = shell.requestFullscreen || shell.webkitRequestFullscreen;
+    setIsFullscreenView(true);
+
+    try {
+      const result = requestFullscreen?.call(shell);
+      result?.catch?.(() => setIsFullscreenView(true));
+    } catch {
+      setIsFullscreenView(true);
+    }
+  };
+
+  const exitFullscreenView = () => {
+    clearPinnedDetails();
+    const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
+    const exitFullscreen = document.exitFullscreen || document.webkitExitFullscreen;
+
+    if (fullscreenElement === shellRef.current && exitFullscreen) {
+      try {
+        exitFullscreen.call(document)?.catch?.(() => {});
+      } catch {
+        // CSS fullscreen fallback is still cleared below.
+      }
+    }
+
+    setIsFullscreenView(false);
+  };
+
+  const toggleFullscreenView = () => {
+    if (isFullscreenView) {
+      exitFullscreenView();
+      return;
+    }
+
+    enterFullscreenView();
   };
 
   const blockMarkerActivation = (timeStamp, duration = 650) => {
@@ -906,7 +971,12 @@ export function CoverageExplorer({ copy, coverage, locale }) {
 
     if (event.key === "Escape") {
       event.preventDefault();
-      clearPinnedDetails();
+      if (activePayload) {
+        clearPinnedDetails();
+        return;
+      }
+
+      if (isFullscreenView) exitFullscreenView();
     }
   };
 
@@ -1212,7 +1282,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
         </label>
       </section>
 
-      <div className="coverage-map-shell" ref={shellRef}>
+      <div className={`coverage-map-shell${isFullscreenView ? " is-fullscreen" : ""}`} ref={shellRef}>
         <div className="coverage-map-toolbar" aria-label={copy.coverage.mapLabel}>
           {selectedCountry ? (
             <button className="icon-button" type="button" onClick={backToWorld} aria-label={copy.coverage.backToWorld} title={copy.coverage.backToWorld}>
@@ -1227,6 +1297,16 @@ export function CoverageExplorer({ copy, coverage, locale }) {
           </button>
           <button className="icon-button" type="button" onClick={resetViewport} aria-label={copy.coverage.resetMap} title={copy.coverage.resetMap}>
             <RotateCcw size={18} aria-hidden="true" />
+          </button>
+          <button
+            aria-label={isFullscreenView ? copy.coverage.exitFullscreen : copy.coverage.enterFullscreen}
+            aria-pressed={isFullscreenView}
+            className="icon-button"
+            onClick={toggleFullscreenView}
+            title={isFullscreenView ? copy.coverage.exitFullscreen : copy.coverage.enterFullscreen}
+            type="button"
+          >
+            {isFullscreenView ? <Minimize2 size={18} aria-hidden="true" /> : <Maximize2 size={18} aria-hidden="true" />}
           </button>
         </div>
 
