@@ -1,4 +1,4 @@
-import { geoCentroid, geoEqualEarth, geoGraticule10, geoMercator, geoPath } from "d3-geo";
+import { geoBounds, geoCentroid, geoContains, geoEqualEarth, geoGraticule10, geoMercator, geoPath } from "d3-geo";
 import { feature } from "topojson-client";
 import worldAtlas from "world-atlas/countries-110m.json";
 import { formatCountryName } from "@/lib/format";
@@ -246,6 +246,8 @@ const locationRows = [
   ["Brasov", "Romania", "Transylvania", [25.5887, 45.6427]],
   ["Budva", "Montenegro", "Budva", [18.8403, 42.2911]],
   ["Rzeszow", "Poland", "Subcarpathian", [22.0047, 50.0413]],
+  ["Warsaw", "Poland", "Masovian", [21.0067, 52.232]],
+  ["Warszawa", "Poland", "Masovian", [21.0067, 52.232]],
   ["Wroclaw", "Poland", "Lower Silesian", [17.0385, 51.1079]],
   ["Abuja", "Nigeria", "Federal Capital Territory", [7.3986, 9.0765]],
   ["Shumen", "Bulgaria", "Shumen", [26.9294, 43.2712]],
@@ -309,16 +311,18 @@ const isActiveOrUpcoming = (event, today = todayStartUtc()) => {
 };
 
 const locationFromEvent = (event) => {
-  const country = cleanCountry(event.country || event.location?.country || event.metadata?.logistics?.country);
+  const eventCountry = cleanCountry(event.country || event.location?.country || event.metadata?.logistics?.country);
   const city = String(event.city || event.location?.city || event.metadata?.logistics?.city || "").trim();
   const directCoordinates = coordinatesFromEvent(event);
   const cityLocation =
-    locationByCityAndCountry.get(`${normalizeText(city)}|${normalizeText(country)}`) ||
+    locationByCityAndCountry.get(`${normalizeText(city)}|${normalizeText(eventCountry)}`) ||
     locationByCity.get(normalizeText(city));
+  const country = eventCountry || cityLocation?.country || "";
+  const safeDirectCoordinates = coordinatesFitCountry(country, directCoordinates) ? directCoordinates : null;
 
   return {
     city: city || cityLocation?.city || "",
-    country: country || cityLocation?.country || "",
+    country,
     region:
       String(
         event.region ||
@@ -330,20 +334,20 @@ const locationFromEvent = (event) => {
       ).trim() ||
       cityLocation?.region ||
       "",
-    coordinates: directCoordinates || cityLocation?.coordinates || null,
+    coordinates: safeDirectCoordinates || cityLocation?.coordinates || null,
   };
 };
 
 const coordinatesFromValue = (value) => {
   if (Array.isArray(value)) {
     const [lon, lat] = value.map(Number);
-    if (Number.isFinite(lon) && Number.isFinite(lat)) return [lon, lat];
+    if (Number.isFinite(lon) && Number.isFinite(lat) && Math.abs(lon) <= 180 && Math.abs(lat) <= 90) return [lon, lat];
   }
 
   if (value && typeof value === "object") {
     const lon = Number(value.longitude ?? value.lng ?? value.lon);
     const lat = Number(value.latitude ?? value.lat);
-    if (Number.isFinite(lon) && Number.isFinite(lat)) return [lon, lat];
+    if (Number.isFinite(lon) && Number.isFinite(lat) && Math.abs(lon) <= 180 && Math.abs(lat) <= 90) return [lon, lat];
   }
 
   return null;
@@ -394,6 +398,36 @@ const countryInfo = (country) => countryAlias[country] || { atlasName: country, 
 const countryFeatureFor = (country) => {
   const info = countryInfo(country);
   return featureByName.get(info.focusFeatureName || info.atlasName) || featureByName.get(country) || null;
+};
+
+const longitudeWithinBounds = (longitude, minLongitude, maxLongitude, padding) => {
+  if (minLongitude <= maxLongitude) return longitude >= minLongitude - padding && longitude <= maxLongitude + padding;
+  return longitude >= minLongitude - padding || longitude <= maxLongitude + padding;
+};
+
+const coordinatesFitCountry = (country, coordinates) => {
+  if (!coordinates) return false;
+  const [longitude, latitude] = coordinates;
+  if (!Number.isFinite(longitude) || !Number.isFinite(latitude) || Math.abs(longitude) > 180 || Math.abs(latitude) > 90) return false;
+  if (!country || country === "Location TBA") return true;
+
+  const countryFeature = countryFeatureFor(country);
+  const countryCenter = countryInfo(country).coordinates;
+
+  if (!countryFeature) {
+    if (!countryCenter) return true;
+    return Math.abs(longitude - countryCenter[0]) <= 3.5 && Math.abs(latitude - countryCenter[1]) <= 3.5;
+  }
+
+  if (geoContains(countryFeature, coordinates)) return true;
+
+  const [[minLongitude, minLatitude], [maxLongitude, maxLatitude]] = geoBounds(countryFeature);
+  const boundsPadding = countryCenter ? 1.8 : 1.2;
+  return (
+    latitude >= minLatitude - boundsPadding &&
+    latitude <= maxLatitude + boundsPadding &&
+    longitudeWithinBounds(longitude, minLongitude, maxLongitude, boundsPadding)
+  );
 };
 
 const countryMarkerFor = (country, count) => {
@@ -644,6 +678,7 @@ const buildWorldEvents = (allCountries) => {
 
     return {
       ...event,
+      anchor: point,
       marker: {
         ...marker,
         radius: candidate.markerSource === "country" ? 1.55 : 1.85,

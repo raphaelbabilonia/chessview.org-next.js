@@ -8,6 +8,7 @@ const dictionaries = {
     },
     nav: {
       events: "Events",
+      maps: "Maps",
       news: "News",
       source: "Source",
       language: "Language",
@@ -326,6 +327,7 @@ const dictionaries = {
     },
     nav: {
       events: "Eventos",
+      maps: "Mapas",
       news: "Noticias",
       source: "Código",
       language: "Idioma",
@@ -644,6 +646,7 @@ const dictionaries = {
     },
     nav: {
       events: "Eventi",
+      maps: "Mappe",
       news: "Notizie",
       source: "Codice",
       language: "Lingua",

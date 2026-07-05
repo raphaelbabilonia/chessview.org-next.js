@@ -1,4 +1,4 @@
-import { CalendarSearch, Code2, Newspaper } from "lucide-react";
+import { CalendarSearch, Code2, MapPinned, Newspaper } from "lucide-react";
 import Link from "next/link";
 import { ChessViewLogo } from "./ChessViewLogo";
 import { LanguageSwitcher } from "./LanguageSwitcher";
@@ -19,6 +19,10 @@ export function SiteHeader({ copy, locale }) {
         <Link href={`/${locale}/news`}>
           <Newspaper size={18} aria-hidden="true" />
           {copy.nav.news}
+        </Link>
+        <Link href={`/${locale}/coverage`}>
+          <MapPinned size={18} aria-hidden="true" />
+          {copy.nav.maps}
         </Link>
       </nav>
       <div className="header-actions">

@@ -3344,6 +3344,7 @@ textarea:focus {
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.9rem;
+  min-width: 0;
 }
 
 .coverage-mode-bar {
@@ -3352,6 +3353,7 @@ textarea:focus {
   gap: 0.7rem;
   align-items: center;
   justify-content: space-between;
+  min-width: 0;
 }
 
 .coverage-filter-bar {
@@ -3359,6 +3361,7 @@ textarea:focus {
   grid-template-columns: minmax(220px, 1.1fr) minmax(220px, 0.9fr) auto;
   gap: 0.65rem;
   align-items: end;
+  min-width: 0;
 }
 
 .coverage-filter-group {
@@ -3387,11 +3390,15 @@ textarea:focus {
   display: grid;
   gap: 0.3rem;
   justify-items: end;
+  min-width: 0;
 }
 
 .coverage-filter-pill {
+  display: inline-flex;
   flex: 0 0 auto;
   min-height: 32px;
+  align-items: center;
+  justify-content: center;
   padding: 0.32rem 0.52rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -3490,6 +3497,7 @@ textarea:focus {
   flex-wrap: wrap;
   gap: 0.45rem;
   align-items: center;
+  min-width: 0;
 }
 
 .coverage-breadcrumbs button {
@@ -3590,6 +3598,7 @@ textarea:focus {
 .coverage-map-shell {
   min-height: auto;
   scroll-margin-top: 6rem;
+  width: 100%;
 }
 
 .coverage-map-stage {
@@ -3618,6 +3627,7 @@ textarea:focus {
 }
 
 .coverage-country-cluster,
+.coverage-world-event-cluster,
 .coverage-world-event-dot,
 .coverage-region-marker,
 .coverage-tournament-dot {
@@ -3641,16 +3651,52 @@ textarea:focus {
   fill: rgba(253, 252, 253, 0.08);
   stroke: rgba(253, 252, 253, 0.48);
   stroke-width: 0.55;
+  vector-effect: non-scaling-stroke;
 }
 
 .coverage-world-dot-core {
   stroke: rgba(253, 252, 253, 0.86);
   stroke-width: 0.65;
+  vector-effect: non-scaling-stroke;
 }
 
 .coverage-world-event-dot:hover .coverage-world-dot-ring,
 .coverage-world-event-dot:focus .coverage-world-dot-ring {
   fill: rgba(186, 155, 74, 0.2);
+  stroke: var(--accent);
+  stroke-width: 1.1;
+}
+
+.coverage-world-event-cluster {
+  opacity: 0.95;
+}
+
+.coverage-world-cluster-target {
+  fill: transparent;
+}
+
+.coverage-world-cluster-halo {
+  fill: rgba(186, 155, 74, 0.14);
+  stroke: rgba(186, 155, 74, 0.42);
+  stroke-width: 0.7;
+  vector-effect: non-scaling-stroke;
+}
+
+.coverage-world-cluster-core {
+  fill: rgba(186, 155, 74, 0.86);
+  stroke: rgba(253, 252, 253, 0.9);
+  stroke-width: 0.85;
+  vector-effect: non-scaling-stroke;
+}
+
+.coverage-world-cluster-dot {
+  fill: var(--cv-color-white);
+  pointer-events: none;
+}
+
+.coverage-world-event-cluster:hover .coverage-world-cluster-halo,
+.coverage-world-event-cluster:focus .coverage-world-cluster-halo {
+  fill: rgba(186, 155, 74, 0.22);
   stroke: var(--accent);
   stroke-width: 1.1;
 }
@@ -3923,27 +3969,54 @@ textarea:focus {
     font-size: 2.45rem;
   }
 
+  .coverage-stat-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .coverage-stat-strip span {
+    justify-content: center;
+    min-width: 0;
+    text-align: center;
+  }
+
   .coverage-mode-bar {
     align-items: stretch;
   }
 
   .coverage-filter-bar {
     grid-template-columns: 1fr;
+    gap: 0.75rem;
   }
 
   .coverage-date-presets {
-    overflow-x: visible;
     flex-wrap: wrap;
   }
 
+  .coverage-filter-pill {
+    flex: 1 1 calc(50% - 0.42rem);
+    justify-content: center;
+    min-width: min(8.4rem, 100%);
+    text-align: center;
+  }
+
   .coverage-filter-stats {
-    overflow-x: auto;
-    padding-bottom: 0.1rem;
-    flex-wrap: nowrap;
+    overflow-x: visible;
+    padding-bottom: 0;
+    flex-wrap: wrap;
   }
 
   .coverage-visible-summary {
     justify-items: start;
+    width: 100%;
+  }
+
+  .coverage-filter-stats span {
+    flex: 1 1 calc(50% - 0.42rem);
+    justify-content: center;
+    min-width: 0;
+    text-align: center;
+    white-space: normal;
   }
 
   .coverage-custom-dates {
@@ -3952,6 +4025,7 @@ textarea:focus {
 
   .coverage-marker-toggle {
     justify-content: center;
+    width: 100%;
   }
 
   .coverage-breadcrumbs,
@@ -3960,9 +4034,15 @@ textarea:focus {
   }
 
   .coverage-type-legend {
-    overflow-x: auto;
-    padding-bottom: 0.1rem;
-    flex-wrap: nowrap;
+    overflow-x: visible;
+    padding-bottom: 0;
+    flex-wrap: wrap;
+  }
+
+  .coverage-type-filter {
+    flex: 1 1 calc(50% - 0.45rem);
+    justify-content: center;
+    min-width: 0;
   }
 
   .coverage-map-toolbar {
@@ -3980,8 +4060,10 @@ textarea:focus {
   }
 
   .coverage-map-stage {
-    min-height: 380px;
-    aspect-ratio: 4 / 5;
+    width: 100%;
+    height: clamp(260px, 68vw, 340px);
+    min-height: 0;
+    aspect-ratio: auto;
   }
 
   .coverage-tooltip {
