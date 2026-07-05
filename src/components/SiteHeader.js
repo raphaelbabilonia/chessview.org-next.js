@@ -28,19 +28,16 @@ export function SiteHeader({ copy, locale }) {
       <div className="header-actions">
         <LanguageSwitcher label={copy.nav.language} locale={locale} />
         <ThemeToggle label={copy.nav.theme} />
-        <a
+        <Link
           className="icon-link"
-          data-tracking-event="github_source_click"
+          data-tracking-event="collaboration_entry_click"
           data-tracking-label={copy.nav.source}
-          data-tracking-outbound-url="https://github.com/raphaelbabilonia/chessview.org-next.js"
           data-tracking-placement="header"
-          href="https://github.com/raphaelbabilonia/chessview.org-next.js"
-          rel="noreferrer"
-          target="_blank"
+          href={`/${locale}/collaborate`}
           aria-label={copy.nav.source}
         >
           <Code2 size={18} aria-hidden="true" />
-        </a>
+        </Link>
       </div>
     </header>
   );

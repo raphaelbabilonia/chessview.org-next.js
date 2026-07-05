@@ -2749,6 +2749,184 @@ textarea:focus {
   color: var(--cv-color-navy-900);
 }
 
+.collaboration-page {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.collaboration-hero {
+  align-items: end;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.collaboration-hero .button-row {
+  align-self: end;
+}
+
+.collaboration-band {
+  padding-block: 0.2rem 1.1rem;
+}
+
+.collaboration-panel {
+  position: relative;
+  overflow: hidden;
+}
+
+.collaboration-panel code {
+  display: block;
+  max-width: 100%;
+  padding: 0.62rem 0.7rem;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-inset);
+  color: var(--text);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  white-space: nowrap;
+}
+
+.collaboration-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  color: var(--primary);
+}
+
+.repository-grid,
+.agent-doc-grid,
+.machine-link-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.85rem;
+}
+
+.repository-card {
+  display: grid;
+  gap: 0.65rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.repository-card:hover,
+.repository-card:focus-visible {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  outline: none;
+}
+
+.repository-card span,
+.repository-card strong,
+.machine-link-grid a,
+.policy-list p {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.repository-card span {
+  color: var(--text);
+  font-weight: 950;
+}
+
+.repository-card p {
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 650;
+}
+
+.repository-card strong {
+  color: var(--accent);
+  font-size: 0.84rem;
+  font-weight: 950;
+}
+
+.policy-list,
+.agent-rules {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.policy-list p,
+.agent-rules p {
+  min-height: 42px;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--muted);
+  font-weight: 750;
+}
+
+.policy-list svg {
+  flex: 0 0 auto;
+  color: var(--success);
+}
+
+.policy-list span {
+  min-width: 0;
+}
+
+.machine-link-grid a {
+  justify-content: space-between;
+  min-height: 46px;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 950;
+}
+
+.machine-link-grid a:hover,
+.machine-link-grid a:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  outline: none;
+}
+
+.machine-link-grid a span {
+  flex: 1 1 auto;
+}
+
+.code-sample {
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--cv-color-navy-900) 96%, #000000);
+  color: var(--cv-color-white);
+  box-shadow: var(--shadow-soft);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.code-sample code {
+  white-space: pre;
+}
+
+@media (min-width: 760px) {
+  .collaboration-hero {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .repository-grid,
+  .agent-doc-grid,
+  .machine-link-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 .data-list {
   display: grid;
   gap: 0.7rem;

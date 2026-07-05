@@ -28,18 +28,15 @@ export function SiteFooter({ copy, locale }) {
             <ShieldCheck size={16} aria-hidden="true" />
             Privacy
           </Link>
-          <a
-            data-tracking-event="github_source_click"
+          <Link
+            data-tracking-event="collaboration_entry_click"
             data-tracking-label={copy.nav.source}
-            data-tracking-outbound-url="https://github.com/raphaelbabilonia/chessview.org-next.js"
             data-tracking-placement="footer"
-            href="https://github.com/raphaelbabilonia/chessview.org-next.js"
-            rel="noreferrer"
-            target="_blank"
+            href={`/${locale}/collaborate`}
           >
             <Code2 size={16} aria-hidden="true" />
             {copy.nav.source}
-          </a>
+          </Link>
         </nav>
       </div>
     </footer>

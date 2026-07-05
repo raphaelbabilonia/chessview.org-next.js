@@ -2,13 +2,13 @@ import { notFound } from "next/navigation";
 import { isLocale } from "@/i18n/config";
 import { pageSeoMetadata } from "@/lib/seo";
 
-const updatedAt = "2026-07-04";
+const updatedAt = "2026-07-05";
 
 const sections = [
   {
     title: "Information ChessView may collect",
     body:
-      "ChessView may collect account information, organizer and event information, registrations, player records, technical logs, support messages, search interactions, analytics events, and AI query data.",
+      "ChessView may collect account information, organizer and event information, registrations, player records, public agent submissions, technical logs, support messages, search interactions, analytics events, and AI query data.",
   },
   {
     title: "How information is used",

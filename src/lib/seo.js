@@ -102,7 +102,7 @@ export const siteJsonLd = (locale = defaultLocale, description = siteConfig.desc
       name: "ChessView.org",
       url: siteConfig.url,
       logo: absoluteUrl("/brand/chessview-icon-circle-social.svg"),
-      sameAs: [siteConfig.repositoryUrl],
+      sameAs: siteConfig.repositories.map((repository) => repository.url),
     },
     {
       "@type": "WebSite",

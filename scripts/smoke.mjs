@@ -184,13 +184,29 @@ await check("coverage map pages render", async () => {
     assert(htmlIncludesText(text, title), `/${locale}/coverage did not include title`);
     assert(text.includes(`/${locale}/events/${firstEvent.slug}`), `/${locale}/coverage did not include first event link`);
     assert(text.includes("coverage-country-button"), `/${locale}/coverage did not include country controls`);
-    assert(text.includes("coverage-filter-bar"), `/${locale}/coverage did not include map filters`);
+    assert(text.includes("coverage-filter-toggle"), `/${locale}/coverage did not include map filter controls`);
     assert(
       text.includes("coverage-world-event-dot") || text.includes("coverage-world-event-cluster"),
       `/${locale}/coverage did not include world event markers`
     );
-    assert(text.includes("coverage-type-legend"), `/${locale}/coverage did not include tournament type legend`);
+    assert(text.includes("coverage-filter-stats"), `/${locale}/coverage did not include visible filter stats`);
   }
+});
+
+await check("collaboration pages and agent manifest render", async () => {
+  const overview = await getText("/en/collaborate");
+  assert(overview.response.status === 200, `/en/collaborate returned ${overview.response.status}`);
+  assert(overview.text.includes("Contribute to ChessView"), "collaboration page title missing");
+  assert(overview.text.includes("chessview.org-backend"), "collaboration page missing backend repository");
+  assert(overview.text.includes("/en/collaborate/agents"), "collaboration page missing agent instructions link");
+
+  const agents = await getText("/en/collaborate/agents");
+  assert(agents.response.status === 200, `/en/collaborate/agents returned ${agents.response.status}`);
+  assert(agents.text.includes("Collaborate with ChessView through agents"), "agent page title missing");
+  assert(agents.text.includes("/agent-collaboration/submissions"), "agent page missing submission endpoint");
+
+  const manifest = await getJson(`${siteUrl}/agent-collaboration.json`);
+  assert(manifest.api?.submissions?.includes("/agent-collaboration/submissions"), "agent manifest missing submission endpoint");
 });
 
 await check("event ID redirects to canonical slug", async () => {
@@ -223,6 +239,7 @@ await check("sitemap includes localized event URLs", async () => {
   for (const locale of ["en", "es", "it"]) {
     assert(text.includes(`/${locale}/news`), `sitemap missing ${locale} news URL`);
     assert(text.includes(`/${locale}/coverage`), `sitemap missing ${locale} coverage URL`);
+    assert(text.includes(`/${locale}/collaborate`), `sitemap missing ${locale} collaboration URL`);
   }
   for (const locale of ["en", "es", "it"]) {
     assert(text.includes(`/${locale}/events/${firstEvent.slug}`), `sitemap missing ${locale} event URL`);
@@ -258,6 +275,7 @@ await check("robots and manifest render", async () => {
   assert(robots.response.status === 200, `/robots.txt returned ${robots.response.status}`);
   assert(robots.text.includes("Disallow: /es/dashboard/"), "robots missing localized private path");
   assert(robots.text.includes("Allow: /llms.txt"), "robots missing llms.txt allow rule");
+  assert(robots.text.includes("Allow: /agent-collaboration.json"), "robots missing agent manifest allow rule");
 
   const manifest = await getText("/manifest.webmanifest");
   assert(manifest.response.status === 200, `/manifest.webmanifest returned ${manifest.response.status}`);
@@ -267,6 +285,7 @@ await check("robots and manifest render", async () => {
   const llms = await getText("/llms.txt");
   assert(llms.response.status === 200, `/llms.txt returned ${llms.response.status}`);
   assert(llms.text.includes("ChessView is a source-first public discovery layer"), "llms.txt missing site summary");
+  assert(llms.text.includes("Agent collaboration instructions"), "llms.txt missing agent collaboration instructions");
 
   const indexNowKey = await getText("/indexnow-key.txt");
   assert(indexNowKey.response.status === 200, `/indexnow-key.txt returned ${indexNowKey.response.status}`);

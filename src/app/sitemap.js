@@ -60,6 +60,18 @@ export default async function sitemap() {
         priority: 0.85,
         images: [coreImage],
       }),
+      localizedEntry(locale, "/collaborate", {
+        lastModified: now,
+        changeFrequency: "weekly",
+        priority: 0.7,
+        images: [coreImage],
+      }),
+      localizedEntry(locale, "/collaborate/agents", {
+        lastModified: now,
+        changeFrequency: "weekly",
+        priority: 0.65,
+        images: [coreImage],
+      }),
       localizedEntry(locale, "/terms", {
         lastModified: now,
         changeFrequency: "monthly",

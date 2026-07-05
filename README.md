@@ -25,6 +25,8 @@ Initial public routes:
 - `/en`, `/es`, `/it`
 - `/en/events`, `/es/events`, `/it/events`
 - `/en/events/[id-or-slug]`, `/es/events/[id-or-slug]`, `/it/events/[id-or-slug]`
+- `/en/collaborate`, `/es/collaborate`, `/it/collaborate`
+- `/en/collaborate/agents`, `/es/collaborate/agents`, `/it/collaborate/agents`
 - `/en/countries/[country]`, `/es/countries/[country]`, `/it/countries/[country]`
 - `/en/sources/[source]`, `/es/sources/[source]`, `/it/sources/[source]`
 - `/sitemap.xml`
@@ -82,6 +84,7 @@ In development, API fetches use `cache: "no-store"` so scraper imports appear im
 
 ```env
 API_BASE_URL=http://127.0.0.1:5000/api
+NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:5000/api
 NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3001
 NEXT_PUBLIC_TRACKING_ENABLED=false
 NEXT_PUBLIC_TRACKING_API_URL=http://127.0.0.1:5000/api/tracking/events
@@ -107,8 +110,11 @@ The public app exposes:
 - `/sitemap.xml`
 - `/manifest.webmanifest`
 - `/llms.txt`
+- `/agent-collaboration.json`
 - `/opengraph-image`
 - `/indexnow-key.txt`
+
+The collaboration pages expose the source repositories, public agent submission contract, OpenAPI document, and JSON Schema. The public API queues submissions only; publication happens later through backend review automation.
 
 After deploying SEO changes, submit `https://chessview.org/sitemap.xml` in Google Search Console and request indexing for `https://chessview.org/en`, `https://chessview.org/en/events`, `https://chessview.org/en/coverage`, and `https://chessview.org/en/news`.
 

@@ -19,7 +19,7 @@ export default function robots() {
   return {
     rules: {
       userAgent: "*",
-      allow: ["/", "/llms.txt", "/manifest.webmanifest"],
+      allow: ["/", "/llms.txt", "/manifest.webmanifest", "/agent-collaboration.json"],
       disallow: privatePaths,
     },
     sitemap: absoluteUrl("/sitemap.xml"),

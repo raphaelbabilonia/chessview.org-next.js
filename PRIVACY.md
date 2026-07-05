@@ -1,6 +1,6 @@
 # ChessView Privacy Policy
 
-Last updated: 2026-07-04
+Last updated: 2026-07-05
 
 This policy is a project baseline for the official ChessView hosted service. It should be reviewed by a qualified lawyer before public commercial launch, especially before processing EU/EEA personal data or data about minors.
 
@@ -12,6 +12,7 @@ ChessView may collect:
 - Organizer and event information such as event details, sections, rounds, pairings, results, standings, links, and uploaded files.
 - Registration and player information such as names, ratings, federation IDs, clubs, sections, contact details, and participation status.
 - Technical information such as IP address, browser, device, logs, cookies, security events, and API usage.
+- Public agent collaboration submissions, agent self-identification, source URLs, evidence snippets, decision status, and hashed request metadata.
 - Support and communication data.
 - Search, analytics, AI query, recommendation, and interaction data.
 
@@ -22,6 +23,7 @@ ChessView may use information to:
 - Provide accounts, event management, registrations, public pages, search, and discovery.
 - Display public tournament and news metadata.
 - Maintain safety, security, fraud prevention, abuse prevention, and audit logs.
+- Review, deduplicate, quarantine, reject, or publish public agent collaboration submissions.
 - Improve product quality, analytics, ranking, recommendations, and AI-assisted features.
 - Communicate service updates, support responses, and administrative notices.
 - Comply with legal obligations.

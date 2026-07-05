@@ -10,6 +10,26 @@ export const siteConfig = {
   url: trimTrailingSlash(process.env.NEXT_PUBLIC_SITE_URL || DEFAULT_SITE_URL),
   domain: "chessview.org",
   repositoryUrl: "https://github.com/raphaelbabilonia/chessview.org-next.js",
+  publicApiBaseUrl: trimTrailingSlash(
+    process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || "https://api.chessview.org/api"
+  ),
+  repositories: [
+    {
+      name: "Public website",
+      description: "Next.js public pages, SEO routes, maps, news, and agent-facing documentation.",
+      url: "https://github.com/raphaelbabilonia/chessview.org-next.js",
+    },
+    {
+      name: "Express API",
+      description: "Tournament, news, tracking, private ingest, and public agent collaboration API.",
+      url: "https://github.com/raphaelbabilonia/chessview.org-backend",
+    },
+    {
+      name: "Organizer frontend",
+      description: "React/Vite organizer and tournament management interface.",
+      url: "https://github.com/raphaelbabilonia/chessview.org-frontend",
+    },
+  ],
   ogImage: {
     path: "/opengraph-image",
     alt: "ChessView global chess tournament search and chess news index",

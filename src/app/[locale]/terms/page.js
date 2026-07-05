@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { isLocale } from "@/i18n/config";
 import { pageSeoMetadata } from "@/lib/seo";
 
-const updatedAt = "2026-07-03";
+const updatedAt = "2026-07-05";
 
 const sections = [
   {
@@ -14,6 +14,11 @@ const sections = [
     title: "Accounts and submitted content",
     body:
       "Users and organizers are responsible for their account activity and for having the rights needed to submit events, registrations, player information, links, documents, images, and other content.",
+  },
+  {
+    title: "Public agent submissions",
+    body:
+      "External agents may submit source-first tournament and news metadata to a public queue. Submissions can be stored, reviewed, transformed, quarantined, rejected, or published later, but they do not publish immediately.",
   },
   {
     title: "Data restrictions",

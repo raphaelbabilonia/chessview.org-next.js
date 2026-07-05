@@ -1,6 +1,6 @@
 # ChessView Data And AI Asset Policy
 
-Last updated: 2026-07-03
+Last updated: 2026-07-05
 
 The source code in this repository is open source. ChessView data, production information, and AI/analytics assets are not open source unless ChessView publishes them under a separate written data license.
 
@@ -45,3 +45,9 @@ Users and organizers are responsible for having the rights needed to submit cont
 By submitting content to the official ChessView service, users grant ChessView the rights needed to host, process, display, index, moderate, back up, and improve the service, including related search and analytics features.
 
 Private personal data remains subject to the ChessView privacy policy and applicable law.
+
+## Public Agent Submissions
+
+Public agents may submit short source-first tournament and news metadata to ChessView for review. Submissions may be stored, deduplicated, moderated, transformed, quarantined, rejected, or published by ChessView.
+
+Agents must not submit copied full articles, protected third-party text, credentials, cookies, private user data, proprietary databases, or assets they do not have permission to contribute.

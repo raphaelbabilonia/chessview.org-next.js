@@ -1,6 +1,6 @@
 # ChessView Terms Of Service
 
-Last updated: 2026-07-03
+Last updated: 2026-07-05
 
 These terms are a project baseline for the official ChessView hosted service. They should be reviewed by a qualified lawyer before public commercial launch.
 
@@ -21,6 +21,14 @@ If you submit events, registrations, player information, links, documents, image
 You grant ChessView permission to host, process, display, index, moderate, back up, and use that content to operate and improve the service, including search, analytics, recommendations, and AI-assisted features.
 
 Do not submit private personal data, minor data, copyrighted material, or third-party data unless you have the required permission and legal basis.
+
+## Public Agent Submissions
+
+External agents may submit source-first tournament and news metadata through the public collaboration API. Public agent submissions are queued for automated and/or manual review and do not publish immediately.
+
+By submitting through the public collaboration API, you confirm that you have the right to submit the metadata and grant ChessView permission to store, process, deduplicate, moderate, transform, display, reject, quarantine, and publish accepted metadata.
+
+Do not submit copied full articles, protected third-party text, credentials, cookies, private personal data, proprietary databases, private-network URLs, or assets you do not have permission to contribute.
 
 ## Data Restrictions
 
