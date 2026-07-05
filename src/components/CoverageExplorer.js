@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ExternalLink, MapPinned, Minus, Plus, RotateCcw } from "lucide-react";
+import { ArrowLeft, ExternalLink, MapPinned, Minus, Plus, RotateCcw, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CountryFlag } from "@/components/CountryFlag";
@@ -14,8 +14,6 @@ const mapZoom = {
   min: 1,
   step: 0.45,
 };
-
-const countryMarkerAutoZoom = mapZoom.max - 0.05;
 
 const clampOffset = (offset, zoom, mapSize) => {
   const xLimit = mapSize.width * Math.max(zoom - 1, 0) + 120;
@@ -301,8 +299,12 @@ function EventLinkList({ copy, events = [], locale, limit }) {
   );
 }
 
-function TooltipShell({ children, style }) {
+function TooltipShell({ children, closeLabel, onClose, style }) {
   const stopTooltipGesture = (event) => event.stopPropagation();
+  const closeTooltip = (event) => {
+    event.stopPropagation();
+    onClose();
+  };
 
   return (
     <div
@@ -315,19 +317,22 @@ function TooltipShell({ children, style }) {
       onPointerUp={stopTooltipGesture}
       onWheel={stopTooltipGesture}
     >
+      <button className="coverage-tooltip-close" type="button" onClick={closeTooltip} aria-label={closeLabel} title={closeLabel}>
+        <X size={16} aria-hidden="true" />
+      </button>
       {children}
     </div>
   );
 }
 
-function CoverageTooltip({ copy, locale, onOpenCountry, payload, style }) {
+function CoverageTooltip({ copy, locale, onClose, onOpenCountry, payload, style }) {
   if (!payload || !style) return null;
 
   if (payload.kind === "event") {
     const { event, country } = payload;
 
     return (
-      <TooltipShell style={style}>
+      <TooltipShell closeLabel={copy.coverage.closePopup} onClose={onClose} style={style}>
         <div className="coverage-tooltip-heading">
           <CountryFlag country={country} />
           <strong>{event.title}</strong>
@@ -351,7 +356,7 @@ function CoverageTooltip({ copy, locale, onOpenCountry, payload, style }) {
     const countryLabel = cluster.countryLabels.slice(0, 3).join(" / ");
 
     return (
-      <TooltipShell style={style}>
+      <TooltipShell closeLabel={copy.coverage.closePopup} onClose={onClose} style={style}>
         <div className="coverage-tooltip-heading">
           {leadCountry ? <CountryFlag country={leadCountry} /> : <MapPinned size={18} aria-hidden="true" />}
           <strong>
@@ -369,7 +374,7 @@ function CoverageTooltip({ copy, locale, onOpenCountry, payload, style }) {
     const { country, region } = payload;
 
     return (
-      <TooltipShell style={style}>
+      <TooltipShell closeLabel={copy.coverage.closePopup} onClose={onClose} style={style}>
         <div className="coverage-tooltip-heading">
           <CountryFlag country={country} />
           <strong>{region.label}</strong>
@@ -384,7 +389,7 @@ function CoverageTooltip({ copy, locale, onOpenCountry, payload, style }) {
   const { country } = payload;
 
   return (
-    <TooltipShell style={style}>
+    <TooltipShell closeLabel={copy.coverage.closePopup} onClose={onClose} style={style}>
       <div className="coverage-tooltip-heading">
         <CountryFlag country={country} />
         <strong>{country.label}</strong>
@@ -426,6 +431,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   const mapRef = useRef(null);
   const shellRef = useRef(null);
   const dragRef = useRef(null);
+  const markerGestureRef = useRef({ blockUntil: 0 });
   const pointersRef = useRef(new Map());
   const today = useMemo(() => eventDateKey(coverage.today) || "1970-01-01", [coverage.today]);
 
@@ -533,7 +539,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   const selectedRegion = selectedCountry?.regions?.find((region) => region.key === selectedRegionKey) || null;
   const isCountryMode = Boolean(selectedCountry);
   const isRegionMode = Boolean(selectedCountry && selectedRegion);
-  const showWorldCountrySelectors = !selectedCountry && (showCountryMarkers || zoom >= countryMarkerAutoZoom);
+  const showWorldCountrySelectors = !selectedCountry && showCountryMarkers;
   const mapPaths = selectedCountry?.flatMapPaths || coverage.mapPaths;
   const activePayload = hovered || pinned;
   const activePoint = activePayload?.point;
@@ -557,6 +563,40 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   const clearPinnedDetails = () => {
     setHovered(null);
     setPinned(null);
+  };
+
+  const blockMarkerActivation = (timeStamp, duration = 650) => {
+    markerGestureRef.current.blockUntil = Math.max(markerGestureRef.current.blockUntil, timeStamp + duration);
+  };
+
+  const canActivateMarker = (timeStamp) => !didDrag && timeStamp > markerGestureRef.current.blockUntil;
+
+  const runMarkerAction = (timeStamp, action) => {
+    if (!canActivateMarker(timeStamp)) return;
+    action();
+  };
+
+  const handleMarkerClick = (event, action) => {
+    event.stopPropagation();
+    runMarkerAction(event.timeStamp, action);
+  };
+
+  const handleMarkerPointerDown = (event) => {
+    if (event.pointerType === "mouse") {
+      event.stopPropagation();
+      return;
+    }
+
+    if (pointersRef.current.size >= 1) blockMarkerActivation(event.timeStamp);
+  };
+
+  const handleMarkerPointerUp = (event, action) => {
+    if (event.pointerType === "mouse") {
+      event.stopPropagation();
+      return;
+    }
+
+    runMarkerAction(event.timeStamp, action);
   };
 
   const toggleType = (type) => {
@@ -715,6 +755,8 @@ export function CoverageExplorer({ copy, coverage, locale }) {
 
     if (wasIdle) setDidDrag(false);
     if (points.length >= 2) {
+      blockMarkerActivation(event.timeStamp);
+      setDidDrag(true);
       beginPinchGesture(points);
     } else {
       beginPanGesture(points[0]);
@@ -732,6 +774,8 @@ export function CoverageExplorer({ copy, coverage, locale }) {
 
     if (points.length >= 2) {
       if (dragRef.current.mode !== "pinch") {
+        blockMarkerActivation(event.timeStamp);
+        setDidDrag(true);
         beginPinchGesture(points);
         return;
       }
@@ -744,6 +788,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
       const centerDelta = clientDeltaToSvg(currentCenter.x - dragRef.current.startCenter.x, currentCenter.y - dragRef.current.startCenter.y);
 
       if (Math.abs(currentDistance - dragRef.current.startDistance) > 2 || Math.abs(centerDelta.x) + Math.abs(centerDelta.y) > 2) {
+        blockMarkerActivation(event.timeStamp);
         setDidDrag(true);
       }
       applyZoomAtSvgPoint(dragRef.current.startSvgCenter, nextZoom, dragRef.current.startZoom, dragRef.current.startOffset, centerDelta);
@@ -757,7 +802,10 @@ export function CoverageExplorer({ copy, coverage, locale }) {
 
     const delta = clientDeltaToSvg(event.clientX - dragRef.current.startX, event.clientY - dragRef.current.startY);
 
-    if (Math.abs(delta.x) + Math.abs(delta.y) > 3) setDidDrag(true);
+    if (Math.abs(delta.x) + Math.abs(delta.y) > 3) {
+      blockMarkerActivation(event.timeStamp);
+      setDidDrag(true);
+    }
     setOffset(
       clampOffset(
         {
@@ -786,6 +834,8 @@ export function CoverageExplorer({ copy, coverage, locale }) {
 
     const remainingPoints = Array.from(pointersRef.current.values());
     if (remainingPoints.length >= 2) {
+      blockMarkerActivation(event.timeStamp);
+      setDidDrag(true);
       beginPinchGesture(remainingPoints);
       setIsDragging(true);
       return;
@@ -883,19 +933,13 @@ export function CoverageExplorer({ copy, coverage, locale }) {
             className="coverage-interactive-marker coverage-world-event-cluster"
             key={item.key}
             onBlur={() => setHovered(null)}
-            onClick={(pointerEvent) => {
-              pointerEvent.stopPropagation();
-              setPinned(payload);
-            }}
+            onClick={(event) => handleMarkerClick(event, () => setPinned(payload))}
             onFocus={() => setHovered(payload)}
             onKeyDown={(keyEvent) => onMarkerKeyDown(keyEvent, () => setPinned(payload))}
             onMouseEnter={() => setHovered(payload)}
             onMouseLeave={() => setHovered(null)}
-            onPointerDown={(pointerEvent) => pointerEvent.stopPropagation()}
-            onPointerUp={(pointerEvent) => {
-              pointerEvent.stopPropagation();
-              if (pointerEvent.pointerType !== "mouse") setPinned(payload);
-            }}
+            onPointerDown={handleMarkerPointerDown}
+            onPointerUp={(event) => handleMarkerPointerUp(event, () => setPinned(payload))}
             role="button"
             tabIndex={0}
             transform={`translate(${item.marker.x} ${item.marker.y})`}
@@ -923,19 +967,13 @@ export function CoverageExplorer({ copy, coverage, locale }) {
           className={`coverage-interactive-marker coverage-world-event-dot is-${event.tournamentType}${event.markerSource === "country" ? " is-country-level" : ""}`}
           key={item.key}
           onBlur={() => setHovered(null)}
-          onClick={(pointerEvent) => {
-            pointerEvent.stopPropagation();
-            setPinned(payload);
-          }}
+          onClick={(pointerEvent) => handleMarkerClick(pointerEvent, () => setPinned(payload))}
           onFocus={() => setHovered(payload)}
           onKeyDown={(keyEvent) => onMarkerKeyDown(keyEvent, () => setPinned(payload))}
           onMouseEnter={() => setHovered(payload)}
           onMouseLeave={() => setHovered(null)}
-          onPointerDown={(pointerEvent) => pointerEvent.stopPropagation()}
-          onPointerUp={(pointerEvent) => {
-            pointerEvent.stopPropagation();
-            if (pointerEvent.pointerType !== "mouse") setPinned(payload);
-          }}
+          onPointerDown={handleMarkerPointerDown}
+          onPointerUp={(pointerEvent) => handleMarkerPointerUp(pointerEvent, () => setPinned(payload))}
           role="button"
           tabIndex={0}
           transform={`translate(${event.marker.x} ${event.marker.y})`}
@@ -965,19 +1003,13 @@ export function CoverageExplorer({ copy, coverage, locale }) {
             className="coverage-interactive-marker coverage-country-cluster"
             key={country.countryKey}
             onBlur={() => setHovered(null)}
-            onClick={(event) => {
-              event.stopPropagation();
-              setPinned(payload);
-            }}
+            onClick={(event) => handleMarkerClick(event, () => setPinned(payload))}
             onFocus={() => setHovered(payload)}
             onKeyDown={(event) => onMarkerKeyDown(event, () => setPinned(payload))}
             onMouseEnter={() => setHovered(payload)}
             onMouseLeave={() => setHovered(null)}
-            onPointerDown={(event) => event.stopPropagation()}
-            onPointerUp={(event) => {
-              event.stopPropagation();
-              if (event.pointerType !== "mouse") setPinned(payload);
-            }}
+            onPointerDown={handleMarkerPointerDown}
+            onPointerUp={(event) => handleMarkerPointerUp(event, () => setPinned(payload))}
             role="button"
             tabIndex={0}
             transform={`translate(${country.marker.x} ${country.marker.y})`}
@@ -1010,13 +1042,23 @@ export function CoverageExplorer({ copy, coverage, locale }) {
             onBlur={() => setHovered(null)}
             onClick={(event) => {
               event.stopPropagation();
+              if (didDrag || event.timeStamp <= markerGestureRef.current.blockUntil) return;
               selectRegion(selectedCountry, region);
             }}
             onFocus={() => setHovered(payload)}
             onKeyDown={(event) => onMarkerKeyDown(event, () => selectRegion(selectedCountry, region))}
             onMouseEnter={() => setHovered(payload)}
             onMouseLeave={() => setHovered(null)}
-            onPointerDown={(event) => event.stopPropagation()}
+            onPointerDown={handleMarkerPointerDown}
+            onPointerUp={(event) => {
+              if (event.pointerType === "mouse") {
+                event.stopPropagation();
+                return;
+              }
+
+              if (didDrag || event.timeStamp <= markerGestureRef.current.blockUntil) return;
+              selectRegion(selectedCountry, region);
+            }}
             role="button"
             tabIndex={0}
             transform={`translate(${region.marker.x} ${region.marker.y})`}
@@ -1050,15 +1092,13 @@ export function CoverageExplorer({ copy, coverage, locale }) {
             className={`coverage-interactive-marker coverage-tournament-dot is-${event.tournamentType}`}
             key={event._id}
             onBlur={() => setHovered(null)}
-            onClick={(pointerEvent) => {
-              pointerEvent.stopPropagation();
-              setPinned(payload);
-            }}
+            onClick={(pointerEvent) => handleMarkerClick(pointerEvent, () => setPinned(payload))}
             onFocus={() => setHovered(payload)}
             onKeyDown={(keyEvent) => onMarkerKeyDown(keyEvent, () => setPinned(payload))}
             onMouseEnter={() => setHovered(payload)}
             onMouseLeave={() => setHovered(null)}
-            onPointerDown={(pointerEvent) => pointerEvent.stopPropagation()}
+            onPointerDown={handleMarkerPointerDown}
+            onPointerUp={(pointerEvent) => handleMarkerPointerUp(pointerEvent, () => setPinned(payload))}
             role="button"
             tabIndex={0}
             transform={`translate(${event.marker.x} ${event.marker.y})`}
@@ -1245,7 +1285,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
           <div className="coverage-zoom-badge" aria-live="polite">
             {copy.coverage.zoomLevel.replace("{zoom}", zoom.toFixed(2))}
           </div>
-          <CoverageTooltip copy={copy} locale={locale} onOpenCountry={selectCountry} payload={activePayload} style={tooltipStyle} />
+          <CoverageTooltip copy={copy} locale={locale} onClose={clearPinnedDetails} onOpenCountry={selectCountry} payload={activePayload} style={tooltipStyle} />
         </div>
       </div>
 

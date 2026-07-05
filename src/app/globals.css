@@ -1063,6 +1063,30 @@ img {
   transform: translate(-8%, -104%);
 }
 
+.coverage-tooltip-close {
+  position: absolute;
+  top: 0.48rem;
+  right: 0.48rem;
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(253, 252, 253, 0.16);
+  border-radius: 8px;
+  background: rgba(253, 252, 253, 0.08);
+  color: var(--cv-color-white);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.coverage-tooltip-close:hover,
+.coverage-tooltip-close:focus-visible {
+  background: var(--accent);
+  color: var(--cv-color-navy-900);
+  outline: none;
+}
+
 .coverage-tooltip-heading,
 .coverage-panel-heading,
 .coverage-browser-heading {
@@ -1075,6 +1099,7 @@ img {
 .coverage-tooltip-heading {
   justify-content: flex-start;
   align-items: center;
+  padding-right: 2.2rem;
 }
 
 .coverage-tooltip .coverage-country-stats {
