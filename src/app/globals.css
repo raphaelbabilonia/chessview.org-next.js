@@ -3644,7 +3644,7 @@ textarea:focus {
 }
 
 .coverage-world-dot-target {
-  fill: transparent;
+  fill: rgba(186, 155, 74, 0.001);
 }
 
 .coverage-world-dot-ring {
@@ -3672,7 +3672,7 @@ textarea:focus {
 }
 
 .coverage-world-cluster-target {
-  fill: transparent;
+  fill: rgba(186, 155, 74, 0.001);
 }
 
 .coverage-world-cluster-halo {
