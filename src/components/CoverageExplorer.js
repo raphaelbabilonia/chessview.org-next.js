@@ -173,7 +173,7 @@ function EventLinkList({ copy, events = [], locale, limit }) {
   );
 }
 
-function CoverageTooltip({ copy, locale, payload, style }) {
+function CoverageTooltip({ copy, locale, onOpenCountry, payload, style }) {
   if (!payload || !style) return null;
 
   if (payload.kind === "event") {
@@ -224,6 +224,9 @@ function CoverageTooltip({ copy, locale, payload, style }) {
       </div>
       <CountStats copy={copy} item={country} />
       <EventLinkList copy={copy} events={country.events} locale={locale} limit={3} />
+      <button className="coverage-tooltip-action" type="button" onClick={() => onOpenCountry(country)}>
+        {copy.coverage.openCountryMap}
+      </button>
     </div>
   );
 }
@@ -750,10 +753,10 @@ export function CoverageExplorer({ copy, coverage, locale }) {
             onBlur={() => setHovered(null)}
             onClick={(event) => {
               event.stopPropagation();
-              selectCountry(country);
+              setPinned(payload);
             }}
             onFocus={() => setHovered(payload)}
-            onKeyDown={(event) => onMarkerKeyDown(event, () => selectCountry(country))}
+            onKeyDown={(event) => onMarkerKeyDown(event, () => setPinned(payload))}
             onMouseEnter={() => setHovered(payload)}
             onMouseLeave={() => setHovered(null)}
             onPointerDown={(event) => event.stopPropagation()}
@@ -762,7 +765,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
             transform={`translate(${country.marker.x} ${country.marker.y})`}
           >
             <title>{`${country.label}: ${country.count} ${copy.coverage.tournaments}`}</title>
-            <circle className="coverage-marker-target" r={Math.max(visualRadius + 11, 16)} />
+            <circle className="coverage-marker-target" r={visualRadius + 0.6} />
             <circle className="coverage-marker-halo" r={visualRadius + 2.3} />
             <circle className="coverage-marker-core" r={visualRadius} />
             <circle className="coverage-marker-dot" r="1.25" />
@@ -1021,7 +1024,10 @@ export function CoverageExplorer({ copy, coverage, locale }) {
               {copy.coverage.countryNeedsCoordinates}
             </div>
           ) : null}
-          <CoverageTooltip copy={copy} locale={locale} payload={activePayload} style={tooltipStyle} />
+          <div className="coverage-zoom-badge" aria-live="polite">
+            {copy.coverage.zoomLevel.replace("{zoom}", zoom.toFixed(2))}
+          </div>
+          <CoverageTooltip copy={copy} locale={locale} onOpenCountry={selectCountry} payload={activePayload} style={tooltipStyle} />
         </div>
       </div>
 

@@ -3658,11 +3658,16 @@ textarea:focus {
 .coverage-country-cluster .coverage-marker-halo {
   fill: rgba(186, 155, 74, 0.08);
   stroke: rgba(186, 155, 74, 0.22);
+  pointer-events: none;
 }
 
 .coverage-country-cluster .coverage-marker-core {
   fill: rgba(186, 155, 74, 0.78);
   stroke-width: 0.9;
+}
+
+.coverage-country-cluster .coverage-marker-dot {
+  pointer-events: none;
 }
 
 .coverage-region-halo {
@@ -3755,6 +3760,30 @@ textarea:focus {
   pointer-events: auto;
 }
 
+.coverage-tooltip-action {
+  display: inline-flex;
+  width: 100%;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.62rem;
+  padding: 0.56rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 72%, rgba(253, 252, 253, 0.2));
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--cv-color-navy-900);
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 950;
+  pointer-events: auto;
+}
+
+.coverage-tooltip-action:hover,
+.coverage-tooltip-action:focus-visible {
+  background: var(--cv-color-white);
+  outline: none;
+}
+
 .coverage-map-note {
   position: absolute;
   z-index: 2;
@@ -3771,6 +3800,28 @@ textarea:focus {
   color: rgba(253, 252, 253, 0.82);
   font-size: 0.82rem;
   font-weight: 850;
+}
+
+.coverage-zoom-badge {
+  position: absolute;
+  z-index: 2;
+  right: 1rem;
+  bottom: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 98px;
+  min-height: 34px;
+  padding: 0.42rem 0.62rem;
+  border: 1px solid rgba(253, 252, 253, 0.16);
+  border-radius: var(--radius);
+  background: rgba(5, 24, 51, 0.86);
+  color: var(--cv-color-white);
+  font-size: 0.78rem;
+  font-weight: 950;
+  letter-spacing: 0;
+  pointer-events: none;
+  white-space: nowrap;
 }
 
 .coverage-panel {
