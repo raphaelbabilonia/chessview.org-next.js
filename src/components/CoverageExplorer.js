@@ -780,7 +780,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
               <path className={isCountryMode ? "coverage-map-country-land" : "coverage-map-land"} d={mapPaths.land} />
               {!isCountryMode ? <path className="coverage-map-scan" d="M104 410H856" /> : null}
               {selectedCountry?.flatMapPaths?.boundary ? <path className="coverage-country-flat-boundary" d={selectedCountry.flatMapPaths.boundary} /> : null}
-              {!selectedCountry ? renderWorldEventDots() : null}
+              {!selectedCountry && !showWorldCountrySelectors ? renderWorldEventDots() : null}
               {showWorldCountrySelectors ? renderWorldCountrySelectors() : null}
               {selectedCountry && !selectedRegion ? renderRegionMarkers() : null}
               {selectedCountry && selectedRegion ? renderTournamentDots() : null}
