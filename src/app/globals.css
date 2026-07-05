@@ -951,10 +951,17 @@ img {
   aspect-ratio: 2 / 1;
   cursor: grab;
   overflow: hidden;
+  touch-action: none;
+  user-select: none;
 }
 
 .coverage-map-stage.is-dragging {
   cursor: grabbing;
+}
+
+.coverage-map-stage:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 70%, transparent);
+  outline-offset: -4px;
 }
 
 .coverage-map {

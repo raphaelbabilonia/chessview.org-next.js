@@ -85,6 +85,20 @@ const averageMarker = (events) => {
   };
 };
 
+const pointerPosition = (event) => ({ x: event.clientX, y: event.clientY });
+
+const distanceBetween = (first, second) => Math.hypot(first.x - second.x, first.y - second.y);
+
+const midpointBetween = (first, second) => ({
+  x: (first.x + second.x) / 2,
+  y: (first.y + second.y) / 2,
+});
+
+const isFormControlTarget = (target) => {
+  if (!target?.tagName) return false;
+  return ["A", "BUTTON", "INPUT", "SELECT", "TEXTAREA"].includes(target.tagName);
+};
+
 function TypeBadge({ copy, type }) {
   const labels = copy.coverage.types || {};
   return <span className={`coverage-type-badge is-${type || "other"}`}>{labels[type] || labels.other || type}</span>;
@@ -233,6 +247,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   const mapRef = useRef(null);
   const shellRef = useRef(null);
   const dragRef = useRef(null);
+  const pointersRef = useRef(new Map());
   const today = useMemo(() => eventDateKey(coverage.today) || "1970-01-01", [coverage.today]);
 
   const [selectedCountryKey, setSelectedCountryKey] = useState("");
@@ -377,20 +392,63 @@ export function CoverageExplorer({ copy, coverage, locale }) {
     clearPinnedDetails();
   };
 
-  const applyZoom = (nextZoom) => {
-    const cleanZoom = clamp(nextZoom, 1, 5);
-    const center = {
-      x: coverage.mapSize.width / 2,
-      y: coverage.mapSize.height / 2,
+  const clientToSvgPoint = (point) => {
+    if (!mapRef.current) return null;
+    const bounds = mapRef.current.getBoundingClientRect();
+    if (!bounds.width || !bounds.height) return null;
+
+    return {
+      x: ((point.x - bounds.left) * coverage.mapSize.width) / bounds.width,
+      y: ((point.y - bounds.top) * coverage.mapSize.height) / bounds.height,
     };
-    const ratio = cleanZoom / zoom;
+  };
+
+  const clientDeltaToSvg = (deltaX, deltaY) => {
+    if (!mapRef.current) return { x: 0, y: 0 };
+    const bounds = mapRef.current.getBoundingClientRect();
+    if (!bounds.width || !bounds.height) return { x: 0, y: 0 };
+
+    return {
+      x: (deltaX * coverage.mapSize.width) / bounds.width,
+      y: (deltaY * coverage.mapSize.height) / bounds.height,
+    };
+  };
+
+  const applyZoomAtSvgPoint = (point, nextZoom, baseZoom = zoom, baseOffset = offset, panDelta = { x: 0, y: 0 }) => {
+    const cleanZoom = clamp(nextZoom, 1, 5);
+    const ratio = cleanZoom / baseZoom;
     const nextOffset = {
-      x: center.x - (center.x - offset.x) * ratio,
-      y: center.y - (center.y - offset.y) * ratio,
+      x: point.x - (point.x - baseOffset.x) * ratio + panDelta.x,
+      y: point.y - (point.y - baseOffset.y) * ratio + panDelta.y,
     };
 
     setZoom(cleanZoom);
     setOffset(clampOffset(nextOffset, cleanZoom, coverage.mapSize));
+  };
+
+  const applyZoomAtClientPoint = (point, nextZoom) => {
+    const svgPoint = clientToSvgPoint(point);
+    if (!svgPoint) {
+      applyZoomAtSvgPoint(
+        {
+          x: coverage.mapSize.width / 2,
+          y: coverage.mapSize.height / 2,
+        },
+        nextZoom,
+      );
+      return;
+    }
+
+    applyZoomAtSvgPoint(svgPoint, nextZoom);
+  };
+
+  const applyZoom = (nextZoom) => {
+    const center = {
+      x: coverage.mapSize.width / 2,
+      y: coverage.mapSize.height / 2,
+    };
+
+    applyZoomAtSvgPoint(center, nextZoom);
   };
 
   const focusPoint = (point, targetZoom = 2.65) => {
@@ -436,30 +494,95 @@ export function CoverageExplorer({ copy, coverage, locale }) {
     callback();
   };
 
-  const startDrag = (event) => {
-    if (event.button !== 0) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
+  const beginPanGesture = (point, currentOffset = offset) => {
     dragRef.current = {
-      offset,
-      startX: event.clientX,
-      startY: event.clientY,
+      mode: "pan",
+      offset: currentOffset,
+      startX: point.x,
+      startY: point.y,
     };
-    setDidDrag(false);
+  };
+
+  const beginPinchGesture = (points) => {
+    const [first, second] = points;
+    const startCenter = midpointBetween(first, second);
+    const startSvgCenter = clientToSvgPoint(startCenter);
+    if (!startSvgCenter) return;
+
+    dragRef.current = {
+      mode: "pinch",
+      startCenter,
+      startDistance: Math.max(distanceBetween(first, second), 1),
+      startOffset: offset,
+      startSvgCenter,
+      startZoom: zoom,
+    };
+  };
+
+  const startDrag = (event) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+
+    event.preventDefault();
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // Pointer capture is best effort; the map still handles regular pointer events.
+    }
+
+    const wasIdle = pointersRef.current.size === 0;
+    pointersRef.current.set(event.pointerId, pointerPosition(event));
+    const points = Array.from(pointersRef.current.values());
+
+    if (wasIdle) setDidDrag(false);
+    if (points.length >= 2) {
+      beginPinchGesture(points);
+    } else {
+      beginPanGesture(points[0]);
+    }
+
     setIsDragging(true);
   };
 
   const moveDrag = (event) => {
-    if (!dragRef.current || !mapRef.current) return;
-    const bounds = mapRef.current.getBoundingClientRect();
-    const dx = ((event.clientX - dragRef.current.startX) * coverage.mapSize.width) / bounds.width;
-    const dy = ((event.clientY - dragRef.current.startY) * coverage.mapSize.height) / bounds.height;
+    if (!dragRef.current || !mapRef.current || !pointersRef.current.has(event.pointerId)) return;
 
-    if (Math.abs(dx) + Math.abs(dy) > 3) setDidDrag(true);
+    event.preventDefault();
+    pointersRef.current.set(event.pointerId, pointerPosition(event));
+    const points = Array.from(pointersRef.current.values());
+
+    if (points.length >= 2) {
+      if (dragRef.current.mode !== "pinch") {
+        beginPinchGesture(points);
+        return;
+      }
+
+      const [first, second] = points;
+      const currentCenter = midpointBetween(first, second);
+      const currentDistance = Math.max(distanceBetween(first, second), 1);
+      const zoomRatio = currentDistance / dragRef.current.startDistance;
+      const nextZoom = dragRef.current.startZoom * zoomRatio;
+      const centerDelta = clientDeltaToSvg(currentCenter.x - dragRef.current.startCenter.x, currentCenter.y - dragRef.current.startCenter.y);
+
+      if (Math.abs(currentDistance - dragRef.current.startDistance) > 2 || Math.abs(centerDelta.x) + Math.abs(centerDelta.y) > 2) {
+        setDidDrag(true);
+      }
+      applyZoomAtSvgPoint(dragRef.current.startSvgCenter, nextZoom, dragRef.current.startZoom, dragRef.current.startOffset, centerDelta);
+      return;
+    }
+
+    if (dragRef.current.mode !== "pan") {
+      beginPanGesture(points[0]);
+      return;
+    }
+
+    const delta = clientDeltaToSvg(event.clientX - dragRef.current.startX, event.clientY - dragRef.current.startY);
+
+    if (Math.abs(delta.x) + Math.abs(delta.y) > 3) setDidDrag(true);
     setOffset(
       clampOffset(
         {
-          x: dragRef.current.offset.x + dx,
-          y: dragRef.current.offset.y + dy,
+          x: dragRef.current.offset.x + delta.x,
+          y: dragRef.current.offset.y + delta.y,
         },
         zoom,
         coverage.mapSize,
@@ -467,9 +590,94 @@ export function CoverageExplorer({ copy, coverage, locale }) {
     );
   };
 
-  const stopDrag = () => {
+  const stopDrag = (event) => {
+    if (event?.pointerId !== undefined) {
+      pointersRef.current.delete(event.pointerId);
+      try {
+        if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+          event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+      } catch {
+        // Some synthetic/browser paths do not allow releasing capture here.
+      }
+    } else {
+      pointersRef.current.clear();
+    }
+
+    const remainingPoints = Array.from(pointersRef.current.values());
+    if (remainingPoints.length >= 2) {
+      beginPinchGesture(remainingPoints);
+      setIsDragging(true);
+      return;
+    }
+    if (remainingPoints.length === 1) {
+      beginPanGesture(remainingPoints[0]);
+      setIsDragging(true);
+      return;
+    }
+
     dragRef.current = null;
     setIsDragging(false);
+  };
+
+  const leaveDrag = (event) => {
+    if (event.pointerType === "mouse" && event.buttons === 0) stopDrag(event);
+  };
+
+  const zoomFromPointer = (event) => {
+    event.preventDefault();
+    applyZoomAtClientPoint(pointerPosition(event), zoom + (event.shiftKey ? -0.7 : 0.7));
+  };
+
+  const handleMapKeyDown = (event) => {
+    if (event.altKey || event.ctrlKey || event.metaKey || isFormControlTarget(event.target)) return;
+
+    const panStep = event.shiftKey ? 92 : 44;
+    const panKeys = {
+      ArrowDown: { x: 0, y: -panStep },
+      ArrowLeft: { x: panStep, y: 0 },
+      ArrowRight: { x: -panStep, y: 0 },
+      ArrowUp: { x: 0, y: panStep },
+    };
+    const panDelta = panKeys[event.key];
+
+    if (panDelta) {
+      event.preventDefault();
+      setOffset((currentOffset) =>
+        clampOffset(
+          {
+            x: currentOffset.x + panDelta.x,
+            y: currentOffset.y + panDelta.y,
+          },
+          zoom,
+          coverage.mapSize,
+        ),
+      );
+      return;
+    }
+
+    if (event.key === "+" || event.key === "=") {
+      event.preventDefault();
+      applyZoom(zoom + 0.45);
+      return;
+    }
+
+    if (event.key === "-" || event.key === "_") {
+      event.preventDefault();
+      applyZoom(zoom - 0.45);
+      return;
+    }
+
+    if (event.key === "0" || event.key === "Home" || event.key.toLowerCase() === "r") {
+      event.preventDefault();
+      resetViewport();
+      return;
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      clearPinnedDetails();
+    }
   };
 
   const clearFloatingDetails = () => {
@@ -752,7 +960,17 @@ export function CoverageExplorer({ copy, coverage, locale }) {
           </button>
         </div>
 
-        <div className={`coverage-map-stage${isDragging ? " is-dragging" : ""}${isCountryMode ? " is-country-mode" : ""}`}>
+        <div
+          aria-describedby="coverage-map-keyboard-help"
+          aria-label={copy.coverage.mapLabel}
+          className={`coverage-map-stage${isDragging ? " is-dragging" : ""}${isCountryMode ? " is-country-mode" : ""}`}
+          onKeyDown={handleMapKeyDown}
+          role="region"
+          tabIndex={0}
+        >
+          <p className="sr-only" id="coverage-map-keyboard-help">
+            {copy.coverage.keyboardHelp}
+          </p>
           <svg
             ref={mapRef}
             className="coverage-map"
@@ -760,9 +978,11 @@ export function CoverageExplorer({ copy, coverage, locale }) {
             role="img"
             aria-label={copy.coverage.mapLabel}
             onClick={clearFloatingDetails}
+            onDoubleClick={zoomFromPointer}
+            onLostPointerCapture={stopDrag}
             onPointerCancel={stopDrag}
             onPointerDown={startDrag}
-            onPointerLeave={stopDrag}
+            onPointerLeave={leaveDrag}
             onPointerMove={moveDrag}
             onPointerUp={stopDrag}
           >
