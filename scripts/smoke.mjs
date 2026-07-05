@@ -96,6 +96,7 @@ await check("localized home pages render", async () => {
     assert(response.status === 200, `/${locale} returned ${response.status}`);
     assert(html.includes(text), `/${locale} did not include ${text}`);
     assert(html.includes("<title>ChessView</title>"), `/${locale} did not include absolute home title`);
+    assert(html.includes("country-coverage-event-dot"), `/${locale} did not include landing coverage event dots`);
   }
 });
 
@@ -175,6 +176,7 @@ await check("coverage map pages render", async () => {
     assert(htmlIncludesText(text, title), `/${locale}/coverage did not include title`);
     assert(htmlIncludesText(text, firstEvent.title), `/${locale}/coverage did not include first event title`);
     assert(text.includes("coverage-country-button"), `/${locale}/coverage did not include country controls`);
+    assert(text.includes("coverage-world-event-dot"), `/${locale}/coverage did not include world event dots`);
     assert(text.includes("coverage-country-cluster"), `/${locale}/coverage did not include country map markers`);
     assert(text.includes("coverage-type-legend"), `/${locale}/coverage did not include tournament type legend`);
   }

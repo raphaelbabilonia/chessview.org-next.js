@@ -642,6 +642,24 @@ img {
   pointer-events: none;
 }
 
+.country-coverage-event-dot {
+  opacity: 0.9;
+}
+
+.country-coverage-event-dot.is-country-level {
+  opacity: 0.52;
+}
+
+.country-coverage-event-halo {
+  fill: rgba(186, 155, 74, 0.2);
+}
+
+.country-coverage-event-core {
+  fill: var(--accent);
+  stroke: rgba(253, 252, 253, 0.86);
+  stroke-width: 0.9;
+}
+
 .country-coverage-data {
   display: grid;
   gap: 0.85rem;
@@ -3356,25 +3374,29 @@ textarea:focus {
 }
 
 .coverage-type-badge.is-classical::before,
-.coverage-tournament-dot.is-classical .coverage-dot-core {
+.coverage-tournament-dot.is-classical .coverage-dot-core,
+.coverage-world-event-dot.is-classical .coverage-world-dot-core {
   background: #2f80ed;
   fill: #2f80ed;
 }
 
 .coverage-type-badge.is-rapid::before,
-.coverage-tournament-dot.is-rapid .coverage-dot-core {
+.coverage-tournament-dot.is-rapid .coverage-dot-core,
+.coverage-world-event-dot.is-rapid .coverage-world-dot-core {
   background: #20b26b;
   fill: #20b26b;
 }
 
 .coverage-type-badge.is-blitz::before,
-.coverage-tournament-dot.is-blitz .coverage-dot-core {
+.coverage-tournament-dot.is-blitz .coverage-dot-core,
+.coverage-world-event-dot.is-blitz .coverage-world-dot-core {
   background: #ffb02e;
   fill: #ffb02e;
 }
 
 .coverage-type-badge.is-other::before,
-.coverage-tournament-dot.is-other .coverage-dot-core {
+.coverage-tournament-dot.is-other .coverage-dot-core,
+.coverage-world-event-dot.is-other .coverage-world-dot-core {
   background: #d977d8;
   fill: #d977d8;
 }
@@ -3417,27 +3439,68 @@ textarea:focus {
 }
 
 .coverage-country-cluster,
+.coverage-world-event-dot,
 .coverage-region-marker,
 .coverage-tournament-dot {
   cursor: pointer;
   outline: none;
 }
 
+.coverage-world-event-dot {
+  opacity: 0.92;
+}
+
+.coverage-world-event-dot.is-country-level {
+  opacity: 0.45;
+}
+
+.coverage-world-dot-target {
+  fill: transparent;
+}
+
+.coverage-world-dot-ring {
+  fill: rgba(253, 252, 253, 0.08);
+  stroke: rgba(253, 252, 253, 0.48);
+  stroke-width: 0.55;
+}
+
+.coverage-world-dot-core {
+  stroke: rgba(253, 252, 253, 0.86);
+  stroke-width: 0.65;
+}
+
+.coverage-world-event-dot:hover .coverage-world-dot-ring,
+.coverage-world-event-dot:focus .coverage-world-dot-ring {
+  fill: rgba(186, 155, 74, 0.2);
+  stroke: var(--accent);
+  stroke-width: 1.1;
+}
+
+.coverage-country-cluster .coverage-marker-halo {
+  fill: rgba(186, 155, 74, 0.08);
+  stroke: rgba(186, 155, 74, 0.22);
+}
+
+.coverage-country-cluster .coverage-marker-core {
+  fill: rgba(186, 155, 74, 0.78);
+  stroke-width: 0.9;
+}
+
 .coverage-region-halo {
   fill: rgba(32, 178, 107, 0.15);
   stroke: rgba(32, 178, 107, 0.3);
-  stroke-width: 1.2;
+  stroke-width: 0.95;
 }
 
 .coverage-region-core {
   fill: rgba(32, 178, 107, 0.9);
   stroke: rgba(253, 252, 253, 0.92);
-  stroke-width: 1.8;
+  stroke-width: 1.15;
 }
 
 .coverage-region-count {
   fill: var(--cv-color-white);
-  font-size: 0.78rem;
+  font-size: 0.62rem;
   font-weight: 950;
   pointer-events: none;
 }
@@ -3454,19 +3517,19 @@ textarea:focus {
 
 .coverage-dot-core {
   stroke: var(--cv-color-white);
-  stroke-width: 1.7;
+  stroke-width: 1;
 }
 
 .coverage-dot-ring {
   fill: transparent;
   stroke: rgba(253, 252, 253, 0.72);
-  stroke-width: 1.1;
+  stroke-width: 0.8;
 }
 
 .coverage-tournament-dot:hover .coverage-dot-ring,
 .coverage-tournament-dot:focus .coverage-dot-ring {
   stroke: var(--accent);
-  stroke-width: 2.2;
+  stroke-width: 1.5;
 }
 
 .coverage-tournament-dot.is-classical .coverage-dot-ring {

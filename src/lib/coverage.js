@@ -44,6 +44,8 @@ const cleanCountry = (value) => {
       "hong kong china": "Hong Kong, China",
       usa: "United States",
       us: "United States",
+      turkiye: "Turkey",
+      turkey: "Turkey",
       "united states of america": "United States",
       uk: "United Kingdom",
     }[key] || country
@@ -51,9 +53,10 @@ const cleanCountry = (value) => {
 };
 
 const countryAlias = {
-  Andorra: { atlasName: "Andorra", flagCode: "ad" },
+  Andorra: { atlasName: "Andorra", coordinates: [1.5218, 42.5063], flagCode: "ad" },
   Argentina: { atlasName: "Argentina", flagCode: "ar" },
   Austria: { atlasName: "Austria", flagCode: "at" },
+  Bahrain: { atlasName: "Bahrain", coordinates: [50.5577, 26.0667], flagCode: "bh" },
   Belgium: { atlasName: "Belgium", flagCode: "be" },
   Brazil: { atlasName: "Brazil", flagCode: "br" },
   Bulgaria: { atlasName: "Bulgaria", flagCode: "bg" },
@@ -72,14 +75,16 @@ const countryAlias = {
   Georgia: { atlasName: "Georgia", flagCode: "ge" },
   Germany: { atlasName: "Germany", flagCode: "de" },
   Greece: { atlasName: "Greece", flagCode: "gr" },
+  Guernsey: { atlasName: "Guernsey", coordinates: [-2.5853, 49.4657], flagCode: "gg" },
   "Hong Kong, China": { atlasName: "China", coordinates: [114.1694, 22.3193], flagCode: "hk" },
   Hungary: { atlasName: "Hungary", flagCode: "hu" },
   India: { atlasName: "India", flagCode: "in" },
   Italy: { atlasName: "Italy", flagCode: "it" },
   "Ivory Coast": { atlasName: "Côte d'Ivoire", flagCode: "ci" },
   Latvia: { atlasName: "Latvia", flagCode: "lv" },
+  Malta: { atlasName: "Malta", coordinates: [14.3754, 35.9375], flagCode: "mt" },
   Mexico: { atlasName: "Mexico", flagCode: "mx" },
-  Monaco: { atlasName: "Monaco", flagCode: "mc" },
+  Monaco: { atlasName: "Monaco", coordinates: [7.4246, 43.7384], flagCode: "mc" },
   Montenegro: { atlasName: "Montenegro", flagCode: "me" },
   Netherlands: { atlasName: "Netherlands", flagCode: "nl" },
   Nigeria: { atlasName: "Nigeria", flagCode: "ng" },
@@ -88,11 +93,12 @@ const countryAlias = {
   "Puerto Rico": { atlasName: "Puerto Rico", flagCode: "pr" },
   Romania: { atlasName: "Romania", flagCode: "ro" },
   Serbia: { atlasName: "Serbia", flagCode: "rs" },
-  Singapore: { atlasName: "Singapore", flagCode: "sg" },
+  Singapore: { atlasName: "Singapore", coordinates: [103.8198, 1.3521], flagCode: "sg" },
   Slovakia: { atlasName: "Slovakia", flagCode: "sk" },
   Spain: { atlasName: "Spain", flagCode: "es" },
   Sweden: { atlasName: "Sweden", flagCode: "se" },
   Switzerland: { atlasName: "Switzerland", flagCode: "ch" },
+  Turkey: { atlasName: "Turkey", coordinates: [35.2433, 38.9637], flagCode: "tr" },
   "United Kingdom": { atlasName: "United Kingdom", flagCode: "gb" },
   "United States": { atlasName: "United States of America", flagCode: "us" },
   Uruguay: { atlasName: "Uruguay", flagCode: "uy" },
@@ -331,6 +337,26 @@ const countryMarkerFor = (country, count) => {
   };
 };
 
+const projectedPoint = (projected) => ({
+  x: Number(projected[0].toFixed(2)),
+  y: Number(projected[1].toFixed(2)),
+});
+
+const spreadPoint = (point, index, totalAtPoint, options = {}) => {
+  if (totalAtPoint <= 1 || index === 0) return point;
+
+  const angle = index * 2.399963229728653;
+  const distance = Math.min(
+    options.maxDistance || 11,
+    (options.startDistance || 2.2) + Math.sqrt(index) * (options.stepDistance || 1.75),
+  );
+
+  return {
+    x: Number((point.x + Math.cos(angle) * distance).toFixed(2)),
+    y: Number((point.y + Math.sin(angle) * distance).toFixed(2)),
+  };
+};
+
 const makeFlatMap = (country, events) => {
   const mapFeature = countryFeatureFor(country);
   const coordinateEvents = events.filter((event) => event.coordinates);
@@ -404,13 +430,13 @@ const normalizeEvent = (event, index, locale, today) => {
 };
 
 const markerFromProjected = (projected, index, totalAtPoint) => {
-  const angle = (index / Math.max(totalAtPoint, 1)) * Math.PI * 2;
-  const distance = totalAtPoint > 1 ? 15 + Math.floor(index / 8) * 6 : 0;
+  const point = projectedPoint(projected);
 
-  return {
-    x: Number((projected[0] + Math.cos(angle) * distance).toFixed(2)),
-    y: Number((projected[1] + Math.sin(angle) * distance).toFixed(2)),
-  };
+  return spreadPoint(point, index, totalAtPoint, {
+    maxDistance: 9.5,
+    startDistance: 2,
+    stepDistance: 1.45,
+  });
 };
 
 const typeCounts = (events) =>
@@ -479,7 +505,7 @@ const buildRegions = (events, projection) => {
       ? {
           x: Number((plottedEvents.reduce((sum, event) => sum + event.marker.x, 0) / plottedEvents.length).toFixed(2)),
           y: Number((plottedEvents.reduce((sum, event) => sum + event.marker.y, 0) / plottedEvents.length).toFixed(2)),
-          radius: Number(Math.max(7, Math.min(18, 6 + Math.sqrt(region.count) * 2.4)).toFixed(2)),
+          radius: Number(Math.max(5.5, Math.min(12, 4.6 + Math.sqrt(region.count) * 1.6)).toFixed(2)),
         }
       : null;
 
@@ -494,6 +520,62 @@ const buildRegions = (events, projection) => {
   });
 
   return allRegions.sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+};
+
+const buildWorldEvents = (allCountries) => {
+  const candidates = [];
+  const buckets = new Map();
+
+  for (const country of allCountries) {
+    for (const event of country.events) {
+      const projected = event.coordinates ? worldProjection(event.coordinates) : country.marker ? [country.marker.x, country.marker.y] : null;
+      if (!projected || !Number.isFinite(projected[0]) || !Number.isFinite(projected[1])) continue;
+
+      const point = projectedPoint(projected);
+      const markerSource = event.coordinates ? "city" : "country";
+      const markerKey =
+        markerSource === "city"
+          ? `city|${event.coordinates.map((value) => Number(value).toFixed(3)).join(",")}`
+          : `country|${country.countryKey}`;
+
+      const candidate = {
+        ...event,
+        countryFlagCode: country.flagCode,
+        countryKey: country.countryKey,
+        countryLabel: country.label,
+        markerSource,
+        point,
+      };
+
+      candidates.push(candidate);
+      buckets.set(markerKey, (buckets.get(markerKey) || 0) + 1);
+      candidate.markerKey = markerKey;
+    }
+  }
+
+  const bucketIndexes = new Map();
+
+  return candidates.map((candidate) => {
+    const index = bucketIndexes.get(candidate.markerKey) || 0;
+    const totalAtPoint = buckets.get(candidate.markerKey) || 1;
+    bucketIndexes.set(candidate.markerKey, index + 1);
+
+    const marker = spreadPoint(candidate.point, index, totalAtPoint, {
+      maxDistance: candidate.markerSource === "country" ? 18 : 10,
+      startDistance: candidate.markerSource === "country" ? 2.6 : 1.8,
+      stepDistance: candidate.markerSource === "country" ? 2.15 : 1.45,
+    });
+
+    const { markerKey, point, ...event } = candidate;
+
+    return {
+      ...event,
+      marker: {
+        ...marker,
+        radius: candidate.markerSource === "country" ? 1.55 : 1.85,
+      },
+    };
+  });
 };
 
 export function buildCountryCoverage(events = [], locale = "en") {
@@ -544,6 +626,9 @@ export function buildCountryCoverage(events = [], locale = "en") {
       };
     })
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+  const worldEvents = buildWorldEvents(allCountries).sort(
+    (a, b) => Number(a.markerSource === "country") - Number(b.markerSource === "country") || String(a.startDate).localeCompare(String(b.startDate)),
+  );
 
   return {
     allCountries,
@@ -557,5 +642,6 @@ export function buildCountryCoverage(events = [], locale = "en") {
     totalTournaments: normalizedEvents.length,
     totalUpcoming: allCountries.reduce((sum, country) => sum + country.upcomingCount, 0),
     unmappedCountries: allCountries.filter((country) => !country.marker),
+    worldEvents,
   };
 }

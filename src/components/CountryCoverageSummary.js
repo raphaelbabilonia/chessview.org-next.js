@@ -4,6 +4,7 @@ import Link from "next/link";
 export function CountryCoverageSummary({ copy, coverage, locale }) {
   const coverageCopy = copy.home.coverage;
   const stats = coverage?.topCountries || [];
+  const markers = coverage?.worldEvents || [];
   const totalTournaments = coverage?.totalTournaments ?? 0;
 
   if (!coverage?.mapSize || !coverage?.mapPaths) return null;
@@ -24,27 +25,21 @@ export function CountryCoverageSummary({ copy, coverage, locale }) {
           <path className="country-coverage-graticule" d={coverage.mapPaths.graticule} />
           <path className="country-coverage-land" d={coverage.mapPaths.land} />
           <path className="country-coverage-shimmer" d="M104 410H856" />
-          {stats
-            .filter((stat) => stat.marker)
-            .map((stat, index) => {
-              const markerClassName = `country-coverage-marker${index === 0 ? " is-leading" : ""}`;
-              const pulseRadius = stat.marker.radius + 5;
-              const haloRadius = stat.marker.radius + 9;
+          {markers.map((event, index) => {
+            const radius = Math.max(event.marker.radius, 2.25);
 
-              return (
-                <g
-                  className={markerClassName}
-                  key={stat.country}
-                  style={{ "--marker-order": index }}
-                  transform={`translate(${stat.marker.x} ${stat.marker.y})`}
-                >
-                  <circle className="country-coverage-marker-halo" r={haloRadius} />
-                  <circle className="country-coverage-marker-pulse" r={pulseRadius} />
-                  <circle className="country-coverage-marker-core" r={stat.marker.radius} />
-                  <circle className="country-coverage-marker-dot" r="3" />
-                </g>
-              );
-            })}
+            return (
+              <g
+                className={`country-coverage-event-dot is-${event.tournamentType}${event.markerSource === "country" ? " is-country-level" : ""}`}
+                key={`${event._id}-${index}`}
+                style={{ "--marker-order": index % 48 }}
+                transform={`translate(${event.marker.x} ${event.marker.y})`}
+              >
+                <circle className="country-coverage-event-halo" r={radius + 1.65} />
+                <circle className="country-coverage-event-core" r={radius} />
+              </g>
+            );
+          })}
         </svg>
       </div>
       <div className="country-coverage-data">

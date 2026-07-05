@@ -156,6 +156,16 @@ export function CoverageExplorer({ copy, coverage, locale }) {
     () => new Map((coverage.allCountries || []).map((country) => [country.countryKey, country])),
     [coverage.allCountries],
   );
+  const worldEvents = useMemo(
+    () =>
+      (coverage.worldEvents || [])
+        .map((event) => ({
+          ...event,
+          country: countryByKey.get(event.countryKey),
+        }))
+        .filter((event) => event.country && event.marker),
+    [coverage.worldEvents, countryByKey],
+  );
   const allEvents = useMemo(
     () =>
       (coverage.allCountries || [])
@@ -299,10 +309,47 @@ export function CoverageExplorer({ copy, coverage, locale }) {
     setPinned(null);
   };
 
-  const renderWorldMarkers = () =>
+  const renderWorldEventDots = () =>
+    worldEvents.map((event, index) => {
+      const payload = {
+        country: event.country,
+        event,
+        kind: "event",
+        point: event.marker,
+      };
+
+      return (
+        <g
+          aria-label={`${event.title}: ${[event.city, event.region, event.countryLabel].filter(Boolean).join(", ")}`}
+          className={`coverage-interactive-marker coverage-world-event-dot is-${event.tournamentType}${event.markerSource === "country" ? " is-country-level" : ""}`}
+          key={`${event._id}-${index}`}
+          onBlur={() => setHovered(null)}
+          onClick={(pointerEvent) => {
+            pointerEvent.stopPropagation();
+            setPinned(payload);
+          }}
+          onFocus={() => setHovered(payload)}
+          onKeyDown={(keyEvent) => onMarkerKeyDown(keyEvent, () => setPinned(payload))}
+          onMouseEnter={() => setHovered(payload)}
+          onMouseLeave={() => setHovered(null)}
+          onPointerDown={(pointerEvent) => pointerEvent.stopPropagation()}
+          role="button"
+          tabIndex={0}
+          transform={`translate(${event.marker.x} ${event.marker.y})`}
+        >
+          <title>{event.title}</title>
+          <circle className="coverage-world-dot-target" r="7" />
+          <circle className="coverage-world-dot-ring" r={event.marker.radius + 1.25} />
+          <circle className="coverage-world-dot-core" r={event.marker.radius} />
+        </g>
+      );
+    });
+
+  const renderWorldCountrySelectors = () =>
     coverage.allCountries
       .filter((country) => country.marker)
       .map((country) => {
+        const visualRadius = Number(Math.max(2.4, Math.min(5.2, 2 + Math.sqrt(country.count) * 0.32)).toFixed(2));
         const payload = {
           country,
           kind: "country",
@@ -329,10 +376,10 @@ export function CoverageExplorer({ copy, coverage, locale }) {
             transform={`translate(${country.marker.x} ${country.marker.y})`}
           >
             <title>{`${country.label}: ${country.count} ${copy.coverage.tournaments}`}</title>
-            <circle className="coverage-marker-target" r={Math.max(country.marker.radius + 14, 28)} />
-            <circle className="coverage-marker-halo" r={country.marker.radius + 10} />
-            <circle className="coverage-marker-core" r={country.marker.radius} />
-            <circle className="coverage-marker-dot" r="3.5" />
+            <circle className="coverage-marker-target" r={Math.max(visualRadius + 11, 16)} />
+            <circle className="coverage-marker-halo" r={visualRadius + 2.3} />
+            <circle className="coverage-marker-core" r={visualRadius} />
+            <circle className="coverage-marker-dot" r="1.25" />
           </g>
         );
       });
@@ -368,8 +415,8 @@ export function CoverageExplorer({ copy, coverage, locale }) {
             transform={`translate(${region.marker.x} ${region.marker.y})`}
           >
             <title>{`${region.label}: ${region.count} ${copy.coverage.tournaments}`}</title>
-            <circle className="coverage-marker-target" r={Math.max(region.marker.radius + 13, 24)} />
-            <circle className="coverage-region-halo" r={region.marker.radius + 8} />
+            <circle className="coverage-marker-target" r={Math.max(region.marker.radius + 9, 18)} />
+            <circle className="coverage-region-halo" r={region.marker.radius + 4.5} />
             <circle className="coverage-region-core" r={region.marker.radius} />
             <text className="coverage-region-count" dy="4" textAnchor="middle">
               {region.count}
@@ -410,9 +457,9 @@ export function CoverageExplorer({ copy, coverage, locale }) {
             transform={`translate(${event.marker.x} ${event.marker.y})`}
           >
             <title>{event.title}</title>
-            <circle className="coverage-dot-target" r="12" />
-            <circle className="coverage-dot-core" r="6.4" />
-            <circle className="coverage-dot-ring" r="9.4" />
+            <circle className="coverage-dot-target" r="9" />
+            <circle className="coverage-dot-ring" r="5.4" />
+            <circle className="coverage-dot-core" r="3.2" />
           </g>
         );
       });
@@ -488,7 +535,8 @@ export function CoverageExplorer({ copy, coverage, locale }) {
               <path className={isCountryMode ? "coverage-map-country-land" : "coverage-map-land"} d={mapPaths.land} />
               {!isCountryMode ? <path className="coverage-map-scan" d="M104 410H856" /> : null}
               {selectedCountry?.flatMapPaths?.boundary ? <path className="coverage-country-flat-boundary" d={selectedCountry.flatMapPaths.boundary} /> : null}
-              {!selectedCountry ? renderWorldMarkers() : null}
+              {!selectedCountry ? renderWorldEventDots() : null}
+              {!selectedCountry ? renderWorldCountrySelectors() : null}
               {selectedCountry && !selectedRegion ? renderRegionMarkers() : null}
               {selectedCountry && selectedRegion ? renderTournamentDots() : null}
             </g>
