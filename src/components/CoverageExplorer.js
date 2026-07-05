@@ -8,6 +8,15 @@ import { formatDateRange } from "@/lib/format";
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
+const mapZoom = {
+  doubleStep: 0.7,
+  max: 7.25,
+  min: 1,
+  step: 0.45,
+};
+
+const countryMarkerAutoZoom = mapZoom.max - 0.05;
+
 const clampOffset = (offset, zoom, mapSize) => {
   const xLimit = mapSize.width * Math.max(zoom - 1, 0) + 120;
   const yLimit = mapSize.height * Math.max(zoom - 1, 0) + 100;
@@ -353,7 +362,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   const selectedRegion = selectedCountry?.regions?.find((region) => region.key === selectedRegionKey) || null;
   const isCountryMode = Boolean(selectedCountry);
   const isRegionMode = Boolean(selectedCountry && selectedRegion);
-  const showWorldCountrySelectors = !selectedCountry && (showCountryMarkers || zoom >= 4.95);
+  const showWorldCountrySelectors = !selectedCountry && (showCountryMarkers || zoom >= countryMarkerAutoZoom);
   const mapPaths = selectedCountry?.flatMapPaths || coverage.mapPaths;
   const activePayload = hovered || pinned;
   const activePoint = activePayload?.point;
@@ -415,7 +424,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   };
 
   const applyZoomAtSvgPoint = (point, nextZoom, baseZoom = zoom, baseOffset = offset, panDelta = { x: 0, y: 0 }) => {
-    const cleanZoom = clamp(nextZoom, 1, 5);
+    const cleanZoom = clamp(nextZoom, mapZoom.min, mapZoom.max);
     const ratio = cleanZoom / baseZoom;
     const nextOffset = {
       x: point.x - (point.x - baseOffset.x) * ratio + panDelta.x,
@@ -452,7 +461,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   };
 
   const focusPoint = (point, targetZoom = 2.65) => {
-    const cleanZoom = clamp(targetZoom, 1, 5);
+    const cleanZoom = clamp(targetZoom, mapZoom.min, mapZoom.max);
     const nextOffset = {
       x: coverage.mapSize.width / 2 - point.x * cleanZoom,
       y: coverage.mapSize.height / 2 - point.y * cleanZoom,
@@ -626,7 +635,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
 
   const zoomFromPointer = (event) => {
     event.preventDefault();
-    applyZoomAtClientPoint(pointerPosition(event), zoom + (event.shiftKey ? -0.7 : 0.7));
+    applyZoomAtClientPoint(pointerPosition(event), zoom + (event.shiftKey ? -mapZoom.doubleStep : mapZoom.doubleStep));
   };
 
   const handleMapKeyDown = (event) => {
@@ -658,13 +667,13 @@ export function CoverageExplorer({ copy, coverage, locale }) {
 
     if (event.key === "+" || event.key === "=") {
       event.preventDefault();
-      applyZoom(zoom + 0.45);
+      applyZoom(zoom + mapZoom.step);
       return;
     }
 
     if (event.key === "-" || event.key === "_") {
       event.preventDefault();
-      applyZoom(zoom - 0.45);
+      applyZoom(zoom - mapZoom.step);
       return;
     }
 
@@ -949,10 +958,10 @@ export function CoverageExplorer({ copy, coverage, locale }) {
               <ArrowLeft size={18} aria-hidden="true" />
             </button>
           ) : null}
-          <button className="icon-button" type="button" onClick={() => applyZoom(zoom + 0.45)} aria-label={copy.coverage.zoomIn} title={copy.coverage.zoomIn}>
+          <button className="icon-button" type="button" onClick={() => applyZoom(zoom + mapZoom.step)} aria-label={copy.coverage.zoomIn} title={copy.coverage.zoomIn}>
             <Plus size={18} aria-hidden="true" />
           </button>
-          <button className="icon-button" type="button" onClick={() => applyZoom(zoom - 0.45)} aria-label={copy.coverage.zoomOut} title={copy.coverage.zoomOut}>
+          <button className="icon-button" type="button" onClick={() => applyZoom(zoom - mapZoom.step)} aria-label={copy.coverage.zoomOut} title={copy.coverage.zoomOut}>
             <Minus size={18} aria-hidden="true" />
           </button>
           <button className="icon-button" type="button" onClick={resetViewport} aria-label={copy.coverage.resetMap} title={copy.coverage.resetMap}>
