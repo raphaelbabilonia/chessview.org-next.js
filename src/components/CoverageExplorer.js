@@ -10,7 +10,7 @@ const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
 const mapZoom = {
   doubleStep: 0.7,
-  max: 7.25,
+  max: 12,
   min: 1,
   step: 0.45,
 };
