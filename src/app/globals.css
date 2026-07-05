@@ -1051,7 +1051,7 @@ img {
 
 .coverage-tooltip {
   position: absolute;
-  z-index: 2;
+  z-index: 4;
   width: min(310px, calc(100% - 1.5rem));
   padding: 0.75rem;
   border: 1px solid rgba(253, 252, 253, 0.18);
@@ -3783,6 +3783,8 @@ textarea:focus {
   overflow-y: auto;
   overscroll-behavior: contain;
   pointer-events: auto;
+  scrollbar-color: rgba(253, 252, 253, 0.42) rgba(253, 252, 253, 0.08);
+  scrollbar-width: thin;
   touch-action: pan-y;
   user-select: text;
   -webkit-overflow-scrolling: touch;
@@ -3972,7 +3974,7 @@ textarea:focus {
 
 @media (min-width: 761px) and (max-width: 1079px) {
   .coverage-map-stage {
-    min-height: clamp(500px, 72vw, 700px);
+    min-height: clamp(560px, 78vw, 760px);
     aspect-ratio: auto;
   }
 }
@@ -4074,8 +4076,8 @@ textarea:focus {
 
   .coverage-map-stage {
     width: 100%;
-    height: clamp(420px, 118vw, 620px);
-    min-height: 420px;
+    height: clamp(500px, 130vw, 700px);
+    min-height: 500px;
     aspect-ratio: auto;
   }
 
@@ -4087,8 +4089,14 @@ textarea:focus {
     top: auto !important;
     display: block;
     width: auto;
-    max-height: min(62%, calc(100% - 5.25rem));
+    max-height: min(74%, calc(100% - 5.5rem));
     transform: none;
+  }
+
+  .coverage-map-stage.has-tooltip .coverage-zoom-badge {
+    top: 3.65rem;
+    right: 0.75rem;
+    bottom: auto;
   }
 
   .coverage-country-buttons,

@@ -1193,7 +1193,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
         <div
           aria-describedby="coverage-map-keyboard-help"
           aria-label={copy.coverage.mapLabel}
-          className={`coverage-map-stage${isDragging ? " is-dragging" : ""}${isCountryMode ? " is-country-mode" : ""}`}
+          className={`coverage-map-stage${isDragging ? " is-dragging" : ""}${isCountryMode ? " is-country-mode" : ""}${activePayload ? " has-tooltip" : ""}`}
           onKeyDown={handleMapKeyDown}
           role="region"
           tabIndex={0}
