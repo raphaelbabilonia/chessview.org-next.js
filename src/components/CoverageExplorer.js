@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ExternalLink, MapPinned, Maximize2, Minimize2, Minus, Plus, RotateCcw, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, ExternalLink, MapPinned, Maximize2, Minimize2, Minus, Plus, RotateCcw, SlidersHorizontal, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CountryFlag } from "@/components/CountryFlag";
@@ -445,6 +445,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   const [customStart, setCustomStart] = useState(today);
   const [customEnd, setCustomEnd] = useState(addMonths(today, 1));
   const [showCountryMarkers, setShowCountryMarkers] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -1200,30 +1201,44 @@ export function CoverageExplorer({ copy, coverage, locale }) {
             </button>
           ) : null}
         </div>
-        <div className="coverage-visible-summary" aria-label={copy.coverage.visibleResults}>
-          <span className="coverage-filter-label">{copy.coverage.visibleResults}</span>
-          <div className="coverage-filter-stats">
-            <span>
-              <strong>{filteredTotals.totalCountries}</strong>
-              {copy.coverage.activeCountries}
-            </span>
-            <span>
-              <strong>{filteredTotals.totalTournaments}</strong>
-              {copy.coverage.tournaments}
-            </span>
-            <span>
-              <strong>{filteredTotals.totalLive}</strong>
-              {copy.coverage.liveNow}
-            </span>
-            <span>
-              <strong>{filteredTotals.totalUpcoming}</strong>
-              {copy.coverage.upcoming}
-            </span>
+        <div className="coverage-map-actions">
+          <div className="coverage-visible-summary" aria-label={copy.coverage.visibleResults}>
+            <span className="sr-only">{copy.coverage.visibleResults}</span>
+            <div className="coverage-filter-stats">
+              <span>
+                <strong>{filteredTotals.totalCountries}</strong>
+                {copy.coverage.activeCountries}
+              </span>
+              <span>
+                <strong>{filteredTotals.totalTournaments}</strong>
+                {copy.coverage.tournaments}
+              </span>
+              <span>
+                <strong>{filteredTotals.totalLive}</strong>
+                {copy.coverage.liveNow}
+              </span>
+              <span>
+                <strong>{filteredTotals.totalUpcoming}</strong>
+                {copy.coverage.upcoming}
+              </span>
+            </div>
           </div>
+          <button
+            aria-controls="coverage-filter-panel"
+            aria-expanded={filtersOpen}
+            className={`coverage-filter-toggle${filtersOpen ? " is-open" : ""}`}
+            type="button"
+            onClick={() => setFiltersOpen((open) => !open)}
+          >
+            <SlidersHorizontal size={16} aria-hidden="true" />
+            <span>{filtersOpen ? copy.coverage.hideFilters : copy.coverage.showFilters}</span>
+            {filtersOpen ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
+          </button>
         </div>
       </div>
 
-      <section className="coverage-filter-bar" aria-label={copy.coverage.filters}>
+      {filtersOpen ? (
+        <section className="coverage-filter-bar" id="coverage-filter-panel" aria-label={copy.coverage.filters}>
         <div className="coverage-filter-group">
           <span className="coverage-filter-label">{copy.coverage.dateRange}</span>
           <div className="coverage-date-presets">
@@ -1281,7 +1296,8 @@ export function CoverageExplorer({ copy, coverage, locale }) {
           <input type="checkbox" checked={showCountryMarkers} onChange={(event) => setShowCountryMarkers(event.target.checked)} />
           <span>{copy.coverage.showCountryMarkers}</span>
         </label>
-      </section>
+        </section>
+      ) : null}
 
       <div className={`coverage-map-shell${isFullscreenView ? " is-fullscreen" : ""}`} ref={shellRef}>
         <div className="coverage-map-toolbar" aria-label={copy.coverage.mapLabel}>

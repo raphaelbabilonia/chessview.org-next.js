@@ -32,29 +32,7 @@ export default async function CoveragePage({ params }) {
   return (
     <main className="page coverage-page">
       <section className="coverage-hero">
-        <div className="coverage-hero-copy">
-          <p className="eyebrow">{copy.coverage.eyebrow}</p>
-          <h1>{copy.coverage.title}</h1>
-          <p>{copy.coverage.description}</p>
-        </div>
-        <div className="coverage-stat-strip" aria-label={copy.coverage.activeCountries}>
-          <span>
-            <strong>{coverage.totalCountries}</strong>
-            {copy.coverage.activeCountries}
-          </span>
-          <span>
-            <strong>{coverage.totalTournaments}</strong>
-            {copy.coverage.tournaments}
-          </span>
-          <span>
-            <strong>{coverage.totalLive}</strong>
-            {copy.coverage.liveNow}
-          </span>
-          <span>
-            <strong>{coverage.totalUpcoming}</strong>
-            {copy.coverage.upcoming}
-          </span>
-        </div>
+        <h1>{copy.coverage.title}</h1>
       </section>
 
       {error ? <div className="state state-warning">{copy.coverage.apiError}</div> : null}
