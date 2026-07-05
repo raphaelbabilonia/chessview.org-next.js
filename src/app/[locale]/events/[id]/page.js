@@ -3,9 +3,10 @@ import { notFound, redirect } from "next/navigation";
 import { JsonLd } from "@/components/JsonLd";
 import { backendAssetUrl, getEvent } from "@/lib/api";
 import { compactDescription, formatCardDateRange, formatCountryName, formatDateRange, formatTimeControl } from "@/lib/format";
+import { pageSeoMetadata } from "@/lib/seo";
 import { absoluteUrl } from "@/lib/site";
 import { localizedEventHref } from "@/lib/tournament";
-import { isLocale, languageAlternates, localePath } from "@/i18n/config";
+import { isLocale, localePath } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
 
 const eventStatusUrl = (status) =>
@@ -200,25 +201,13 @@ export async function generateMetadata({ params }) {
   const path = eventPath(event);
   const description = compactDescription(event.description, `${event.title} in ${event.city}`, { title: event.title });
 
-  return {
+  return pageSeoMetadata({
+    locale,
+    path,
     title: event.title,
     description,
-    alternates: {
-      canonical: localePath(locale, path),
-      languages: languageAlternates(path),
-    },
-    openGraph: {
-      type: "article",
-      title: event.title,
-      description,
-      url: localePath(locale, path),
-    },
-    twitter: {
-      card: "summary",
-      title: event.title,
-      description,
-    },
-  };
+    type: "article",
+  });
 }
 
 export default async function EventDetailPage({ params }) {

@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import { CoverageExplorer } from "@/components/CoverageExplorer";
 import { getUpcomingEvents } from "@/lib/api";
 import { buildCountryCoverage } from "@/lib/coverage";
-import { isLocale, languageAlternates, localePath } from "@/i18n/config";
+import { pageSeoMetadata } from "@/lib/seo";
+import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
 
 export const revalidate = 120;
@@ -12,19 +13,12 @@ export async function generateMetadata({ params }) {
   if (!isLocale(locale)) notFound();
   const copy = getDictionary(locale);
 
-  return {
+  return pageSeoMetadata({
+    locale,
+    path: "/coverage",
     title: copy.coverage.title,
     description: copy.coverage.description,
-    alternates: {
-      canonical: localePath(locale, "/coverage"),
-      languages: languageAlternates("/coverage"),
-    },
-    openGraph: {
-      title: copy.coverage.title,
-      description: copy.coverage.description,
-      url: localePath(locale, "/coverage"),
-    },
-  };
+  });
 }
 
 export default async function CoveragePage({ params }) {

@@ -3,9 +3,10 @@ import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/JsonLd";
 import { NewsCard } from "@/components/NewsCard";
 import { TrackableForm } from "@/components/TrackableForm";
-import { isLocale, languageAlternates, localePath } from "@/i18n/config";
+import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
 import { getNewsItems, hasRequiredNewsImage } from "@/lib/news";
+import { pageSeoMetadata } from "@/lib/seo";
 import { siteConfig } from "@/lib/site";
 
 export const revalidate = 60;
@@ -168,19 +169,12 @@ export async function generateMetadata({ params }) {
   if (!isLocale(locale)) notFound();
   const copy = getDictionary(locale);
 
-  return {
+  return pageSeoMetadata({
+    locale,
+    path: "/news",
     title: copy.news.title,
     description: copy.news.description,
-    alternates: {
-      canonical: localePath(locale, "/news"),
-      languages: languageAlternates("/news"),
-    },
-    openGraph: {
-      title: copy.news.title,
-      description: copy.news.description,
-      url: localePath(locale, "/news"),
-    },
-  };
+  });
 }
 
 export default async function NewsPage({ params, searchParams }) {

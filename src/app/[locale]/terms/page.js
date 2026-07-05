@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
-import { isLocale, languageAlternates, localePath } from "@/i18n/config";
+import { isLocale } from "@/i18n/config";
+import { pageSeoMetadata } from "@/lib/seo";
 
 const updatedAt = "2026-07-03";
 
@@ -45,19 +46,12 @@ export async function generateMetadata({ params }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
 
-  return {
+  return pageSeoMetadata({
+    locale,
+    path: "/terms",
     title: "Terms of Service",
     description: "Terms for the official ChessView hosted service.",
-    alternates: {
-      canonical: localePath(locale, "/terms"),
-      languages: languageAlternates("/terms"),
-    },
-    openGraph: {
-      title: "Terms of Service",
-      description: "Terms for the official ChessView hosted service.",
-      url: localePath(locale, "/terms"),
-    },
-  };
+  });
 }
 
 export default async function TermsPage({ params }) {

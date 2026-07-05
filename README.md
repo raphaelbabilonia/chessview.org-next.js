@@ -85,11 +85,38 @@ API_BASE_URL=http://127.0.0.1:5000/api
 NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3001
 NEXT_PUBLIC_TRACKING_ENABLED=false
 NEXT_PUBLIC_TRACKING_API_URL=http://127.0.0.1:5000/api/tracking/events
+GOOGLE_SITE_VERIFICATION=
+BING_SITE_VERIFICATION=
+YANDEX_SITE_VERIFICATION=
+YAHOO_SITE_VERIFICATION=
+PINTEREST_SITE_VERIFICATION=
+INDEXNOW_KEY=6f4e66a3c77b46a1aa2f508ef4bb191f
 ```
 
 `API_BASE_URL` is server-only. Do not put secrets in variables prefixed with `NEXT_PUBLIC_`; those are exposed to browsers.
 
 `NEXT_PUBLIC_TRACKING_ENABLED` and `NEXT_PUBLIC_TRACKING_API_URL` are public browser settings. Keep tracking disabled locally unless you intentionally want to send development events to your local API.
+
+`GOOGLE_SITE_VERIFICATION`, `BING_SITE_VERIFICATION`, `YANDEX_SITE_VERIFICATION`, `YAHOO_SITE_VERIFICATION`, and `PINTEREST_SITE_VERIFICATION` are optional public verification tokens rendered as metadata for webmaster/search tools. `INDEXNOW_KEY` is a public IndexNow ownership key and is served at `/indexnow-key.txt`.
+
+## Search Discovery
+
+The public app exposes:
+
+- `/robots.txt`
+- `/sitemap.xml`
+- `/manifest.webmanifest`
+- `/llms.txt`
+- `/opengraph-image`
+- `/indexnow-key.txt`
+
+After deploying SEO changes, submit `https://chessview.org/sitemap.xml` in Google Search Console and request indexing for `https://chessview.org/en`, `https://chessview.org/en/events`, `https://chessview.org/en/coverage`, and `https://chessview.org/en/news`.
+
+To notify IndexNow-compatible search engines after the key file is live:
+
+```bash
+npm run seo:submit-indexnow
+```
 
 ## First-Party Tracking
 

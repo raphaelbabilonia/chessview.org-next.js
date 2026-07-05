@@ -2,8 +2,9 @@ import { notFound } from "next/navigation";
 import { EventCard } from "@/components/EventCard";
 import { getUpcomingEvents } from "@/lib/api";
 import { formatCountryName } from "@/lib/format";
+import { pageSeoMetadata } from "@/lib/seo";
 import { countryHref, slugifySegment } from "@/lib/tournament";
-import { isLocale, languageAlternates, localePath } from "@/i18n/config";
+import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
 
 const titleCase = (value) =>
@@ -34,14 +35,12 @@ export async function generateMetadata({ params }) {
   const displayLabel = formatCountryName(label, locale);
   const path = countryHref(label);
 
-  return {
+  return pageSeoMetadata({
+    locale,
+    path,
     title: `${copy.events.countryTitle} ${displayLabel}`,
     description: `${copy.events.description} ${displayLabel}.`,
-    alternates: {
-      canonical: localePath(locale, path),
-      languages: languageAlternates(path),
-    },
-  };
+  });
 }
 
 export default async function CountryEventsPage({ params }) {

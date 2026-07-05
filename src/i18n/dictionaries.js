@@ -2,8 +2,9 @@ const dictionaries = {
   en: {
     site: {
       name: "ChessView",
+      seoTitle: "ChessView - Global Chess Tournament Search and News",
       description:
-        "Open source chess discovery for future tournaments, chess news, and source-first links back to organizers and publishers.",
+        "ChessView is a global chess tournament calendar and news index for upcoming events, country coverage, source-attributed listings, and organizer links.",
     },
     nav: {
       events: "Events",
@@ -319,8 +320,9 @@ const dictionaries = {
   es: {
     site: {
       name: "ChessView",
+      seoTitle: "ChessView - Buscador global de torneos y noticias de ajedrez",
       description:
-        "Descubrimiento open source de torneos futuros, noticias de ajedrez y enlaces con prioridad a organizadores y medios originales.",
+        "ChessView es un calendario global de torneos y noticias de ajedrez con eventos próximos, cobertura por país, fuentes atribuidas y enlaces a organizadores.",
     },
     nav: {
       events: "Eventos",
@@ -636,8 +638,9 @@ const dictionaries = {
   it: {
     site: {
       name: "ChessView",
+      seoTitle: "ChessView - Ricerca globale di tornei e notizie di scacchi",
       description:
-        "Scoperta open source di tornei futuri, notizie di scacchi e link source-first verso organizzatori ed editori originali.",
+        "ChessView è un calendario globale di tornei e notizie di scacchi con eventi futuri, copertura per paese, fonti attribuite e link agli organizzatori.",
     },
     nav: {
       events: "Eventi",

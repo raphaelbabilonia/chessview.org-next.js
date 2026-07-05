@@ -23,4 +23,7 @@ export const pathWithoutLocale = (pathname = "/") => {
 };
 
 export const languageAlternates = (path = "/") =>
-  Object.fromEntries(locales.map((locale) => [locale, localePath(locale, path)]));
+  Object.fromEntries([
+    ...locales.map((locale) => [locale, localePath(locale, path)]),
+    ["x-default", path.startsWith("/") ? path : `/${path}`],
+  ]);

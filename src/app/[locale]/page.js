@@ -9,8 +9,8 @@ import { getUpcomingEvents } from "@/lib/api";
 import { buildCountryCoverage } from "@/lib/coverage";
 import { getFeaturedNews, hasRequiredNewsImage } from "@/lib/news";
 import { formatDate } from "@/lib/format";
-import { siteConfig } from "@/lib/site";
-import { isLocale, languageAlternates, localePath } from "@/i18n/config";
+import { pageSeoMetadata, siteJsonLd } from "@/lib/seo";
+import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
 
 export const revalidate = 120;
@@ -79,21 +79,13 @@ export async function generateMetadata({ params }) {
   if (!isLocale(locale)) notFound();
   const copy = getDictionary(locale);
 
-  return {
-    title: {
-      absolute: copy.site.name,
-    },
+  return pageSeoMetadata({
+    locale,
+    path: "/",
+    title: copy.site.seoTitle || copy.site.name,
     description: copy.site.description,
-    alternates: {
-      canonical: localePath(locale),
-      languages: languageAlternates("/"),
-    },
-    openGraph: {
-      title: copy.site.name,
-      description: copy.site.description,
-      url: localePath(locale),
-    },
-  };
+    absoluteTitle: true,
+  });
 }
 
 export default async function HomePage({ params }) {
@@ -108,19 +100,7 @@ export default async function HomePage({ params }) {
   const countryCoverage = buildCountryCoverage(publicEvents, locale);
   const featuredEvents = publicEvents.slice(0, 3);
   const featuredNews = Array.isArray(news) ? news.filter(hasRequiredNewsImage) : [];
-  const websiteJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: copy.site.name,
-    url: `${siteConfig.url}/${locale}`,
-    description: copy.site.description,
-    inLanguage: locale,
-    potentialAction: {
-      "@type": "SearchAction",
-      target: `${siteConfig.url}/${locale}/events?search={search_term_string}`,
-      "query-input": "required name=search_term_string",
-    },
-  };
+  const websiteJsonLd = siteJsonLd(locale, copy.site.description);
 
   return (
     <main>

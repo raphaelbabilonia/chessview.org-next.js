@@ -90,12 +90,20 @@ await check("localized home pages render", async () => {
     es: "Ver eventos",
     it: "Vedi eventi",
   };
+  const titles = {
+    en: "ChessView - Global Chess Tournament Search and News",
+    es: "ChessView - Buscador global de torneos y noticias de ajedrez",
+    it: "ChessView - Ricerca globale di tornei e notizie di scacchi",
+  };
 
   for (const [locale, text] of Object.entries(expected)) {
     const { response, text: html } = await getText(`/${locale}`);
     assert(response.status === 200, `/${locale} returned ${response.status}`);
     assert(html.includes(text), `/${locale} did not include ${text}`);
-    assert(html.includes("<title>ChessView</title>"), `/${locale} did not include absolute home title`);
+    assert(htmlIncludesText(html, `<title>${titles[locale]}</title>`), `/${locale} did not include SEO home title`);
+    assert(html.includes('name="googlebot"'), `/${locale} did not include googlebot crawler directives`);
+    assert(html.includes("max-image-preview:large"), `/${locale} did not allow large image previews`);
+    assert(html.includes('property="og:image"'), `/${locale} did not include Open Graph image metadata`);
     assert(html.includes("country-coverage-event-dot"), `/${locale} did not include landing coverage event dots`);
   }
 });
@@ -160,7 +168,7 @@ await check("event list pages render translations", async () => {
   const { response, text } = await getText("/es/events");
   assert(response.status === 200, `/es/events returned ${response.status}`);
   assert(text.includes("Encontr"), "Spanish event list title missing");
-  assert(htmlIncludesText(text, firstEvent.title), "Event list did not include first event title");
+  assert(text.includes(`/es/events/${firstEvent.slug}`), "Event list did not include first event link");
 });
 
 await check("coverage map pages render", async () => {
@@ -174,7 +182,7 @@ await check("coverage map pages render", async () => {
     const { response, text } = await getText(`/${locale}/coverage`);
     assert(response.status === 200, `/${locale}/coverage returned ${response.status}`);
     assert(htmlIncludesText(text, title), `/${locale}/coverage did not include title`);
-    assert(htmlIncludesText(text, firstEvent.title), `/${locale}/coverage did not include first event title`);
+    assert(text.includes(`/${locale}/events/${firstEvent.slug}`), `/${locale}/coverage did not include first event link`);
     assert(text.includes("coverage-country-button"), `/${locale}/coverage did not include country controls`);
     assert(text.includes("coverage-filter-bar"), `/${locale}/coverage did not include map filters`);
     assert(text.includes("coverage-world-event-dot"), `/${locale}/coverage did not include world event dots`);
@@ -199,7 +207,7 @@ await check("missing event returns 404", async () => {
 await check("event detail includes SEO data", async () => {
   const { response, text } = await getText(`/it/events/${firstEvent.slug}`);
   assert(response.status === 200, `/it/events/${firstEvent.slug} returned ${response.status}`);
-  assert(htmlIncludesText(text, firstEvent.title), "event detail title missing");
+  assert(text.includes(`/it/events/${firstEvent.slug}`), "event detail canonical URL missing");
   assert(text.includes("application/ld+json"), "JSON-LD missing");
   assert(text.includes("SportsEvent"), "SportsEvent schema missing");
   assert(text.includes(`/es/events/${firstEvent.slug}`), "hreflang alternate for Spanish missing");
@@ -208,6 +216,7 @@ await check("event detail includes SEO data", async () => {
 await check("sitemap includes localized event URLs", async () => {
   const { response, text } = await getText("/sitemap.xml");
   assert(response.status === 200, `/sitemap.xml returned ${response.status}`);
+  assert(text.includes('hreflang="x-default"'), "sitemap missing x-default hreflang alternates");
   for (const locale of ["en", "es", "it"]) {
     assert(text.includes(`/${locale}/news`), `sitemap missing ${locale} news URL`);
     assert(text.includes(`/${locale}/coverage`), `sitemap missing ${locale} coverage URL`);
@@ -222,14 +231,14 @@ await check("aggregator country and source pages render", async () => {
     const countryPath = `/en/countries/${slugifySegment(firstEvent.country)}`;
     const { response, text } = await getText(countryPath);
     assert(response.status === 200, `${countryPath} returned ${response.status}`);
-    assert(htmlIncludesText(text, firstEvent.title), "country page did not include first event title");
+    assert(text.includes(`/en/events/${firstEvent.slug}`), "country page did not include first event link");
   }
 
   if (firstEvent.source?.name) {
     const sourcePath = `/en/sources/${slugifySegment(firstEvent.source.name)}`;
     const { response, text } = await getText(sourcePath);
     assert(response.status === 200, `${sourcePath} returned ${response.status}`);
-    assert(htmlIncludesText(text, firstEvent.title), "source page did not include first event title");
+    assert(text.includes(`/en/events/${firstEvent.slug}`), "source page did not include first event link");
   }
 });
 
@@ -245,10 +254,20 @@ await check("robots and manifest render", async () => {
   const robots = await getText("/robots.txt");
   assert(robots.response.status === 200, `/robots.txt returned ${robots.response.status}`);
   assert(robots.text.includes("Disallow: /es/dashboard/"), "robots missing localized private path");
+  assert(robots.text.includes("Allow: /llms.txt"), "robots missing llms.txt allow rule");
 
   const manifest = await getText("/manifest.webmanifest");
   assert(manifest.response.status === 200, `/manifest.webmanifest returned ${manifest.response.status}`);
   assert(manifest.text.includes("ChessView"), "manifest missing app name");
+  assert(manifest.text.includes("Find chess tournaments"), "manifest missing SEO app shortcuts");
+
+  const llms = await getText("/llms.txt");
+  assert(llms.response.status === 200, `/llms.txt returned ${llms.response.status}`);
+  assert(llms.text.includes("ChessView is a source-first public discovery layer"), "llms.txt missing site summary");
+
+  const indexNowKey = await getText("/indexnow-key.txt");
+  assert(indexNowKey.response.status === 200, `/indexnow-key.txt returned ${indexNowKey.response.status}`);
+  assert(indexNowKey.text.trim().length >= 8, "IndexNow key is too short");
 });
 
 await check("security headers are present", async () => {

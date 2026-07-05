@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { EventCard } from "@/components/EventCard";
 import { TrackableForm } from "@/components/TrackableForm";
 import { getEvents, todayIsoDate } from "@/lib/api";
-import { isLocale, languageAlternates, localePath } from "@/i18n/config";
+import { pageSeoMetadata } from "@/lib/seo";
+import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
 
 const EVENTS_PAGE_SIZE = 30;
@@ -130,19 +131,12 @@ export async function generateMetadata({ params }) {
   if (!isLocale(locale)) notFound();
   const copy = getDictionary(locale);
 
-  return {
+  return pageSeoMetadata({
+    locale,
+    path: "/events",
     title: copy.events.title,
     description: copy.events.description,
-    alternates: {
-      canonical: localePath(locale, "/events"),
-      languages: languageAlternates("/events"),
-    },
-    openGraph: {
-      title: copy.events.title,
-      description: copy.events.description,
-      url: localePath(locale, "/events"),
-    },
-  };
+  });
 }
 
 export default async function EventsPage({ params, searchParams }) {

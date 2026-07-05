@@ -1,4 +1,4 @@
-import { absoluteUrl } from "@/lib/site";
+import { absoluteUrl, siteConfig } from "@/lib/site";
 
 export default function robots() {
   const privatePaths = [
@@ -19,9 +19,10 @@ export default function robots() {
   return {
     rules: {
       userAgent: "*",
-      allow: "/",
+      allow: ["/", "/llms.txt", "/manifest.webmanifest"],
       disallow: privatePaths,
     },
     sitemap: absoluteUrl("/sitemap.xml"),
+    host: new URL(siteConfig.url).host,
   };
 }

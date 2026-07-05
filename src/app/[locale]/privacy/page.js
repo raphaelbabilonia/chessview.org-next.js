@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
-import { isLocale, languageAlternates, localePath } from "@/i18n/config";
+import { isLocale } from "@/i18n/config";
+import { pageSeoMetadata } from "@/lib/seo";
 
 const updatedAt = "2026-07-04";
 
@@ -50,19 +51,12 @@ export async function generateMetadata({ params }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
 
-  return {
+  return pageSeoMetadata({
+    locale,
+    path: "/privacy",
     title: "Privacy Policy",
     description: "Privacy baseline for the official ChessView hosted service.",
-    alternates: {
-      canonical: localePath(locale, "/privacy"),
-      languages: languageAlternates("/privacy"),
-    },
-    openGraph: {
-      title: "Privacy Policy",
-      description: "Privacy baseline for the official ChessView hosted service.",
-      url: localePath(locale, "/privacy"),
-    },
-  };
+  });
 }
 
 export default async function PrivacyPage({ params }) {
