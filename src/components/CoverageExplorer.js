@@ -230,6 +230,14 @@ const midpointBetween = (first, second) => ({
   y: (first.y + second.y) / 2,
 });
 
+const releasePointerCapture = (target, pointerId) => {
+  try {
+    if (target?.hasPointerCapture?.(pointerId)) target.releasePointerCapture(pointerId);
+  } catch {
+    // Browser pointer-capture state can change during multi-touch gestures.
+  }
+};
+
 const isFormControlTarget = (target) => {
   if (!target?.tagName) return false;
   return ["A", "BUTTON", "INPUT", "SELECT", "TEXTAREA"].includes(target.tagName);
@@ -547,6 +555,11 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   const mapPaths = selectedCountry?.flatMapPaths || coverage.mapPaths;
   const activePayload = hovered || pinned;
   const activePoint = activePayload?.point;
+  const mapViewLabel = selectedRegion
+    ? `${copy.coverage.regionView}: ${selectedRegion.label}`
+    : selectedCountry
+      ? `${copy.coverage.countryView}: ${selectedCountry.label}`
+      : copy.coverage.worldView;
   const tooltipStyle = activePoint
     ? {
         left: `${clamp(((activePoint.x * zoom + offset.x) / coverage.mapSize.width) * 100, 3, 88)}%`,
@@ -776,6 +789,15 @@ export function CoverageExplorer({ copy, coverage, locale }) {
     setRevealMapRequest((request) => request + 1);
   };
 
+  const focusCurrentView = () => {
+    if (selectedRegion?.marker) {
+      focusPoint(selectedRegion.marker, 2.85);
+      return;
+    }
+
+    resetViewport();
+  };
+
   const onMarkerKeyDown = (event, callback) => {
     if (!activationKeys.has(event.key)) return;
     event.preventDefault();
@@ -810,7 +832,17 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   const startDrag = (event) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
 
-    event.preventDefault();
+    if (event.pointerType !== "mouse" && pointersRef.current.size >= 2) {
+      pointersRef.current.set(event.pointerId, pointerPosition(event));
+      blockMarkerActivation(event.timeStamp, 900);
+      setDidDrag(true);
+      setIsDragging(false);
+      dragRef.current = null;
+      for (const pointerId of pointersRef.current.keys()) releasePointerCapture(event.currentTarget, pointerId);
+      return;
+    }
+
+    if (event.pointerType === "mouse") event.preventDefault();
     try {
       event.currentTarget.setPointerCapture(event.pointerId);
     } catch {
@@ -836,9 +868,18 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   const moveDrag = (event) => {
     if (!dragRef.current || !mapRef.current || !pointersRef.current.has(event.pointerId)) return;
 
-    event.preventDefault();
     pointersRef.current.set(event.pointerId, pointerPosition(event));
     const points = Array.from(pointersRef.current.values());
+    if (event.pointerType !== "mouse" && points.length > 2) {
+      blockMarkerActivation(event.timeStamp, 900);
+      setDidDrag(true);
+      setIsDragging(false);
+      dragRef.current = null;
+      for (const pointerId of pointersRef.current.keys()) releasePointerCapture(event.currentTarget, pointerId);
+      return;
+    }
+
+    event.preventDefault();
 
     if (points.length >= 2) {
       if (dragRef.current.mode !== "pinch") {
@@ -901,6 +942,14 @@ export function CoverageExplorer({ copy, coverage, locale }) {
     }
 
     const remainingPoints = Array.from(pointersRef.current.values());
+    if (event?.pointerType !== "mouse" && remainingPoints.length > 2) {
+      blockMarkerActivation(event.timeStamp, 900);
+      dragRef.current = null;
+      setDidDrag(true);
+      setIsDragging(false);
+      return;
+    }
+
     if (remainingPoints.length >= 2) {
       blockMarkerActivation(event.timeStamp);
       setDidDrag(true);
@@ -1186,21 +1235,6 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   return (
     <section className="coverage-explorer" aria-label={copy.coverage.mapLabel}>
       <div className="coverage-mode-bar">
-        <div className="coverage-breadcrumbs" aria-label={copy.coverage.currentView}>
-          <button className={!selectedCountry ? "is-current" : ""} type="button" onClick={backToWorld}>
-            {copy.coverage.worldView}
-          </button>
-          {selectedCountry ? (
-            <button className={selectedCountry && !selectedRegion ? "is-current" : ""} type="button" onClick={() => selectCountry(selectedCountry)}>
-              {selectedCountry.label}
-            </button>
-          ) : null}
-          {selectedRegion ? (
-            <button className="is-current" type="button" onClick={() => selectedRegion.marker && focusPoint(selectedRegion.marker, 2.85)}>
-              {selectedRegion.label}
-            </button>
-          ) : null}
-        </div>
         <div className="coverage-map-actions">
           <div className="coverage-visible-summary" aria-label={copy.coverage.visibleResults}>
             <span className="sr-only">{copy.coverage.visibleResults}</span>
@@ -1338,6 +1372,9 @@ export function CoverageExplorer({ copy, coverage, locale }) {
           <p className="sr-only" id="coverage-map-keyboard-help">
             {copy.coverage.keyboardHelp}
           </p>
+          <button className="coverage-view-badge" type="button" onClick={focusCurrentView} aria-label={`${copy.coverage.currentView}: ${mapViewLabel}`}>
+            {mapViewLabel}
+          </button>
           <svg
             ref={mapRef}
             className="coverage-map"

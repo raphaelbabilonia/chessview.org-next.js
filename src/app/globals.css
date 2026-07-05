@@ -957,6 +957,13 @@ body.coverage-fullscreen-lock {
   bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
 }
 
+.coverage-map-shell.is-fullscreen .coverage-view-badge,
+.coverage-map-shell:fullscreen .coverage-view-badge,
+.coverage-map-shell:-webkit-full-screen .coverage-view-badge {
+  left: calc(env(safe-area-inset-left, 0px) + 1rem);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+}
+
 .coverage-map-toolbar {
   position: absolute;
   z-index: 3;
@@ -1087,6 +1094,39 @@ body.coverage-fullscreen-lock {
 .coverage-map-marker.is-selected .coverage-marker-halo,
 .coverage-map-marker:focus .coverage-marker-target {
   stroke: rgba(253, 252, 253, 0.8);
+}
+
+.coverage-view-badge {
+  position: absolute;
+  z-index: 3;
+  left: 1rem;
+  bottom: 1rem;
+  display: inline-flex;
+  max-width: min(320px, calc(100% - 2rem));
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0.42rem 0.62rem;
+  border: 1px solid rgba(253, 252, 253, 0.16);
+  border-radius: var(--radius);
+  background: rgba(5, 24, 51, 0.86);
+  color: rgba(253, 252, 253, 0.9);
+  cursor: pointer;
+  font-size: 0.74rem;
+  font-weight: 950;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  backdrop-filter: blur(10px);
+}
+
+.coverage-view-badge:hover,
+.coverage-view-badge:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 65%, rgba(253, 252, 253, 0.18));
+  background: rgba(12, 42, 80, 0.92);
+  color: var(--cv-color-white);
+  outline: none;
 }
 
 .coverage-tooltip {
@@ -3946,7 +3986,7 @@ textarea:focus {
   position: absolute;
   z-index: 2;
   left: 1rem;
-  bottom: 1rem;
+  bottom: 4.15rem;
   display: inline-flex;
   max-width: min(440px, calc(100% - 2rem));
   gap: 0.45rem;
