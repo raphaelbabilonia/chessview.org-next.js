@@ -13,7 +13,7 @@ const mapZoom = {
   doubleStep: 0.7,
   min: 1,
   step: 0.45,
-  worldMax: 40,
+  worldMax: 50,
 };
 
 const clampOffset = (offset, zoom, mapSize) => {
@@ -992,7 +992,6 @@ export function CoverageExplorer({ copy, coverage, locale }) {
     worldMapItems.map((item) => {
       if (item.kind === "cluster") {
         const title = `${item.count} ${copy.coverage.tournaments}`;
-        const targetRadius = Number(Math.max(item.marker.radius + 0.7, zoom <= 1.25 ? 16 : 7).toFixed(2));
         const payload = {
           cluster: item,
           kind: "eventCluster",
@@ -1017,7 +1016,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
             transform={`translate(${item.marker.x} ${item.marker.y})`}
           >
             <title>{title}</title>
-            <circle className="coverage-world-cluster-target" r={targetRadius} />
+            <circle className="coverage-world-cluster-target" r={item.marker.radius} />
             <circle className="coverage-world-cluster-halo" r={Number((item.marker.radius + 1.45).toFixed(2))} />
             <circle className="coverage-world-cluster-core" r={item.marker.radius} />
             <circle className="coverage-world-cluster-dot" r={Number(Math.max(0.38, item.marker.radius * 0.32).toFixed(2))} />
@@ -1087,7 +1086,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
             transform={`translate(${country.marker.x} ${country.marker.y})`}
           >
             <title>{`${country.label}: ${country.count} ${copy.coverage.tournaments}`}</title>
-            <circle className="coverage-marker-target" r={visualRadius + 0.6} />
+            <circle className="coverage-marker-target" r={visualRadius} />
             <circle className="coverage-marker-halo" r={visualRadius + 2.3} />
             <circle className="coverage-marker-core" r={visualRadius} />
             <circle className="coverage-marker-dot" r="1.25" />

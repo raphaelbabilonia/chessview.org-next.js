@@ -3746,6 +3746,7 @@ textarea:focus {
   fill: rgba(186, 155, 74, 0.14);
   stroke: rgba(186, 155, 74, 0.42);
   stroke-width: 0.7;
+  pointer-events: none;
   vector-effect: non-scaling-stroke;
 }
 
