@@ -951,7 +951,7 @@ img {
   aspect-ratio: 2 / 1;
   cursor: grab;
   overflow: hidden;
-  touch-action: none;
+  touch-action: auto;
   user-select: none;
 }
 
@@ -3779,7 +3779,13 @@ textarea:focus {
 }
 
 .coverage-tooltip {
-  pointer-events: none;
+  max-height: min(420px, calc(100% - 1.5rem));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  pointer-events: auto;
+  touch-action: pan-y;
+  user-select: text;
+  -webkit-overflow-scrolling: touch;
 }
 
 .coverage-tooltip-subtitle,
@@ -3964,6 +3970,13 @@ textarea:focus {
   }
 }
 
+@media (min-width: 761px) and (max-width: 1079px) {
+  .coverage-map-stage {
+    min-height: clamp(500px, 72vw, 700px);
+    aspect-ratio: auto;
+  }
+}
+
 @media (max-width: 760px) {
   .coverage-hero h1 {
     font-size: 2.45rem;
@@ -4061,8 +4074,8 @@ textarea:focus {
 
   .coverage-map-stage {
     width: 100%;
-    height: clamp(260px, 68vw, 340px);
-    min-height: 0;
+    height: clamp(420px, 118vw, 620px);
+    min-height: 420px;
     aspect-ratio: auto;
   }
 
@@ -4074,8 +4087,7 @@ textarea:focus {
     top: auto !important;
     display: block;
     width: auto;
-    max-height: 46%;
-    overflow: auto;
+    max-height: min(62%, calc(100% - 5.25rem));
     transform: none;
   }
 

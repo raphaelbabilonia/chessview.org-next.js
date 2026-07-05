@@ -301,6 +301,25 @@ function EventLinkList({ copy, events = [], locale, limit }) {
   );
 }
 
+function TooltipShell({ children, style }) {
+  const stopTooltipGesture = (event) => event.stopPropagation();
+
+  return (
+    <div
+      className="coverage-tooltip"
+      style={style}
+      onClick={stopTooltipGesture}
+      onPointerCancel={stopTooltipGesture}
+      onPointerDown={stopTooltipGesture}
+      onPointerMove={stopTooltipGesture}
+      onPointerUp={stopTooltipGesture}
+      onWheel={stopTooltipGesture}
+    >
+      {children}
+    </div>
+  );
+}
+
 function CoverageTooltip({ copy, locale, onOpenCountry, payload, style }) {
   if (!payload || !style) return null;
 
@@ -308,7 +327,7 @@ function CoverageTooltip({ copy, locale, onOpenCountry, payload, style }) {
     const { event, country } = payload;
 
     return (
-      <div className="coverage-tooltip" style={style}>
+      <TooltipShell style={style}>
         <div className="coverage-tooltip-heading">
           <CountryFlag country={country} />
           <strong>{event.title}</strong>
@@ -322,7 +341,7 @@ function CoverageTooltip({ copy, locale, onOpenCountry, payload, style }) {
           {copy.coverage.openEvent}
           <ExternalLink size={14} aria-hidden="true" />
         </Link>
-      </div>
+      </TooltipShell>
     );
   }
 
@@ -332,7 +351,7 @@ function CoverageTooltip({ copy, locale, onOpenCountry, payload, style }) {
     const countryLabel = cluster.countryLabels.slice(0, 3).join(" / ");
 
     return (
-      <div className="coverage-tooltip" style={style}>
+      <TooltipShell style={style}>
         <div className="coverage-tooltip-heading">
           {leadCountry ? <CountryFlag country={leadCountry} /> : <MapPinned size={18} aria-hidden="true" />}
           <strong>
@@ -342,7 +361,7 @@ function CoverageTooltip({ copy, locale, onOpenCountry, payload, style }) {
         {countryLabel ? <p className="coverage-tooltip-subtitle">{countryLabel}</p> : null}
         <CountStats copy={copy} item={cluster} />
         <EventLinkList copy={copy} events={cluster.events} locale={locale} limit={4} />
-      </div>
+      </TooltipShell>
     );
   }
 
@@ -350,7 +369,7 @@ function CoverageTooltip({ copy, locale, onOpenCountry, payload, style }) {
     const { country, region } = payload;
 
     return (
-      <div className="coverage-tooltip" style={style}>
+      <TooltipShell style={style}>
         <div className="coverage-tooltip-heading">
           <CountryFlag country={country} />
           <strong>{region.label}</strong>
@@ -358,14 +377,14 @@ function CoverageTooltip({ copy, locale, onOpenCountry, payload, style }) {
         <p className="coverage-tooltip-subtitle">{country.label}</p>
         <CountStats copy={copy} item={region} />
         <EventLinkList copy={copy} events={region.events} locale={locale} limit={3} />
-      </div>
+      </TooltipShell>
     );
   }
 
   const { country } = payload;
 
   return (
-    <div className="coverage-tooltip" style={style}>
+    <TooltipShell style={style}>
       <div className="coverage-tooltip-heading">
         <CountryFlag country={country} />
         <strong>{country.label}</strong>
@@ -375,7 +394,7 @@ function CoverageTooltip({ copy, locale, onOpenCountry, payload, style }) {
       <button className="coverage-tooltip-action" type="button" onClick={() => onOpenCountry(country)}>
         {copy.coverage.openCountryMap}
       </button>
-    </div>
+    </TooltipShell>
   );
 }
 
@@ -851,6 +870,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
     worldMapItems.map((item) => {
       if (item.kind === "cluster") {
         const title = `${item.count} ${copy.coverage.tournaments}`;
+        const targetRadius = Number(Math.max(item.marker.radius + 0.7, zoom <= 1.25 ? 16 : 7).toFixed(2));
         const payload = {
           cluster: item,
           kind: "eventCluster",
@@ -872,12 +892,16 @@ export function CoverageExplorer({ copy, coverage, locale }) {
             onMouseEnter={() => setHovered(payload)}
             onMouseLeave={() => setHovered(null)}
             onPointerDown={(pointerEvent) => pointerEvent.stopPropagation()}
+            onPointerUp={(pointerEvent) => {
+              pointerEvent.stopPropagation();
+              if (pointerEvent.pointerType !== "mouse") setPinned(payload);
+            }}
             role="button"
             tabIndex={0}
             transform={`translate(${item.marker.x} ${item.marker.y})`}
           >
             <title>{title}</title>
-            <circle className="coverage-world-cluster-target" r={Number((item.marker.radius + 0.7).toFixed(2))} />
+            <circle className="coverage-world-cluster-target" r={targetRadius} />
             <circle className="coverage-world-cluster-halo" r={Number((item.marker.radius + 1.45).toFixed(2))} />
             <circle className="coverage-world-cluster-core" r={item.marker.radius} />
             <circle className="coverage-world-cluster-dot" r={Number(Math.max(0.38, item.marker.radius * 0.32).toFixed(2))} />
@@ -908,6 +932,10 @@ export function CoverageExplorer({ copy, coverage, locale }) {
           onMouseEnter={() => setHovered(payload)}
           onMouseLeave={() => setHovered(null)}
           onPointerDown={(pointerEvent) => pointerEvent.stopPropagation()}
+          onPointerUp={(pointerEvent) => {
+            pointerEvent.stopPropagation();
+            if (pointerEvent.pointerType !== "mouse") setPinned(payload);
+          }}
           role="button"
           tabIndex={0}
           transform={`translate(${event.marker.x} ${event.marker.y})`}
@@ -946,6 +974,10 @@ export function CoverageExplorer({ copy, coverage, locale }) {
             onMouseEnter={() => setHovered(payload)}
             onMouseLeave={() => setHovered(null)}
             onPointerDown={(event) => event.stopPropagation()}
+            onPointerUp={(event) => {
+              event.stopPropagation();
+              if (event.pointerType !== "mouse") setPinned(payload);
+            }}
             role="button"
             tabIndex={0}
             transform={`translate(${country.marker.x} ${country.marker.y})`}
