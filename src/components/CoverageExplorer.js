@@ -9,10 +9,11 @@ import { formatDateRange } from "@/lib/format";
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
 const mapZoom = {
+  countryMax: 10,
   doubleStep: 0.7,
-  max: 30,
   min: 1,
   step: 0.45,
+  worldMax: 40,
 };
 
 const clampOffset = (offset, zoom, mapSize) => {
@@ -540,6 +541,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   const selectedRegion = selectedCountry?.regions?.find((region) => region.key === selectedRegionKey) || null;
   const isCountryMode = Boolean(selectedCountry);
   const isRegionMode = Boolean(selectedCountry && selectedRegion);
+  const currentMaxZoom = isCountryMode ? mapZoom.countryMax : mapZoom.worldMax;
   const showWorldCountrySelectors = !selectedCountry && showCountryMarkers;
   const mapPaths = selectedCountry?.flatMapPaths || coverage.mapPaths;
   const activePayload = hovered || pinned;
@@ -700,7 +702,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   };
 
   const applyZoomAtSvgPoint = (point, nextZoom, baseZoom = zoom, baseOffset = offset, panDelta = { x: 0, y: 0 }) => {
-    const cleanZoom = clamp(nextZoom, mapZoom.min, mapZoom.max);
+    const cleanZoom = clamp(nextZoom, mapZoom.min, currentMaxZoom);
     const ratio = cleanZoom / baseZoom;
     const nextOffset = {
       x: point.x - (point.x - baseOffset.x) * ratio + panDelta.x,
@@ -737,7 +739,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   };
 
   const focusPoint = (point, targetZoom = 2.65) => {
-    const cleanZoom = clamp(targetZoom, mapZoom.min, mapZoom.max);
+    const cleanZoom = clamp(targetZoom, mapZoom.min, currentMaxZoom);
     const nextOffset = {
       x: coverage.mapSize.width / 2 - point.x * cleanZoom,
       y: coverage.mapSize.height / 2 - point.y * cleanZoom,
