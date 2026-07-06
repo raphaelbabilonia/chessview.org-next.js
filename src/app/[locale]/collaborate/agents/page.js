@@ -102,11 +102,26 @@ export default async function AgentCollaborationPage({ params }) {
           <p>{copy.lead}</p>
         </div>
         <div className="button-row">
-          <Link className="button button-ghost" href={`/${locale}/collaborate`}>
+          <Link
+            className="button button-ghost"
+            data-tracking-event="collaboration_overview_click"
+            data-tracking-label="overview"
+            data-tracking-placement="agents_hero"
+            href={`/${locale}/collaborate`}
+          >
             <Bot size={18} aria-hidden="true" />
             {copy.back}
           </Link>
-          <a className="button" href={absoluteUrl("/agent-collaboration.json")} rel="noreferrer" target="_blank">
+          <a
+            className="button"
+            data-tracking-event="agent_resource_click"
+            data-tracking-label="agent-collaboration.json"
+            data-tracking-outbound-url={absoluteUrl("/agent-collaboration.json")}
+            data-tracking-placement="agents_hero"
+            href={absoluteUrl("/agent-collaboration.json")}
+            rel="noreferrer"
+            target="_blank"
+          >
             <FileJson size={18} aria-hidden="true" />
             agent-collaboration.json
           </a>
@@ -146,17 +161,41 @@ export default async function AgentCollaborationPage({ params }) {
           </div>
         </div>
         <div className="machine-link-grid">
-          <a href={openApiEndpoint} rel="noreferrer" target="_blank">
+          <a
+            data-tracking-event="agent_resource_click"
+            data-tracking-label="openapi"
+            data-tracking-outbound-url={openApiEndpoint}
+            data-tracking-placement="machine_links"
+            href={openApiEndpoint}
+            rel="noreferrer"
+            target="_blank"
+          >
             <Braces size={18} aria-hidden="true" />
             <span>OpenAPI</span>
             <ExternalLink size={15} aria-hidden="true" />
           </a>
-          <a href={schemaEndpoint} rel="noreferrer" target="_blank">
+          <a
+            data-tracking-event="agent_resource_click"
+            data-tracking-label="json_schema"
+            data-tracking-outbound-url={schemaEndpoint}
+            data-tracking-placement="machine_links"
+            href={schemaEndpoint}
+            rel="noreferrer"
+            target="_blank"
+          >
             <FileJson size={18} aria-hidden="true" />
             <span>JSON Schema</span>
             <ExternalLink size={15} aria-hidden="true" />
           </a>
-          <a href={absoluteUrl("/llms.txt")} rel="noreferrer" target="_blank">
+          <a
+            data-tracking-event="agent_resource_click"
+            data-tracking-label="llms_txt"
+            data-tracking-outbound-url={absoluteUrl("/llms.txt")}
+            data-tracking-placement="machine_links"
+            href={absoluteUrl("/llms.txt")}
+            rel="noreferrer"
+            target="_blank"
+          >
             <Terminal size={18} aria-hidden="true" />
             <span>llms.txt</span>
             <ExternalLink size={15} aria-hidden="true" />

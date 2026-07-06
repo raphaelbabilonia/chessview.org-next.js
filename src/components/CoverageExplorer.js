@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CountryFlag } from "@/components/CountryFlag";
 import { formatDateRange } from "@/lib/format";
+import { trackAnalyticsEvent } from "@/lib/tracking";
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
@@ -284,7 +285,7 @@ function CountStats({ copy, item }) {
   );
 }
 
-function EventLinkList({ copy, events = [], locale, limit }) {
+function EventLinkList({ copy, events = [], locale, limit, placement = "coverage_event_list" }) {
   const visibleEvents = limit ? events.slice(0, limit) : events;
 
   if (!visibleEvents.length) {
@@ -294,7 +295,17 @@ function EventLinkList({ copy, events = [], locale, limit }) {
   return (
     <div className="coverage-event-list">
       {visibleEvents.map((event) => (
-        <Link className="coverage-event-link" href={event.href} key={event._id}>
+        <Link
+          className="coverage-event-link"
+          data-tracking-entity-id={event._id}
+          data-tracking-entity-slug={event.slug}
+          data-tracking-entity-title={event.title}
+          data-tracking-entity-type="event"
+          data-tracking-event="coverage_event_open"
+          data-tracking-placement={placement}
+          href={event.href}
+          key={event._id}
+        >
           <span className="coverage-event-row-main">
             <span className="coverage-event-title">{event.title}</span>
             <TypeBadge copy={copy} type={event.tournamentType} />
@@ -351,7 +362,16 @@ function CoverageTooltip({ copy, locale, onClose, onOpenCountry, payload, style 
           <span>{[event.city, event.region].filter(Boolean).join(" / ")}</span>
           <span>{formatDateRange(event.startDate, event.endDate, locale)}</span>
         </div>
-        <Link className="coverage-tooltip-link" href={event.href}>
+        <Link
+          className="coverage-tooltip-link"
+          data-tracking-entity-id={event._id}
+          data-tracking-entity-slug={event.slug}
+          data-tracking-entity-title={event.title}
+          data-tracking-entity-type="event"
+          data-tracking-event="coverage_event_open"
+          data-tracking-placement="coverage_tooltip"
+          href={event.href}
+        >
           {copy.coverage.openEvent}
           <ExternalLink size={14} aria-hidden="true" />
         </Link>
@@ -374,7 +394,7 @@ function CoverageTooltip({ copy, locale, onClose, onOpenCountry, payload, style 
         </div>
         {countryLabel ? <p className="coverage-tooltip-subtitle">{countryLabel}</p> : null}
         <CountStats copy={copy} item={cluster} />
-        <EventLinkList copy={copy} events={cluster.events} locale={locale} limit={4} />
+        <EventLinkList copy={copy} events={cluster.events} locale={locale} limit={4} placement="coverage_cluster_tooltip" />
       </TooltipShell>
     );
   }
@@ -390,7 +410,7 @@ function CoverageTooltip({ copy, locale, onClose, onOpenCountry, payload, style 
         </div>
         <p className="coverage-tooltip-subtitle">{country.label}</p>
         <CountStats copy={copy} item={region} />
-        <EventLinkList copy={copy} events={region.events} locale={locale} limit={3} />
+        <EventLinkList copy={copy} events={region.events} locale={locale} limit={3} placement="coverage_region_tooltip" />
       </TooltipShell>
     );
   }
@@ -404,7 +424,7 @@ function CoverageTooltip({ copy, locale, onClose, onOpenCountry, payload, style 
         <strong>{country.label}</strong>
       </div>
       <CountStats copy={copy} item={country} />
-      <EventLinkList copy={copy} events={country.events} locale={locale} limit={3} />
+      <EventLinkList copy={copy} events={country.events} locale={locale} limit={3} placement="coverage_country_tooltip" />
       <button className="coverage-tooltip-action" type="button" onClick={() => onOpenCountry(country)}>
         {copy.coverage.openCountryMap}
       </button>
@@ -567,7 +587,17 @@ export function CoverageExplorer({ copy, coverage, locale }) {
       }
     : null;
 
+  const trackCoverageInteraction = (eventName, metadata = {}) => {
+    trackAnalyticsEvent(eventName, {
+      routeType: "coverage",
+      metadata,
+    });
+  };
+
   const resetViewport = () => {
+    trackCoverageInteraction("coverage_map_reset", {
+      view: isRegionMode ? "region" : isCountryMode ? "country" : "world",
+    });
     setZoom(1);
     setOffset({ x: 0, y: 0 });
   };
@@ -638,6 +668,10 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   };
 
   const toggleFullscreenView = () => {
+    trackCoverageInteraction("coverage_fullscreen_toggle", {
+      mode: isFullscreenView ? "exit" : "enter",
+    });
+
     if (isFullscreenView) {
       exitFullscreenView();
       return;
@@ -681,6 +715,10 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   };
 
   const toggleType = (type) => {
+    trackCoverageInteraction("coverage_filter_change", {
+      filter: "tournament_type",
+      value: type,
+    });
     clearPinnedDetails();
     setActiveTypes((currentTypes) => {
       const isActive = currentTypes.includes(type);
@@ -689,6 +727,10 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   };
 
   const selectDatePreset = (preset) => {
+    trackCoverageInteraction("coverage_filter_change", {
+      filter: "date_preset",
+      value: preset,
+    });
     setDatePreset(preset);
     clearPinnedDetails();
   };
@@ -744,6 +786,10 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   };
 
   const applyZoom = (nextZoom) => {
+    trackCoverageInteraction("coverage_map_zoom", {
+      direction: nextZoom > zoom ? "in" : "out",
+      view: isRegionMode ? "region" : isCountryMode ? "country" : "world",
+    });
     const center = {
       x: coverage.mapSize.width / 2,
       y: coverage.mapSize.height / 2,
@@ -764,6 +810,9 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   };
 
   const backToWorld = () => {
+    trackCoverageInteraction("coverage_view_change", {
+      view: "world",
+    });
     setSelectedCountryKey("");
     setSelectedRegionKey("");
     setHovered(null);
@@ -772,6 +821,15 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   };
 
   const selectCountry = (country) => {
+    trackAnalyticsEvent("coverage_country_select", {
+      entityId: country.countryKey,
+      entityTitle: country.label,
+      entityType: "country",
+      routeType: "coverage",
+      metadata: {
+        placement: "coverage_map",
+      },
+    });
     setSelectedCountryKey(country.countryKey);
     setSelectedRegionKey("");
     setHovered(null);
@@ -781,6 +839,16 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   };
 
   const selectRegion = (country, region) => {
+    trackAnalyticsEvent("coverage_region_select", {
+      entityId: region.key,
+      entityTitle: region.label,
+      entityType: "coverage_region",
+      routeType: "coverage",
+      metadata: {
+        country: country.countryKey,
+        placement: "coverage_map",
+      },
+    });
     setSelectedCountryKey(country.countryKey);
     setSelectedRegionKey(region.key);
     setHovered(null);

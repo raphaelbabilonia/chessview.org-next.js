@@ -134,11 +134,26 @@ export default async function CollaboratePage({ params }) {
           <p>{copy.lead}</p>
         </div>
         <div className="button-row">
-          <Link className="button" href={`/${locale}/collaborate/agents`}>
+          <Link
+            className="button"
+            data-tracking-event="collaboration_agents_click"
+            data-tracking-label="agents"
+            data-tracking-placement="collaborate_hero"
+            href={`/${locale}/collaborate/agents`}
+          >
             <Bot size={18} aria-hidden="true" />
             {copy.agents}
           </Link>
-          <a className="button button-ghost" href={siteConfig.repositoryUrl} rel="noreferrer" target="_blank">
+          <a
+            className="button button-ghost"
+            data-tracking-event="collaboration_repository_click"
+            data-tracking-label="source_code"
+            data-tracking-outbound-url={siteConfig.repositoryUrl}
+            data-tracking-placement="collaborate_hero"
+            href={siteConfig.repositoryUrl}
+            rel="noreferrer"
+            target="_blank"
+          >
             <Code2 size={18} aria-hidden="true" />
             {copy.github}
           </a>
@@ -177,7 +192,17 @@ export default async function CollaboratePage({ params }) {
         </div>
         <div className="repository-grid">
           {siteConfig.repositories.map((repository) => (
-            <a className="repository-card" href={repository.url} key={repository.url} rel="noreferrer" target="_blank">
+            <a
+              className="repository-card"
+              data-tracking-event="collaboration_repository_click"
+              data-tracking-label={repository.name}
+              data-tracking-outbound-url={repository.url}
+              data-tracking-placement="repository_grid"
+              href={repository.url}
+              key={repository.url}
+              rel="noreferrer"
+              target="_blank"
+            >
               <span>
                 <GitPullRequest size={18} aria-hidden="true" />
                 {repository.name}

@@ -69,8 +69,10 @@ export const trackingRouteTypeFor = (path) => {
   if (section === "events" && id) return "event_detail";
   if (section === "events") return "events";
   if (section === "news") return "news";
+  if (section === "coverage") return "coverage";
   if (section === "countries") return "country";
   if (section === "sources") return "source";
+  if (section === "collaborate") return "collaboration";
   return "unknown";
 };
 
