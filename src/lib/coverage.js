@@ -445,6 +445,19 @@ const countryMarkerFor = (country, count) => {
   };
 };
 
+const cleanGlobeCoordinates = (coordinates) => {
+  const cleanCoordinates = coordinatesFromValue(coordinates);
+  if (!cleanCoordinates) return null;
+
+  return cleanCoordinates.map((value) => Number(value.toFixed(4)));
+};
+
+const countryGlobeCoordinatesFor = (country) => {
+  const info = countryInfo(country);
+  const atlasFeature = featureByName.get(info.atlasName) || featureByName.get(country);
+  return cleanGlobeCoordinates(info.coordinates || (atlasFeature ? geoCentroid(atlasFeature) : null));
+};
+
 const projectedPoint = (projected) => ({
   x: Number(projected[0].toFixed(2)),
   y: Number(projected[1].toFixed(2)),
@@ -641,6 +654,7 @@ const buildWorldEvents = (allCountries) => {
 
       const point = projectedPoint(projected);
       const markerSource = event.coordinates ? "city" : "country";
+      const globeCoordinates = cleanGlobeCoordinates(event.coordinates || country.globeCoordinates);
       const markerKey =
         markerSource === "city"
           ? `city|${event.coordinates.map((value) => Number(value).toFixed(3)).join(",")}`
@@ -651,6 +665,7 @@ const buildWorldEvents = (allCountries) => {
         countryFlagCode: country.flagCode,
         countryKey: country.countryKey,
         countryLabel: country.label,
+        globeCoordinates,
         markerSource,
         point,
       };
@@ -713,6 +728,7 @@ export function buildCountryCoverage(events = [], locale = "en") {
       const regions = buildRegions(eventsForCountry, projection);
       const info = countryInfo(countryGroup.country);
       const marker = countryGroup.country === "Location TBA" ? null : countryMarkerFor(countryGroup.country, eventsForCountry.length);
+      const globeCoordinates = countryGroup.country === "Location TBA" ? null : countryGlobeCoordinatesFor(countryGroup.country);
       const liveCount = eventsForCountry.filter((event) => event.liveNow).length;
       const atlasFeature = featureByName.get(info.atlasName) || featureByName.get(countryGroup.country);
 
@@ -723,6 +739,7 @@ export function buildCountryCoverage(events = [], locale = "en") {
         events: eventsForCountry,
         flagCode: info.flagCode || "xx",
         flatMapPaths,
+        globeCoordinates,
         href: countryGroup.country === "Location TBA" ? "" : `/${locale}${countryHref(countryGroup.country)}`,
         label: formatCountryName(countryGroup.country, locale),
         liveCount,

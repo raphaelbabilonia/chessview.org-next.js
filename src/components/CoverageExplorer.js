@@ -1,17 +1,37 @@
 "use client";
 
-import { ArrowLeft, ChevronDown, ChevronUp, ExternalLink, MapPinned, Maximize2, Minimize2, Minus, Plus, RotateCcw, SlidersHorizontal, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, ExternalLink, Globe, Map as MapIcon, MapPinned, Maximize2, Minimize2, Minus, Plus, RotateCcw, SlidersHorizontal, X } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CountryFlag } from "@/components/CountryFlag";
+import { CoverageSvgMap } from "@/components/CoverageSvgMap";
+import {
+  clearCoverageMap3dFallback,
+  coverageMapFallbackTtlMs,
+  coverageMapModes,
+  getCoverageMapCapability,
+  isHardCoverageMap3dBlock,
+  readCoverageMap3dFallback,
+  readCoverageMapModePreference,
+  rememberCoverageMap3dFallback,
+  writeCoverageMapModePreference,
+} from "@/lib/coverageMapCapability";
 import { formatDateRange } from "@/lib/format";
 import { trackAnalyticsEvent } from "@/lib/tracking";
+
+const CoverageThreeGlobe = dynamic(() => import("@/components/CoverageThreeGlobe").then((mod) => mod.CoverageThreeGlobe), {
+  loading: () => <div className="coverage-globe-loading" aria-hidden="true" />,
+  ssr: false,
+});
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
 const mapZoom = {
   countryMax: 10,
   doubleStep: 0.7,
+  globeMax: 12,
+  globeStep: 0.65,
   min: 1,
   step: 0.45,
   worldMax: 50,
@@ -95,11 +115,11 @@ const averageMarker = (events) => {
 };
 
 const worldClusterScreenDistance = (zoom) => {
-  if (zoom >= 16) return 8;
-  if (zoom >= 8) return 9.5;
-  if (zoom >= 4) return 11;
-  if (zoom >= 2) return 13;
-  return 18;
+  if (zoom >= 16) return 3.8;
+  if (zoom >= 8) return 4.4;
+  if (zoom >= 4) return 5;
+  if (zoom >= 2) return 5.8;
+  return 6.6;
 };
 
 const worldEventPoint = (event) => event.anchor || event.marker || null;
@@ -480,6 +500,12 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   const [didDrag, setDidDrag] = useState(false);
   const [isFullscreenView, setIsFullscreenView] = useState(false);
   const [revealMapRequest, setRevealMapRequest] = useState(0);
+  const [rendererChecked, setRendererChecked] = useState(false);
+  const [rendererPreference, setRendererPreference] = useState(coverageMapModes.auto);
+  const [rendererCapability, setRendererCapability] = useState({ canUse3d: false, reason: "checking" });
+  const [rememberedRendererFallback, setRememberedRendererFallback] = useState(null);
+  const [runtimeFallbackReason, setRuntimeFallbackReason] = useState(null);
+  const [globeAutoRotate, setGlobeAutoRotate] = useState(true);
 
   const activeTypeSet = useMemo(() => new Set(activeTypes), [activeTypes]);
   const dateRange = useMemo(() => rangeForPreset(datePreset, today, customStart, customEnd), [customEnd, customStart, datePreset, today]);
@@ -570,9 +596,28 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   const selectedRegion = selectedCountry?.regions?.find((region) => region.key === selectedRegionKey) || null;
   const isCountryMode = Boolean(selectedCountry);
   const isRegionMode = Boolean(selectedCountry && selectedRegion);
-  const currentMaxZoom = isCountryMode ? mapZoom.countryMax : mapZoom.worldMax;
   const showWorldCountrySelectors = !selectedCountry && showCountryMarkers;
   const mapPaths = selectedCountry?.flatMapPaths || coverage.mapPaths;
+  const rendererHardBlocked = isHardCoverageMap3dBlock(rendererCapability.reason);
+  const detectedRendererFallbackReason =
+    runtimeFallbackReason ||
+    rememberedRendererFallback?.reason ||
+    (!rendererCapability.canUse3d && rendererCapability.reason !== "checking" ? rendererCapability.reason : null);
+  const rendererResolved = useMemo(() => {
+    if (selectedCountry) return coverageMapModes.flat;
+    if (!rendererChecked) return coverageMapModes.flat;
+    if (rendererPreference === coverageMapModes.flat) return coverageMapModes.flat;
+    if (rendererHardBlocked) return coverageMapModes.flat;
+    if (runtimeFallbackReason || rememberedRendererFallback) return coverageMapModes.flat;
+    if (rendererPreference === coverageMapModes.globe) return coverageMapModes.globe;
+    return rendererCapability.canUse3d ? coverageMapModes.globe : coverageMapModes.flat;
+  }, [rememberedRendererFallback, rendererCapability.canUse3d, rendererChecked, rendererHardBlocked, rendererPreference, runtimeFallbackReason, selectedCountry]);
+  const shouldRenderGlobe = !selectedCountry && rendererResolved === coverageMapModes.globe;
+  const shouldHoldMapRenderer = !selectedCountry && !rendererChecked;
+  const activeAutoFallbackReason =
+    rendererResolved === coverageMapModes.flat && rendererPreference !== coverageMapModes.flat ? detectedRendererFallbackReason : null;
+  const currentMaxZoom = isCountryMode ? mapZoom.countryMax : shouldRenderGlobe ? mapZoom.globeMax : mapZoom.worldMax;
+  const currentZoomStep = shouldRenderGlobe ? mapZoom.globeStep : mapZoom.step;
   const activePayload = hovered || pinned;
   const activePoint = activePayload?.point;
   const mapViewLabel = selectedRegion
@@ -580,7 +625,12 @@ export function CoverageExplorer({ copy, coverage, locale }) {
     : selectedCountry
       ? `${copy.coverage.countryView}: ${selectedCountry.label}`
       : copy.coverage.worldView;
-  const tooltipStyle = activePoint
+  const tooltipStyle = shouldRenderGlobe && activePayload
+    ? {
+        left: "1rem",
+        top: "1rem",
+      }
+    : activePoint
     ? {
         left: `${clamp(((activePoint.x * zoom + offset.x) / coverage.mapSize.width) * 100, 3, 88)}%`,
         top: `${clamp(((activePoint.y * zoom + offset.y) / coverage.mapSize.height) * 100, 9, 82)}%`,
@@ -594,12 +644,58 @@ export function CoverageExplorer({ copy, coverage, locale }) {
     });
   };
 
+  const resetRendererViewState = () => {
+    setHovered(null);
+    setPinned(null);
+    setZoom(1);
+    setOffset({ x: 0, y: 0 });
+  };
+
+  const handleRendererFallback = useCallback((reason = "init-error") => {
+    setRuntimeFallbackReason(reason);
+    setRememberedRendererFallback({
+      disabledUntil: Date.now() + coverageMapFallbackTtlMs,
+      reason,
+    });
+    setRendererCapability({ canUse3d: false, reason });
+    rememberCoverageMap3dFallback(reason);
+    setGlobeAutoRotate(false);
+    resetRendererViewState();
+    trackCoverageInteraction("coverage_map_renderer_fallback", {
+      reason,
+    });
+  }, []);
+
+  const chooseMapRenderer = (mode) => {
+    if (![coverageMapModes.globe, coverageMapModes.flat].includes(mode)) return;
+
+    writeCoverageMapModePreference(mode);
+    setRendererPreference(mode);
+    setRuntimeFallbackReason(null);
+    resetRendererViewState();
+
+    if (mode === coverageMapModes.globe) {
+      clearCoverageMap3dFallback();
+      setRememberedRendererFallback(null);
+      setRendererCapability(getCoverageMapCapability());
+      setRendererChecked(true);
+      setGlobeAutoRotate(true);
+    } else {
+      setGlobeAutoRotate(false);
+    }
+
+    trackCoverageInteraction("coverage_map_renderer_change", {
+      mode,
+    });
+  };
+
   const resetViewport = () => {
     trackCoverageInteraction("coverage_map_reset", {
       view: isRegionMode ? "region" : isCountryMode ? "country" : "world",
     });
     setZoom(1);
     setOffset({ x: 0, y: 0 });
+    if (shouldRenderGlobe) setGlobeAutoRotate(false);
   };
 
   useEffect(() => {
@@ -629,6 +725,17 @@ export function CoverageExplorer({ copy, coverage, locale }) {
       document.body.classList.remove("coverage-fullscreen-lock");
     };
   }, [isFullscreenView]);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setRendererPreference(readCoverageMapModePreference());
+      setRememberedRendererFallback(readCoverageMap3dFallback());
+      setRendererCapability(getCoverageMapCapability());
+      setRendererChecked(true);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   const clearPinnedDetails = () => {
     setHovered(null);
@@ -786,17 +893,40 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   };
 
   const applyZoom = (nextZoom) => {
+    const cleanZoom = clamp(nextZoom, mapZoom.min, currentMaxZoom);
     trackCoverageInteraction("coverage_map_zoom", {
-      direction: nextZoom > zoom ? "in" : "out",
+      direction: cleanZoom > zoom ? "in" : "out",
       view: isRegionMode ? "region" : isCountryMode ? "country" : "world",
     });
+
+    if (shouldRenderGlobe) {
+      setGlobeAutoRotate(false);
+      setZoom(cleanZoom);
+      return;
+    }
+
     const center = {
       x: coverage.mapSize.width / 2,
       y: coverage.mapSize.height / 2,
     };
 
-    applyZoomAtSvgPoint(center, nextZoom);
+    applyZoomAtSvgPoint(center, cleanZoom);
   };
+
+  const applyGlobeZoom = useCallback(
+    (nextZoom, metadata = {}) => {
+      const cleanZoom = clamp(nextZoom, mapZoom.min, mapZoom.globeMax);
+      if (Math.abs(cleanZoom - zoom) < 0.01) return;
+      trackCoverageInteraction("coverage_map_zoom", {
+        direction: cleanZoom > zoom ? "in" : "out",
+        input: metadata.input || "globe",
+        view: "world",
+      });
+      setGlobeAutoRotate(false);
+      setZoom(cleanZoom);
+    },
+    [zoom],
+  );
 
   const focusPoint = (point, targetZoom = 2.65) => {
     const cleanZoom = clamp(targetZoom, mapZoom.min, currentMaxZoom);
@@ -1073,13 +1203,13 @@ export function CoverageExplorer({ copy, coverage, locale }) {
 
     if (event.key === "+" || event.key === "=") {
       event.preventDefault();
-      applyZoom(zoom + mapZoom.step);
+      applyZoom(zoom + currentZoomStep);
       return;
     }
 
     if (event.key === "-" || event.key === "_") {
       event.preventDefault();
-      applyZoom(zoom - mapZoom.step);
+      applyZoom(zoom - currentZoomStep);
       return;
     }
 
@@ -1408,10 +1538,37 @@ export function CoverageExplorer({ copy, coverage, locale }) {
               <ArrowLeft size={18} aria-hidden="true" />
             </button>
           ) : null}
-          <button className="icon-button" type="button" onClick={() => applyZoom(zoom + mapZoom.step)} aria-label={copy.coverage.zoomIn} title={copy.coverage.zoomIn}>
+          {!selectedCountry ? (
+            <div className="coverage-renderer-toggle" role="group" aria-label={copy.coverage.mapRenderer} title={activeAutoFallbackReason ? copy.coverage.mapFallback2d : copy.coverage.mapRenderer}>
+              <button
+                aria-label={copy.coverage.map3d}
+                aria-pressed={shouldRenderGlobe}
+                className={`coverage-renderer-option${shouldRenderGlobe ? " is-active" : ""}`}
+                data-map-renderer-option="3d"
+                disabled={rendererHardBlocked}
+                type="button"
+                onClick={() => chooseMapRenderer(coverageMapModes.globe)}
+              >
+                <Globe size={15} aria-hidden="true" />
+                <span>{copy.coverage.map3d}</span>
+              </button>
+              <button
+                aria-label={copy.coverage.map2d}
+                aria-pressed={!shouldRenderGlobe && rendererChecked}
+                className={`coverage-renderer-option${!shouldRenderGlobe && rendererChecked ? " is-active" : ""}`}
+                data-map-renderer-option="2d"
+                type="button"
+                onClick={() => chooseMapRenderer(coverageMapModes.flat)}
+              >
+                <MapIcon size={15} aria-hidden="true" />
+                <span>{copy.coverage.map2d}</span>
+              </button>
+            </div>
+          ) : null}
+          <button className="icon-button" type="button" onClick={() => applyZoom(zoom + currentZoomStep)} aria-label={copy.coverage.zoomIn} title={copy.coverage.zoomIn}>
             <Plus size={18} aria-hidden="true" />
           </button>
-          <button className="icon-button" type="button" onClick={() => applyZoom(zoom - mapZoom.step)} aria-label={copy.coverage.zoomOut} title={copy.coverage.zoomOut}>
+          <button className="icon-button" type="button" onClick={() => applyZoom(zoom - currentZoomStep)} aria-label={copy.coverage.zoomOut} title={copy.coverage.zoomOut}>
             <Minus size={18} aria-hidden="true" />
           </button>
           <button className="icon-button" type="button" onClick={resetViewport} aria-label={copy.coverage.resetMap} title={copy.coverage.resetMap}>
@@ -1432,7 +1589,9 @@ export function CoverageExplorer({ copy, coverage, locale }) {
         <div
           aria-describedby="coverage-map-keyboard-help"
           aria-label={copy.coverage.mapLabel}
-          className={`coverage-map-stage${isDragging ? " is-dragging" : ""}${isCountryMode ? " is-country-mode" : ""}${activePayload ? " has-tooltip" : ""}`}
+          className={`coverage-map-stage${isDragging ? " is-dragging" : ""}${isCountryMode ? " is-country-mode" : ""}${shouldRenderGlobe ? " is-globe-mode" : ""}${activePayload ? " has-tooltip" : ""}`}
+          data-coverage-map-fallback-reason={activeAutoFallbackReason || undefined}
+          data-coverage-map-renderer={shouldHoldMapRenderer ? "checking" : shouldRenderGlobe ? "3d" : "2d"}
           onKeyDown={handleMapKeyDown}
           role="region"
           tabIndex={0}
@@ -1443,41 +1602,52 @@ export function CoverageExplorer({ copy, coverage, locale }) {
           <button className="coverage-view-badge" type="button" onClick={focusCurrentView} aria-label={`${copy.coverage.currentView}: ${mapViewLabel}`}>
             {mapViewLabel}
           </button>
-          <svg
-            ref={mapRef}
-            className="coverage-map"
-            viewBox={`0 0 ${coverage.mapSize.width} ${coverage.mapSize.height}`}
-            role="img"
-            aria-label={copy.coverage.mapLabel}
-            onClick={clearFloatingDetails}
-            onDoubleClick={zoomFromPointer}
-            onLostPointerCapture={stopDrag}
-            onPointerCancel={stopDrag}
-            onPointerDown={startDrag}
-            onPointerLeave={leaveDrag}
-            onPointerMove={moveDrag}
-            onPointerUp={stopDrag}
-          >
-            <defs>
-              <linearGradient id="coverageExplorerScan" x1="0%" x2="100%" y1="0%" y2="0%">
-                <stop offset="0%" stopColor="#BA9B4A" stopOpacity="0" />
-                <stop offset="45%" stopColor="#BA9B4A" stopOpacity="0.72" />
-                <stop offset="100%" stopColor="#BA9B4A" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            <rect className="coverage-map-panel" x="1" y="1" width="958" height="478" rx="10" />
-            <g transform={`matrix(${zoom} 0 0 ${zoom} ${offset.x} ${offset.y})`}>
-              <path className="coverage-map-sphere" d={mapPaths.sphere} />
-              <path className="coverage-map-graticule" d={mapPaths.graticule} />
-              <path className={isCountryMode ? "coverage-map-country-land" : "coverage-map-land"} d={mapPaths.land} />
-              {!isCountryMode ? <path className="coverage-map-scan" d="M104 410H856" /> : null}
-              {selectedCountry?.flatMapPaths?.boundary ? <path className="coverage-country-flat-boundary" d={selectedCountry.flatMapPaths.boundary} /> : null}
-              {!selectedCountry && !showWorldCountrySelectors ? renderWorldEventDots() : null}
-              {showWorldCountrySelectors ? renderWorldCountrySelectors() : null}
-              {selectedCountry && !selectedRegion ? renderRegionMarkers() : null}
-              {selectedCountry && selectedRegion ? renderTournamentDots() : null}
-            </g>
-          </svg>
+          {shouldHoldMapRenderer ? (
+            <div className="coverage-globe-loading" data-coverage-map-renderer="checking" aria-hidden="true" />
+          ) : shouldRenderGlobe ? (
+            <CoverageThreeGlobe
+              autoRotate={globeAutoRotate}
+              copy={copy}
+              countries={filteredCountries.filter((country) => country.marker)}
+              items={worldMapItems}
+              mapSize={coverage.mapSize}
+              showCountryMarkers={showWorldCountrySelectors}
+              zoom={zoom}
+              onHover={setHovered}
+              onLeave={() => setHovered(null)}
+              onPin={setPinned}
+              onPerformanceIssue={handleRendererFallback}
+              onReady={() => setRuntimeFallbackReason(null)}
+              onUserInteraction={() => setGlobeAutoRotate(false)}
+              onUnavailable={handleRendererFallback}
+              onZoomChange={applyGlobeZoom}
+            />
+          ) : (
+            <CoverageSvgMap
+              coverage={coverage}
+              isCountryMode={isCountryMode}
+              mapLabel={copy.coverage.mapLabel}
+              mapPaths={mapPaths}
+              mapRef={mapRef}
+              offset={offset}
+              renderRegionMarkers={renderRegionMarkers}
+              renderTournamentDots={renderTournamentDots}
+              renderWorldCountrySelectors={renderWorldCountrySelectors}
+              renderWorldEventDots={renderWorldEventDots}
+              selectedCountry={selectedCountry}
+              selectedRegion={selectedRegion}
+              showWorldCountrySelectors={showWorldCountrySelectors}
+              zoom={zoom}
+              onClick={clearFloatingDetails}
+              onDoubleClick={zoomFromPointer}
+              onLostPointerCapture={stopDrag}
+              onPointerCancel={stopDrag}
+              onPointerDown={startDrag}
+              onPointerLeave={leaveDrag}
+              onPointerMove={moveDrag}
+              onPointerUp={stopDrag}
+            />
+          )}
           {selectedCountry && !selectedCountry.flatMapPaths ? (
             <div className="coverage-map-note">
               <MapPinned size={18} aria-hidden="true" />

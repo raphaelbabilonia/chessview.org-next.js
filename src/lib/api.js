@@ -76,6 +76,7 @@ export const todayIsoDate = (date = new Date()) =>
 export const getUpcomingEvents = (filters = {}) =>
   getEvents({
     activeFrom: todayIsoDate(),
+    limit: 100,
     ...filters,
   });
 
