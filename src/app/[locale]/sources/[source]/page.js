@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { EventCard } from "@/components/EventCard";
-import { getUpcomingEvents } from "@/lib/api";
+import { getAllUpcomingEvents } from "@/lib/api";
 import { pageSeoMetadata } from "@/lib/seo";
 import { slugifySegment, sourceHref } from "@/lib/tournament";
 import { isLocale } from "@/i18n/config";
@@ -15,7 +15,7 @@ const labelFromSlug = (value) =>
 
 async function loadSourceEvents(sourceSlug) {
   const label = labelFromSlug(sourceSlug);
-  const { data: events, error } = await getUpcomingEvents({ source: label });
+  const { data: events, error } = await getAllUpcomingEvents({ source: label });
   return {
     data: events.filter((event) => slugifySegment(event.source?.name || "unknown") === sourceSlug),
     error,

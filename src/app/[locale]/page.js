@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { CountryCoverageSummary } from "@/components/CountryCoverageSummary";
 import { EventCard } from "@/components/EventCard";
 import { JsonLd } from "@/components/JsonLd";
-import { getUpcomingEvents } from "@/lib/api";
+import { getAllUpcomingEvents } from "@/lib/api";
 import { buildCountryCoverage } from "@/lib/coverage";
 import { getFeaturedNews, hasRequiredNewsImage } from "@/lib/news";
 import { formatDate } from "@/lib/format";
@@ -93,7 +93,7 @@ export default async function HomePage({ params }) {
   if (!isLocale(locale)) notFound();
 
   const copy = getDictionary(locale);
-  const [eventsResult, newsResult] = await Promise.all([getUpcomingEvents(), getFeaturedNews(3)]);
+  const [eventsResult, newsResult] = await Promise.all([getAllUpcomingEvents(), getFeaturedNews(3)]);
   const { data: events, error } = eventsResult;
   const { data: news, error: newsError } = newsResult;
   const publicEvents = Array.isArray(events) ? events : [];

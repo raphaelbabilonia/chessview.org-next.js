@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { EventCard } from "@/components/EventCard";
-import { getUpcomingEvents } from "@/lib/api";
+import { getAllUpcomingEvents } from "@/lib/api";
 import { formatCountryName } from "@/lib/format";
 import { pageSeoMetadata } from "@/lib/seo";
 import { countryHref, slugifySegment } from "@/lib/tournament";
@@ -16,7 +16,7 @@ const titleCase = (value) =>
 
 async function loadCountryEvents(countrySlug) {
   const label = titleCase(countrySlug);
-  const { data: events, error } = await getUpcomingEvents({ country: label });
+  const { data: events, error } = await getAllUpcomingEvents({ country: label });
   return {
     data: events.filter((event) => slugifySegment(event.country || "global") === countrySlug),
     error,

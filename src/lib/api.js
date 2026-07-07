@@ -80,6 +80,55 @@ export const getUpcomingEvents = (filters = {}) =>
     ...filters,
   });
 
+export async function getAllEvents(filters = {}, { maxPages = 25, pageSize = 100 } = {}) {
+  const events = [];
+  let page = 1;
+  let lastMeta = null;
+
+  while (page <= maxPages) {
+    const result = await getEvents({
+      ...filters,
+      limit: pageSize,
+      page,
+    });
+
+    if (result.error) {
+      return {
+        ...result,
+        data: events,
+        meta: lastMeta,
+      };
+    }
+
+    if (Array.isArray(result.data)) events.push(...result.data);
+    lastMeta = result.meta;
+    if (!result.meta?.hasNext) break;
+    page += 1;
+  }
+
+  return {
+    data: events,
+    error: null,
+    meta: {
+      ...(lastMeta || {}),
+      count: events.length,
+      fetched: events.length,
+      truncated: Boolean(lastMeta?.hasNext && page > maxPages),
+    },
+    notFound: false,
+    status: 200,
+  };
+}
+
+export const getAllUpcomingEvents = (filters = {}, options) =>
+  getAllEvents(
+    {
+      activeFrom: todayIsoDate(),
+      ...filters,
+    },
+    options,
+  );
+
 export const getEvent = (id) =>
   apiFetch(`/events/${encodeURIComponent(id)}`, {
     revalidate: 60,

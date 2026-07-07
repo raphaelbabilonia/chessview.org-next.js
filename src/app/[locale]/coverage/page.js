@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { CoverageExplorer } from "@/components/CoverageExplorer";
-import { getUpcomingEvents } from "@/lib/api";
+import { getAllUpcomingEvents } from "@/lib/api";
 import { buildCountryCoverage } from "@/lib/coverage";
 import { pageSeoMetadata } from "@/lib/seo";
 import { isLocale } from "@/i18n/config";
@@ -26,7 +26,7 @@ export default async function CoveragePage({ params }) {
   if (!isLocale(locale)) notFound();
 
   const copy = getDictionary(locale);
-  const { data: events, error } = await getUpcomingEvents();
+  const { data: events, error } = await getAllUpcomingEvents();
   const coverage = buildCountryCoverage(Array.isArray(events) ? events : [], locale);
 
   return (
