@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { feature } from "topojson-client";
 import worldAtlas from "world-atlas/countries-110m.json";
+import { trackAnalyticsEvent } from "@/lib/tracking";
 
 const GLOBE_RADIUS = 2.36;
 const SURFACE_RADIUS = GLOBE_RADIUS + 0.018;
@@ -166,6 +167,24 @@ const payloadForMarker = (marker) => {
   };
 };
 
+const trackMarkerSelection = (marker, input, trackedMarkerRef) => {
+  const now = Date.now();
+  if (trackedMarkerRef.current.key === marker.key && now - trackedMarkerRef.current.at < 500) return;
+  trackedMarkerRef.current = { at: now, key: marker.key };
+
+  const entity = marker.kind === "event" ? marker.event : marker.kind === "country" ? marker.country : null;
+  trackAnalyticsEvent("coverage_marker_select", {
+    entityId: entity?._id || entity?.countryKey,
+    entitySlug: entity?.slug,
+    entityType: marker.kind === "cluster" ? "event_cluster" : marker.kind,
+    routeType: "coverage",
+    metadata: {
+      input,
+      renderer: "3d",
+    },
+  });
+};
+
 export function CoverageThreeGlobe({
   autoRotate = true,
   copy,
@@ -189,6 +208,7 @@ export function CoverageThreeGlobe({
   const domActiveMarkerRef = useRef("");
   const autoRotateRef = useRef(autoRotate);
   const sceneRef = useRef(null);
+  const trackedMarkerRef = useRef({ at: 0, key: "" });
   const zoomRef = useRef(zoom);
 
   const markers = useMemo(() => {
@@ -360,9 +380,16 @@ export function CoverageThreeGlobe({
       y: 0,
     };
 
-    const stopAutoRotate = () => {
+    const stopAutoRotate = (input) => {
       if (!autoRotateRef.current) return;
       autoRotateRef.current = false;
+      trackAnalyticsEvent("coverage_map_interaction", {
+        routeType: "coverage",
+        metadata: {
+          input,
+          renderer: "3d",
+        },
+      });
       callbacksRef.current.onUserInteraction?.();
     };
 
@@ -513,7 +540,7 @@ export function CoverageThreeGlobe({
 
     const onPointerDown = (event) => {
       if (event.pointerType === "mouse" && event.button !== 0) return;
-      stopAutoRotate();
+      stopAutoRotate(event.pointerType === "touch" ? "touch" : "pointer");
       activePointers.set(event.pointerId, eventPoint(event));
       try {
         renderer.domElement.setPointerCapture?.(event.pointerId);
@@ -590,7 +617,10 @@ export function CoverageThreeGlobe({
       dragState.startObject = null;
       if (wasClick && object) {
         const payload = markerPayload(object);
-        if (payload) callbacksRef.current.onPin?.(payload);
+        if (payload) {
+          trackMarkerSelection(object.userData.marker, event.pointerType === "touch" ? "touch" : "pointer", trackedMarkerRef);
+          callbacksRef.current.onPin?.(payload);
+        }
       }
 
       if (activePointers.size === 1) {
@@ -609,7 +639,10 @@ export function CoverageThreeGlobe({
       if (dragState.moved >= 7) return;
       const object = raycast(event);
       const payload = markerPayload(object);
-      if (payload) callbacksRef.current.onPin?.(payload);
+      if (payload) {
+        trackMarkerSelection(object.userData.marker, "click", trackedMarkerRef);
+        callbacksRef.current.onPin?.(payload);
+      }
     };
 
     const onPointerLeave = () => {
@@ -618,14 +651,14 @@ export function CoverageThreeGlobe({
 
     const onWheel = (event) => {
       event.preventDefault();
-      stopAutoRotate();
+      stopAutoRotate("wheel");
       const delta = clamp(event.deltaY, -160, 160);
       callbacksRef.current.onZoomChange?.(zoomRef.current - delta * 0.0045, { input: "wheel" });
     };
 
     const onDoubleClick = (event) => {
       event.preventDefault();
-      stopAutoRotate();
+      stopAutoRotate("double_click");
       callbacksRef.current.onZoomChange?.(zoomRef.current + (event.shiftKey ? -0.85 : 0.85), { input: "double_click" });
     };
 
@@ -722,6 +755,7 @@ export function CoverageThreeGlobe({
     const state = sceneRef.current;
     const object = state?.markerByKey.get(marker.key);
     autoRotateRef.current = false;
+    trackMarkerSelection(marker, "button", trackedMarkerRef);
     callbacksRef.current.onUserInteraction?.();
     callbacksRef.current.onPin?.({
       ...payloadForMarker(marker),
