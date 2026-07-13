@@ -46,6 +46,7 @@ const cleanCountry = (value) => {
       us: "United States",
       turkiye: "Turkey",
       turkey: "Turkey",
+      "republic of turkiye": "Turkey",
       "united states of america": "United States",
       uk: "United Kingdom",
     }[key] || country
@@ -102,6 +103,7 @@ const countryAlias = {
   Portugal: { atlasName: "Portugal", flagCode: "pt" },
   "Puerto Rico": { atlasName: "Puerto Rico", flagCode: "pr" },
   Romania: { atlasName: "Romania", flagCode: "ro" },
+  Russia: { atlasName: "Russia", flagCode: "ru" },
   Serbia: { atlasName: "Serbia", flagCode: "rs" },
   Singapore: { atlasName: "Singapore", coordinates: [103.8198, 1.3521], flagCode: "sg" },
   Slovakia: { atlasName: "Slovakia", flagCode: "sk" },
