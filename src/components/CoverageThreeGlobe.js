@@ -13,11 +13,21 @@ import {
   shortestAngleDelta,
   zoomFromPinch,
 } from "@/lib/coverageGlobeGesture";
+import {
+  coverageMarkerSizing,
+  globeClusterMarkerRadiusPx,
+  globeCountryMarkerRadiusPx,
+  globeEventMarkerRadiusPx,
+  markerFanoutOffset,
+  surfaceBeadCenterRadius,
+  worldUnitsPerPixel,
+} from "@/lib/coverageMarkerSizing";
 import { trackAnalyticsEvent } from "@/lib/tracking";
 
 const GLOBE_RADIUS = 2.36;
 const SURFACE_RADIUS = GLOBE_RADIUS + 0.018;
 const COARSE_MARKER_HIT_RADIUS_PX = 22;
+const FINE_MARKER_HIT_RADIUS_PX = 8;
 const HIT_TARGET_UPDATE_INTERVAL_MS = 1000 / 15;
 const MOMENTUM_STALE_AFTER_MS = 90;
 const MOMENTUM_STOP_RADIANS_PER_SECOND = 0.01;
@@ -239,7 +249,7 @@ export function CoverageThreeGlobe({
             country,
             key: `country-${country.countryKey}`,
             kind: "country",
-            scale: clamp(0.022 + Math.sqrt(country.count || 1) * 0.0015, 0.024, 0.034),
+            visualRadiusPx: globeCountryMarkerRadiusPx(country.count),
           };
         })
         .filter(Boolean);
@@ -259,7 +269,7 @@ export function CoverageThreeGlobe({
             countryLabels: item.countryLabels,
             key: item.key,
             kind: "cluster",
-            scale: 0.02,
+            visualRadiusPx: globeClusterMarkerRadiusPx(item.count),
           };
         }
 
@@ -270,9 +280,10 @@ export function CoverageThreeGlobe({
           color: typeColors[item.event.tournamentType] || typeColors.other,
           coordinates,
           event: item.event,
+          fanout: markerFanoutOffset(item.event),
           key: item.key,
           kind: "event",
-          scale: item.event.markerSource === "country" ? 0.014 : 0.018,
+          visualRadiusPx: globeEventMarkerRadiusPx(item.densityScale),
         };
       })
       .filter(Boolean);
@@ -378,6 +389,8 @@ export function CoverageThreeGlobe({
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     const cameraDirection = new THREE.Vector3();
+    const markerAnchorWorld = new THREE.Vector3();
+    const markerDirection = new THREE.Vector3();
     const markerProjectedPosition = new THREE.Vector3();
     const markerWorldPosition = new THREE.Vector3();
     const screenPitchAxis = new THREE.Vector3(1, 0, 0);
@@ -534,10 +547,10 @@ export function CoverageThreeGlobe({
             object.getWorldPosition(markerWorldPosition);
             return isFrontFacing(markerWorldPosition);
           })?.object || null;
-      if (preciseMatch || !useCoarseHitArea) return preciseMatch;
+      if (preciseMatch) return preciseMatch;
 
       let closestObject = null;
-      let closestDistance = COARSE_MARKER_HIT_RADIUS_PX;
+      let closestDistance = useCoarseHitArea ? COARSE_MARKER_HIT_RADIUS_PX : FINE_MARKER_HIT_RADIUS_PX;
 
       for (const object of objects) {
         object.getWorldPosition(markerWorldPosition);
@@ -556,6 +569,42 @@ export function CoverageThreeGlobe({
       }
 
       return closestObject;
+    };
+
+    const updateMarkerMeshes = () => {
+      const objects = sceneRef.current?.markerObjects || [];
+      if (!objects.length) return;
+
+      const viewportHeight = Math.max(renderer.domElement.clientHeight, 1);
+      globeGroup.updateMatrixWorld(true);
+
+      for (const object of objects) {
+        const { baseNormal, east, fanout, marker, north } = object.userData;
+        if (!baseNormal || !east || !marker || !north) continue;
+
+        markerAnchorWorld.copy(baseNormal).multiplyScalar(GLOBE_RADIUS).applyMatrix4(globeGroup.matrixWorld);
+        const unitsPerPixel = worldUnitsPerPixel({
+          distance: camera.position.distanceTo(markerAnchorWorld),
+          fovDegrees: camera.fov,
+          viewportHeight,
+        });
+        const isActive = hoveredRef.object === object || domActiveMarkerRef.current === marker.key;
+        const visualRadiusPx = marker.visualRadiusPx * (isActive ? coverageMarkerSizing.hoverScale : 1);
+        const beadRadius = Math.max(unitsPerPixel * visualRadiusPx, 0.0001);
+
+        markerDirection.copy(baseNormal);
+        if (fanout?.x || fanout?.y) {
+          const tangentScale = unitsPerPixel / GLOBE_RADIUS;
+          markerDirection.addScaledVector(east, fanout.x * tangentScale);
+          markerDirection.addScaledVector(north, -fanout.y * tangentScale);
+          markerDirection.normalize();
+        }
+
+        object.position
+          .copy(markerDirection)
+          .multiplyScalar(surfaceBeadCenterRadius({ beadRadius, globeRadius: GLOBE_RADIUS }));
+        object.scale.setScalar(beadRadius);
+      }
     };
 
     const markerPayload = (object) => {
@@ -686,6 +735,7 @@ export function CoverageThreeGlobe({
       const zoomMoving = Math.abs(targetDistance - camera.position.z) > 0.001;
       if (rotationMoving || zoomMoving) interaction.hitTargetsDirty = true;
 
+      updateMarkerMeshes();
       renderer.render(scene, camera);
       if (
         interaction.hitTargetsDirty &&
@@ -1031,23 +1081,31 @@ export function CoverageThreeGlobe({
     state.markerDefinitions = markers;
     state.interaction.hitTargetsDirty = true;
 
+    const globeNorthAxis = new THREE.Vector3(0, 1, 0);
+    const globePoleFallbackAxis = new THREE.Vector3(0, 0, 1);
+
     for (const marker of markers) {
-      const position = lonLatToVector3(marker.coordinates, GLOBE_RADIUS + 0.105);
-      const basePosition = lonLatToVector3(marker.coordinates, GLOBE_RADIUS + 0.024);
+      const baseNormal = lonLatToVector3(marker.coordinates, 1).normalize();
+      const east = new THREE.Vector3().crossVectors(globeNorthAxis, baseNormal);
+      if (east.lengthSq() < 0.000001) east.crossVectors(globePoleFallbackAxis, baseNormal);
+      east.normalize();
+      const north = new THREE.Vector3().crossVectors(baseNormal, east).normalize();
       const color = new THREE.Color(marker.color);
       const core = new THREE.Mesh(
-        new THREE.SphereGeometry(marker.scale, 20, 14),
+        new THREE.SphereGeometry(1, 12, 8),
         new THREE.MeshBasicMaterial({ color, transparent: true }),
       );
-      core.position.copy(position);
-      core.userData.marker = marker;
+      core.position.copy(baseNormal).multiplyScalar(GLOBE_RADIUS + 0.01);
+      core.scale.setScalar(0.01);
+      core.userData = {
+        baseNormal,
+        east,
+        fanout: marker.fanout || { x: 0, y: 0 },
+        marker,
+        north,
+      };
 
-      const stem = new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([basePosition, position]),
-        new THREE.LineBasicMaterial({ color, opacity: 0.46, transparent: true }),
-      );
-
-      state.markerGroup.add(stem, core);
+      state.markerGroup.add(core);
       state.markerObjects.push(core);
       state.markerByKey.set(marker.key, core);
     }
@@ -1090,7 +1148,7 @@ export function CoverageThreeGlobe({
   };
 
   return (
-    <div className="coverage-globe" data-coverage-globe="ready" ref={containerRef}>
+    <div className="coverage-globe" data-coverage-globe="ready" data-coverage-marker-style="surface-beads" ref={containerRef}>
       <div className="coverage-globe-hit-layer" aria-label={copy.coverage.mapLabel}>
         {markers.map((marker) => (
           <button
@@ -1098,6 +1156,7 @@ export function CoverageThreeGlobe({
             className={`coverage-globe-hit-target is-${marker.kind}`}
             data-coverage-marker-key={marker.key}
             data-coverage-marker-kind={marker.kind}
+            data-coverage-visual-radius-px={marker.visualRadiusPx}
             key={marker.key}
             ref={(node) => {
               if (node) buttonRefs.current.set(marker.key, node);

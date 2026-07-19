@@ -17,6 +17,11 @@ import {
   rememberCoverageMap3dFallback,
   writeCoverageMapModePreference,
 } from "@/lib/coverageMapCapability";
+import {
+  densityScalesForPoints,
+  flatClusterMarkerDimensions,
+  flatEventMarkerDimensions,
+} from "@/lib/coverageMarkerSizing";
 import { formatDateRange } from "@/lib/format";
 import { trackAnalyticsEvent } from "@/lib/tracking";
 
@@ -125,21 +130,6 @@ const worldClusterScreenDistance = (zoom) => {
 
 const worldEventPoint = (event) => event.anchor || event.marker || null;
 
-const worldEventDotRadius = (event, zoom) => {
-  const baseRadius = event.marker?.radius || 1.6;
-  const densityScale = Math.sqrt(Math.max(zoom / 2.15, 1));
-  const sourceScale = event.markerSource === "country" ? 0.82 : 1;
-  return Number(Math.max(0.42, Math.min(baseRadius, (baseRadius * sourceScale) / densityScale)).toFixed(2));
-};
-
-const worldEventTargetRadius = (radius, zoom) => Number(Math.max(radius + 0.5, Math.min(4.2, 5.1 / Math.max(zoom, 1))).toFixed(2));
-
-const worldEventClusterRadius = (count, zoom) => {
-  const baseRadius = 1.8 + Math.sqrt(count) * 0.42;
-  const densityScale = Math.sqrt(Math.max(zoom / 2.4, 1));
-  return Number(Math.max(1.12, Math.min(4.4, baseRadius / densityScale)).toFixed(2));
-};
-
 const uniqueCountriesForEvents = (events) => {
   const countries = new Map();
 
@@ -219,7 +209,6 @@ const buildWorldMapItems = (events, zoom) => {
         liveCount,
         marker: {
           ...point,
-          radius: worldEventClusterRadius(groupedEvents.length, normalizedZoom),
         },
         point,
         upcomingCount: groupedEvents.length - liveCount,
@@ -228,19 +217,41 @@ const buildWorldMapItems = (events, zoom) => {
     }
 
     const event = groupedEvents[0];
-    const radius = worldEventDotRadius(event, normalizedZoom);
 
     items.push({
       event,
       key: `event-${event._id}-${group[0].index}`,
       kind: "event",
-      radius,
-      ringRadius: Number((radius + 0.72).toFixed(2)),
-      targetRadius: worldEventTargetRadius(radius, normalizedZoom),
     });
   }
 
-  return items.sort((a, b) => Number(a.kind === "cluster") - Number(b.kind === "cluster"));
+  const sortedItems = items.sort((a, b) => Number(a.kind === "cluster") - Number(b.kind === "cluster"));
+  const densityScales = densityScalesForPoints(
+    sortedItems.map((item) => (item.kind === "cluster" ? item.point : item.event.marker)),
+    normalizedZoom,
+  );
+
+  return sortedItems.map((item, index) => {
+    const densityScale = densityScales[index];
+    if (item.kind === "cluster") {
+      const dimensions = flatClusterMarkerDimensions({ count: item.count, zoom: normalizedZoom });
+      return {
+        ...item,
+        ...dimensions,
+        densityScale,
+        marker: {
+          ...item.marker,
+          radius: dimensions.radius,
+        },
+      };
+    }
+
+    return {
+      ...item,
+      ...flatEventMarkerDimensions({ densityScale, zoom: normalizedZoom }),
+      densityScale,
+    };
+  });
 };
 
 const pointerPosition = (event) => ({ x: event.clientX, y: event.clientY });
@@ -1329,8 +1340,10 @@ export function CoverageExplorer({ copy, coverage, locale }) {
           <g
             aria-label={`${title}: ${item.countryLabels.slice(0, 4).join(", ")}`}
             className="coverage-interactive-marker coverage-world-event-cluster"
+            data-coverage-density-scale={item.densityScale.toFixed(3)}
             data-coverage-marker-key={item.key}
             data-coverage-marker-kind="event-cluster"
+            data-coverage-visual-radius={item.visualRadius}
             key={item.key}
             onBlur={() => setHovered(null)}
             onClick={(event) => handleMarkerClick(event, () => setPinned(payload))}
@@ -1344,10 +1357,10 @@ export function CoverageExplorer({ copy, coverage, locale }) {
             transform={`translate(${item.marker.x} ${item.marker.y})`}
           >
             <title>{title}</title>
-            <circle className="coverage-world-cluster-target" r={item.marker.radius} />
-            <circle className="coverage-world-cluster-halo" r={Number((item.marker.radius + 1.45).toFixed(2))} />
+            <circle className="coverage-world-cluster-target" r={item.targetRadius} />
+            <circle className="coverage-world-cluster-halo" r={item.haloRadius} />
             <circle className="coverage-world-cluster-core" r={item.marker.radius} />
-            <circle className="coverage-world-cluster-dot" r={Number(Math.max(0.38, item.marker.radius * 0.32).toFixed(2))} />
+            <circle className="coverage-world-cluster-dot" r={item.dotRadius} />
           </g>
         );
       }
@@ -1364,8 +1377,10 @@ export function CoverageExplorer({ copy, coverage, locale }) {
         <g
           aria-label={`${event.title}: ${[event.city, event.region, event.countryLabel].filter(Boolean).join(", ")}`}
           className={`coverage-interactive-marker coverage-world-event-dot is-${event.tournamentType}${event.markerSource === "country" ? " is-country-level" : ""}`}
+          data-coverage-density-scale={item.densityScale.toFixed(3)}
           data-coverage-marker-key={item.key}
           data-coverage-marker-kind="event"
+          data-coverage-visual-radius={item.visualRadius}
           key={item.key}
           onBlur={() => setHovered(null)}
           onClick={(pointerEvent) => handleMarkerClick(pointerEvent, () => setPinned(payload))}

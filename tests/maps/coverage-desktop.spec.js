@@ -38,6 +38,53 @@ test("2D keyboard pan, zoom, reset, and marker activation remain available", asy
   await expect(page.locator(".coverage-tooltip")).toHaveCount(0);
 });
 
+test("existing clusters remain while marker dimensions stay compact", async ({ page }) => {
+  const stage = await openCoverage(page, "2d");
+  const clusters = page.locator('svg [data-coverage-marker-kind="event-cluster"]');
+  const events = page.locator('svg [data-coverage-marker-kind="event"]');
+
+  await expect(clusters).toHaveCount(1);
+  await expect(events).toHaveCount(3);
+  expect(Number(await clusters.first().getAttribute("data-coverage-visual-radius"))).toBeLessThanOrEqual(3.4);
+  const eventRadii = await events.evaluateAll((markers) => markers.map((marker) => Number(marker.dataset.coverageVisualRadius)));
+  expect(eventRadii.every((radius) => radius >= 0.7 && radius <= 1.65)).toBe(true);
+  const initialClusterRadius = Number(await clusters.first().locator(".coverage-world-cluster-core").getAttribute("r"));
+  const initialEventRadius = Number(await events.first().locator(".coverage-world-dot-core").getAttribute("r"));
+
+  await clusters.first().focus();
+  await clusters.first().press("Enter");
+  await expect(page.locator(".coverage-tooltip")).toContainText(/2\s*Tournaments/i);
+  await clusters.first().press("Escape");
+
+  await stage.focus();
+  await stage.press("+");
+  await stage.press("+");
+  await stage.press("+");
+  await expect(page.locator(".coverage-zoom-badge")).toContainText("2.35");
+  await expect(clusters).toHaveCount(1);
+  await expect(events).toHaveCount(3);
+  const zoomedClusterRadius = Number(await clusters.first().locator(".coverage-world-cluster-core").getAttribute("r"));
+  const zoomedEventRadius = Number(await events.first().locator(".coverage-world-dot-core").getAttribute("r"));
+  expect(Math.abs(initialClusterRadius - zoomedClusterRadius * 2.35)).toBeLessThan(0.01);
+  expect(Math.abs(initialEventRadius - zoomedEventRadius * 2.35)).toBeLessThan(0.01);
+});
+
+test("3D markers use capped surface beads without changing cluster membership", async ({ page }) => {
+  await openCoverage(page, "3d");
+  const globe = page.locator("[data-coverage-globe=ready]");
+  await expect(globe).toHaveAttribute("data-coverage-marker-style", "surface-beads");
+
+  const clusters = globe.locator('[data-coverage-marker-kind="cluster"]');
+  const events = globe.locator('[data-coverage-marker-kind="event"]');
+  await expect(clusters).toHaveCount(1);
+  await expect(events).toHaveCount(3);
+
+  const clusterRadii = await clusters.evaluateAll((markers) => markers.map((marker) => Number(marker.dataset.coverageVisualRadiusPx)));
+  const eventRadii = await events.evaluateAll((markers) => markers.map((marker) => Number(marker.dataset.coverageVisualRadiusPx)));
+  expect(clusterRadii.every((radius) => radius >= 2.6 && radius <= 3.6)).toBe(true);
+  expect(eventRadii.every((radius) => radius >= 1.1 && radius <= 2.4)).toBe(true);
+});
+
 test("renderer preference survives reload", async ({ page }) => {
   await openCoverage(page, "2d");
   await page.reload();
