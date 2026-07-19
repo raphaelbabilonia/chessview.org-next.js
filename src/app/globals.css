@@ -1114,8 +1114,8 @@ body.coverage-fullscreen-lock {
 
 .coverage-globe-hit-target {
   position: absolute;
-  width: 26px;
-  height: 26px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border: 1px solid transparent;
   border-radius: 50%;
@@ -4202,6 +4202,18 @@ textarea:focus {
   fill: transparent;
   stroke: rgba(253, 252, 253, 0.72);
   stroke-width: 0.8;
+}
+
+@media (pointer: coarse) {
+  .coverage-world-dot-target,
+  .coverage-world-cluster-target,
+  .coverage-marker-target,
+  .coverage-dot-target {
+    stroke: transparent;
+    stroke-width: 44px;
+    pointer-events: all;
+    vector-effect: non-scaling-stroke;
+  }
 }
 
 .coverage-tournament-dot:hover .coverage-dot-ring,

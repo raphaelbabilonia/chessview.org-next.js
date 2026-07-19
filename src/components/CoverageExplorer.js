@@ -48,6 +48,7 @@ const clampOffset = (offset, zoom, mapSize) => {
 };
 
 const activationKeys = new Set(["Enter", " "]);
+const TAP_SLOP_PX = 10;
 const tournamentTypes = ["classical", "rapid", "blitz", "other"];
 const datePresets = ["oneMonth", "threeMonths", "year", "nextYear", "custom"];
 
@@ -480,7 +481,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   const mapRef = useRef(null);
   const shellRef = useRef(null);
   const dragRef = useRef(null);
-  const markerGestureRef = useRef({ blockUntil: 0 });
+  const markerGestureRef = useRef({ activationTimer: null, blockUntil: 0, pending: null });
   const pointersRef = useRef(new Map());
   const today = useMemo(() => eventDateKey(coverage.today) || "1970-01-01", [coverage.today]);
 
@@ -787,8 +788,17 @@ export function CoverageExplorer({ copy, coverage, locale }) {
     enterFullscreenView();
   };
 
+  const clearPendingMarkerActivation = () => {
+    if (markerGestureRef.current.activationTimer !== null) {
+      window.clearTimeout(markerGestureRef.current.activationTimer);
+      markerGestureRef.current.activationTimer = null;
+    }
+    markerGestureRef.current.pending = null;
+  };
+
   const blockMarkerActivation = (timeStamp, duration = 650) => {
     markerGestureRef.current.blockUntil = Math.max(markerGestureRef.current.blockUntil, timeStamp + duration);
+    clearPendingMarkerActivation();
   };
 
   const canActivateMarker = (timeStamp) => !didDrag && timeStamp > markerGestureRef.current.blockUntil;
@@ -800,25 +810,29 @@ export function CoverageExplorer({ copy, coverage, locale }) {
 
   const handleMarkerClick = (event, action) => {
     event.stopPropagation();
+    clearPendingMarkerActivation();
     runMarkerAction(event.timeStamp, action);
   };
 
-  const handleMarkerPointerDown = (event) => {
+  const handleMarkerPointerDown = (event, action) => {
     if (event.pointerType === "mouse") {
       event.stopPropagation();
+      setDidDrag(false);
       return;
     }
 
-    if (pointersRef.current.size >= 1) blockMarkerActivation(event.timeStamp);
-  };
-
-  const handleMarkerPointerUp = (event, action) => {
-    if (event.pointerType === "mouse") {
-      event.stopPropagation();
+    if (pointersRef.current.size >= 1) {
+      blockMarkerActivation(event.timeStamp);
       return;
     }
 
-    runMarkerAction(event.timeStamp, action);
+    clearPendingMarkerActivation();
+    markerGestureRef.current.pending = {
+      action,
+      armed: false,
+      element: event.currentTarget,
+      pointerId: event.pointerId,
+    };
   };
 
   const toggleType = (type) => {
@@ -1048,6 +1062,9 @@ export function CoverageExplorer({ copy, coverage, locale }) {
     }
 
     const wasIdle = pointersRef.current.size === 0;
+    if (wasIdle && !event.target?.closest?.(".coverage-interactive-marker")) {
+      clearPendingMarkerActivation();
+    }
     pointersRef.current.set(event.pointerId, pointerPosition(event));
     const points = Array.from(pointersRef.current.values());
 
@@ -1107,9 +1124,13 @@ export function CoverageExplorer({ copy, coverage, locale }) {
       return;
     }
 
-    const delta = clientDeltaToSvg(event.clientX - dragRef.current.startX, event.clientY - dragRef.current.startY);
+    const clientDelta = {
+      x: event.clientX - dragRef.current.startX,
+      y: event.clientY - dragRef.current.startY,
+    };
+    const delta = clientDeltaToSvg(clientDelta.x, clientDelta.y);
 
-    if (Math.abs(delta.x) + Math.abs(delta.y) > 3) {
+    if (Math.hypot(clientDelta.x, clientDelta.y) > TAP_SLOP_PX) {
       blockMarkerActivation(event.timeStamp);
       setDidDrag(true);
     }
@@ -1126,6 +1147,22 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   };
 
   const stopDrag = (event) => {
+    const pendingMarker = markerGestureRef.current.pending;
+    if (event?.type === "pointerup" && pendingMarker?.pointerId === event.pointerId) {
+      const releasedMarker = document.elementFromPoint(event.clientX, event.clientY)?.closest?.(".coverage-interactive-marker");
+      pendingMarker.armed = releasedMarker === pendingMarker.element && event.timeStamp > markerGestureRef.current.blockUntil;
+      if (!pendingMarker.armed) {
+        clearPendingMarkerActivation();
+      } else {
+        markerGestureRef.current.activationTimer = window.setTimeout(() => {
+          if (markerGestureRef.current.pending !== pendingMarker || !pendingMarker.armed) return;
+          markerGestureRef.current.activationTimer = null;
+          markerGestureRef.current.pending = null;
+          pendingMarker.action();
+        }, 0);
+      }
+    }
+
     if (event?.pointerId !== undefined) {
       pointersRef.current.delete(event.pointerId);
       try {
@@ -1163,6 +1200,20 @@ export function CoverageExplorer({ copy, coverage, locale }) {
 
     dragRef.current = null;
     setIsDragging(false);
+  };
+
+  const cancelDrag = (event) => {
+    blockMarkerActivation(event.timeStamp, 900);
+    setDidDrag(true);
+    const pointerIds = [...pointersRef.current.keys()];
+
+    pointersRef.current.clear();
+    dragRef.current = null;
+    setIsDragging(false);
+
+    for (const pointerId of pointerIds) {
+      releasePointerCapture(event.currentTarget, pointerId);
+    }
   };
 
   const leaveDrag = (event) => {
@@ -1230,7 +1281,16 @@ export function CoverageExplorer({ copy, coverage, locale }) {
     }
   };
 
-  const clearFloatingDetails = () => {
+  const clearFloatingDetails = (event) => {
+    const pendingMarker = markerGestureRef.current.pending;
+    if (pendingMarker?.armed && event?.timeStamp > markerGestureRef.current.blockUntil) {
+      clearPendingMarkerActivation();
+      pendingMarker.action();
+      return;
+    }
+
+    clearPendingMarkerActivation();
+
     if (didDrag) return;
     setHovered(null);
     setPinned(null);
@@ -1257,8 +1317,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
             onKeyDown={(keyEvent) => onMarkerKeyDown(keyEvent, () => setPinned(payload))}
             onMouseEnter={() => setHovered(payload)}
             onMouseLeave={() => setHovered(null)}
-            onPointerDown={handleMarkerPointerDown}
-            onPointerUp={(event) => handleMarkerPointerUp(event, () => setPinned(payload))}
+            onPointerDown={(event) => handleMarkerPointerDown(event, () => setPinned(payload))}
             role="button"
             tabIndex={0}
             transform={`translate(${item.marker.x} ${item.marker.y})`}
@@ -1291,8 +1350,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
           onKeyDown={(keyEvent) => onMarkerKeyDown(keyEvent, () => setPinned(payload))}
           onMouseEnter={() => setHovered(payload)}
           onMouseLeave={() => setHovered(null)}
-          onPointerDown={handleMarkerPointerDown}
-          onPointerUp={(pointerEvent) => handleMarkerPointerUp(pointerEvent, () => setPinned(payload))}
+          onPointerDown={(pointerEvent) => handleMarkerPointerDown(pointerEvent, () => setPinned(payload))}
           role="button"
           tabIndex={0}
           transform={`translate(${event.marker.x} ${event.marker.y})`}
@@ -1327,8 +1385,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
             onKeyDown={(event) => onMarkerKeyDown(event, () => setPinned(payload))}
             onMouseEnter={() => setHovered(payload)}
             onMouseLeave={() => setHovered(null)}
-            onPointerDown={handleMarkerPointerDown}
-            onPointerUp={(event) => handleMarkerPointerUp(event, () => setPinned(payload))}
+            onPointerDown={(event) => handleMarkerPointerDown(event, () => setPinned(payload))}
             role="button"
             tabIndex={0}
             transform={`translate(${country.marker.x} ${country.marker.y})`}
@@ -1359,25 +1416,12 @@ export function CoverageExplorer({ copy, coverage, locale }) {
             className={`coverage-interactive-marker coverage-region-marker${selectedRegionKey === region.key ? " is-selected" : ""}`}
             key={region.key}
             onBlur={() => setHovered(null)}
-            onClick={(event) => {
-              event.stopPropagation();
-              if (didDrag || event.timeStamp <= markerGestureRef.current.blockUntil) return;
-              selectRegion(selectedCountry, region);
-            }}
+            onClick={(event) => handleMarkerClick(event, () => selectRegion(selectedCountry, region))}
             onFocus={() => setHovered(payload)}
             onKeyDown={(event) => onMarkerKeyDown(event, () => selectRegion(selectedCountry, region))}
             onMouseEnter={() => setHovered(payload)}
             onMouseLeave={() => setHovered(null)}
-            onPointerDown={handleMarkerPointerDown}
-            onPointerUp={(event) => {
-              if (event.pointerType === "mouse") {
-                event.stopPropagation();
-                return;
-              }
-
-              if (didDrag || event.timeStamp <= markerGestureRef.current.blockUntil) return;
-              selectRegion(selectedCountry, region);
-            }}
+            onPointerDown={(event) => handleMarkerPointerDown(event, () => selectRegion(selectedCountry, region))}
             role="button"
             tabIndex={0}
             transform={`translate(${region.marker.x} ${region.marker.y})`}
@@ -1416,8 +1460,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
             onKeyDown={(keyEvent) => onMarkerKeyDown(keyEvent, () => setPinned(payload))}
             onMouseEnter={() => setHovered(payload)}
             onMouseLeave={() => setHovered(null)}
-            onPointerDown={handleMarkerPointerDown}
-            onPointerUp={(pointerEvent) => handleMarkerPointerUp(pointerEvent, () => setPinned(payload))}
+            onPointerDown={(pointerEvent) => handleMarkerPointerDown(pointerEvent, () => setPinned(payload))}
             role="button"
             tabIndex={0}
             transform={`translate(${event.marker.x} ${event.marker.y})`}
@@ -1641,7 +1684,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
               onClick={clearFloatingDetails}
               onDoubleClick={zoomFromPointer}
               onLostPointerCapture={stopDrag}
-              onPointerCancel={stopDrag}
+              onPointerCancel={cancelDrag}
               onPointerDown={startDrag}
               onPointerLeave={leaveDrag}
               onPointerMove={moveDrag}

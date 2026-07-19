@@ -8,6 +8,8 @@ import { trackAnalyticsEvent } from "@/lib/tracking";
 
 const GLOBE_RADIUS = 2.36;
 const SURFACE_RADIUS = GLOBE_RADIUS + 0.018;
+const COARSE_MARKER_HIT_RADIUS_PX = 22;
+const TAP_SLOP_PX = 10;
 const typeColors = {
   blitz: "#ffb02e",
   classical: "#2f80ed",
@@ -357,9 +359,14 @@ export function CoverageThreeGlobe({
 
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
+    const cameraDirection = new THREE.Vector3();
+    const markerProjectedPosition = new THREE.Vector3();
+    const markerWorldPosition = new THREE.Vector3();
     const hoveredRef = { object: null };
     const activePointers = new Map();
     let pinchState = null;
+    let pendingActivation = null;
+    let usedMultiTouch = false;
     const performanceProbe = {
       elapsed: 0,
       frames: 0,
@@ -423,12 +430,46 @@ export function CoverageThreeGlobe({
       camera.updateProjectionMatrix();
     };
 
-    const raycast = (event) => {
+    const isFrontFacing = (worldPosition) => {
+      cameraDirection.copy(camera.position).normalize();
+      return worldPosition.dot(cameraDirection) / Math.max(worldPosition.length(), 0.0001) > 0.03;
+    };
+
+    const raycast = (event, useCoarseHitArea = false) => {
       const bounds = renderer.domElement.getBoundingClientRect();
       pointer.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
       pointer.y = -(((event.clientY - bounds.top) / bounds.height) * 2 - 1);
       raycaster.setFromCamera(pointer, camera);
-      return raycaster.intersectObjects(sceneRef.current?.markerObjects || [], false)[0]?.object || null;
+      const objects = sceneRef.current?.markerObjects || [];
+      const preciseMatch =
+        raycaster
+          .intersectObjects(objects, false)
+          .find(({ object }) => {
+            object.getWorldPosition(markerWorldPosition);
+            return isFrontFacing(markerWorldPosition);
+          })?.object || null;
+      if (preciseMatch || !useCoarseHitArea) return preciseMatch;
+
+      let closestObject = null;
+      let closestDistance = COARSE_MARKER_HIT_RADIUS_PX;
+
+      for (const object of objects) {
+        object.getWorldPosition(markerWorldPosition);
+        if (!isFrontFacing(markerWorldPosition)) continue;
+
+        markerProjectedPosition.copy(markerWorldPosition).project(camera);
+        if (markerProjectedPosition.z >= 1) continue;
+
+        const markerX = bounds.left + ((markerProjectedPosition.x + 1) / 2) * bounds.width;
+        const markerY = bounds.top + ((1 - markerProjectedPosition.y) / 2) * bounds.height;
+        const distance = Math.hypot(event.clientX - markerX, event.clientY - markerY);
+        if (distance > closestDistance) continue;
+
+        closestDistance = distance;
+        closestObject = object;
+      }
+
+      return closestObject;
     };
 
     const markerPayload = (object) => {
@@ -442,8 +483,9 @@ export function CoverageThreeGlobe({
 
     const setInteractiveObject = (object) => {
       if (hoveredRef.object === object) return;
+      const previousObject = hoveredRef.object;
       hoveredRef.object = object;
-      callbacksRef.current.onLeave?.();
+      if (previousObject) callbacksRef.current.onLeave?.();
 
       if (!object) {
         renderer.domElement.style.cursor = dragState.active ? "grabbing" : "grab";
@@ -451,32 +493,34 @@ export function CoverageThreeGlobe({
       }
 
       renderer.domElement.style.cursor = "pointer";
+      const payload = markerPayload(object);
+      if (payload) callbacksRef.current.onHover?.(payload);
     };
 
     const updateHitTargets = () => {
-      const cameraDirection = camera.position.clone().normalize();
+      cameraDirection.copy(camera.position).normalize();
 
       for (const marker of sceneRef.current?.markerDefinitions || []) {
         const button = buttonRefs.current.get(marker.key);
         const object = sceneRef.current?.markerByKey.get(marker.key);
         if (!button || !object) continue;
 
-        const worldPosition = object.getWorldPosition(new THREE.Vector3());
-        const facingCamera = worldPosition.clone().normalize().dot(cameraDirection) > 0.03;
-        const projected = worldPosition.clone().project(camera);
+        object.getWorldPosition(markerWorldPosition);
+        const facingCamera = markerWorldPosition.dot(cameraDirection) / Math.max(markerWorldPosition.length(), 0.0001) > 0.03;
+        markerProjectedPosition.copy(markerWorldPosition).project(camera);
         const visible =
           facingCamera &&
-          projected.z < 1 &&
-          projected.x >= -0.96 &&
-          projected.x <= 0.96 &&
-          projected.y >= -0.84 &&
-          projected.y <= 0.94;
+          markerProjectedPosition.z < 1 &&
+          markerProjectedPosition.x >= -0.96 &&
+          markerProjectedPosition.x <= 0.96 &&
+          markerProjectedPosition.y >= -0.84 &&
+          markerProjectedPosition.y <= 0.94;
 
         button.hidden = !visible;
         if (!visible) continue;
 
-        button.style.left = `${((projected.x + 1) / 2) * 100}%`;
-        button.style.top = `${((1 - projected.y) / 2) * 100}%`;
+        button.style.left = `${((markerProjectedPosition.x + 1) / 2) * 100}%`;
+        button.style.top = `${((1 - markerProjectedPosition.y) / 2) * 100}%`;
       }
     };
 
@@ -527,7 +571,6 @@ export function CoverageThreeGlobe({
 
       const targetDistance = clamp(7.3 - Math.min(Math.max(zoomRef.current - 1, 0), 11) * 0.405, 2.85, 7.3);
       camera.position.z += (targetDistance - camera.position.z) * 0.12;
-      camera.updateProjectionMatrix();
 
       if (autoRotateRef.current && !reducedMotion && !dragState.active && !pinchState && !hoveredRef.object && !domActiveMarkerRef.current) {
         globeGroup.rotation.y += 0.0012;
@@ -540,6 +583,8 @@ export function CoverageThreeGlobe({
 
     const onPointerDown = (event) => {
       if (event.pointerType === "mouse" && event.button !== 0) return;
+      if (activePointers.size === 0) usedMultiTouch = false;
+      pendingActivation = null;
       stopAutoRotate(event.pointerType === "touch" ? "touch" : "pointer");
       activePointers.set(event.pointerId, eventPoint(event));
       try {
@@ -549,6 +594,7 @@ export function CoverageThreeGlobe({
       }
 
       if (activePointers.size >= 2) {
+        usedMultiTouch = true;
         startPinch();
         setInteractiveObject(null);
         renderer.domElement.style.cursor = "grabbing";
@@ -558,7 +604,7 @@ export function CoverageThreeGlobe({
       dragState.active = true;
       dragState.moved = 0;
       dragState.pointerId = event.pointerId;
-      dragState.startObject = raycast(event);
+      dragState.startObject = raycast(event, event.pointerType === "touch");
       dragState.startX = event.clientX;
       dragState.startY = event.clientY;
       dragState.x = event.clientX;
@@ -572,6 +618,7 @@ export function CoverageThreeGlobe({
       }
 
       if (activePointers.size >= 2) {
+        usedMultiTouch = true;
         const points = [...activePointers.values()];
         if (!pinchState) startPinch();
         if (pinchState) {
@@ -588,7 +635,7 @@ export function CoverageThreeGlobe({
         const deltaY = event.clientY - dragState.y;
         dragState.x = event.clientX;
         dragState.y = event.clientY;
-        dragState.moved += Math.abs(deltaX) + Math.abs(deltaY);
+        dragState.moved = Math.max(dragState.moved, Math.hypot(event.clientX - dragState.startX, event.clientY - dragState.startY));
         globeGroup.rotation.y += deltaX * 0.0058;
         globeGroup.rotation.x = clamp(globeGroup.rotation.x + deltaY * 0.0034, -0.86, 0.78);
         setInteractiveObject(null);
@@ -599,6 +646,16 @@ export function CoverageThreeGlobe({
     };
 
     const onPointerUp = (event) => {
+      const isGesturePointer = dragState.active && dragState.pointerId === event.pointerId;
+      const startObject = dragState.startObject;
+      const endObject = isGesturePointer ? raycast(event, event.pointerType === "touch") : null;
+      const canActivate =
+        isGesturePointer &&
+        !usedMultiTouch &&
+        dragState.moved <= TAP_SLOP_PX &&
+        startObject &&
+        endObject === startObject;
+
       try {
         if (renderer.domElement.hasPointerCapture?.(event.pointerId)) {
           renderer.domElement.releasePointerCapture(event.pointerId);
@@ -606,22 +663,18 @@ export function CoverageThreeGlobe({
       } catch {
         // The click fallback below still handles activation if capture is gone.
       }
-      const wasClick = (dragState.active || dragState.startObject) && dragState.moved < 7;
       activePointers.delete(event.pointerId);
       dragState.active = false;
       dragState.pointerId = null;
       pinchState = null;
       renderer.domElement.style.cursor = "grab";
-
-      const object = raycast(event);
       dragState.startObject = null;
-      if (wasClick && object) {
-        const payload = markerPayload(object);
-        if (payload) {
-          trackMarkerSelection(object.userData.marker, event.pointerType === "touch" ? "touch" : "pointer", trackedMarkerRef);
-          callbacksRef.current.onPin?.(payload);
-        }
-      }
+      pendingActivation = canActivate
+        ? {
+            input: event.pointerType === "touch" ? "touch" : "pointer",
+            object: endObject,
+          }
+        : null;
 
       if (activePointers.size === 1) {
         const [remainingPoint] = activePointers.values();
@@ -635,12 +688,38 @@ export function CoverageThreeGlobe({
       }
     };
 
-    const onCanvasClick = (event) => {
-      if (dragState.moved >= 7) return;
-      const object = raycast(event);
-      const payload = markerPayload(object);
+    const onPointerCancel = () => {
+      pendingActivation = null;
+      usedMultiTouch = true;
+
+      for (const pointerId of activePointers.keys()) {
+        try {
+          if (renderer.domElement.hasPointerCapture?.(pointerId)) {
+            renderer.domElement.releasePointerCapture(pointerId);
+          }
+        } catch {
+          // Pointer capture may already have been released by the browser.
+        }
+      }
+
+      activePointers.clear();
+      pinchState = null;
+      dragState.active = false;
+      dragState.moved = 0;
+      dragState.pointerId = null;
+      dragState.startObject = null;
+      renderer.domElement.style.cursor = "grab";
+      setInteractiveObject(null);
+    };
+
+    const onCanvasClick = () => {
+      const activation = pendingActivation;
+      pendingActivation = null;
+      if (!activation) return;
+
+      const payload = markerPayload(activation.object);
       if (payload) {
-        trackMarkerSelection(object.userData.marker, "click", trackedMarkerRef);
+        trackMarkerSelection(activation.object.userData.marker, activation.input, trackedMarkerRef);
         callbacksRef.current.onPin?.(payload);
       }
     };
@@ -665,7 +744,7 @@ export function CoverageThreeGlobe({
     renderer.domElement.addEventListener("pointerdown", onPointerDown);
     renderer.domElement.addEventListener("pointermove", onPointerMove);
     renderer.domElement.addEventListener("pointerup", onPointerUp);
-    renderer.domElement.addEventListener("pointercancel", onPointerUp);
+    renderer.domElement.addEventListener("pointercancel", onPointerCancel);
     renderer.domElement.addEventListener("pointerleave", onPointerLeave);
     renderer.domElement.addEventListener("click", onCanvasClick);
     renderer.domElement.addEventListener("dblclick", onDoubleClick);
@@ -701,7 +780,7 @@ export function CoverageThreeGlobe({
       renderer.domElement.removeEventListener("pointerdown", onPointerDown);
       renderer.domElement.removeEventListener("pointermove", onPointerMove);
       renderer.domElement.removeEventListener("pointerup", onPointerUp);
-      renderer.domElement.removeEventListener("pointercancel", onPointerUp);
+      renderer.domElement.removeEventListener("pointercancel", onPointerCancel);
       renderer.domElement.removeEventListener("pointerleave", onPointerLeave);
       renderer.domElement.removeEventListener("click", onCanvasClick);
       renderer.domElement.removeEventListener("dblclick", onDoubleClick);

@@ -39,9 +39,16 @@ const cleanCountry = (value) => {
   return (
     {
       america: "United States",
+      "bosnia and herzegovina": "Bosnia & Herzegovina",
+      "chinese taipei": "Chinese Taipei",
       "cote d ivoire": "Ivory Coast",
       czechia: "Czech Republic",
       "hong kong china": "Hong Kong, China",
+      macedonia: "North Macedonia",
+      "north macedonia": "North Macedonia",
+      "of macedonia": "North Macedonia",
+      "republic of macedonia": "North Macedonia",
+      "republic of north macedonia": "North Macedonia",
       usa: "United States",
       us: "United States",
       turkiye: "Turkey",
@@ -60,10 +67,12 @@ const countryAlias = {
   Austria: { atlasName: "Austria", flagCode: "at" },
   Bahrain: { atlasName: "Bahrain", coordinates: [50.5577, 26.0667], flagCode: "bh" },
   Belgium: { atlasName: "Belgium", flagCode: "be" },
+  "Bosnia & Herzegovina": { atlasName: "Bosnia and Herz.", flagCode: "ba" },
   Brazil: { atlasName: "Brazil", flagCode: "br" },
   Bulgaria: { atlasName: "Bulgaria", flagCode: "bg" },
   Canada: { atlasName: "Canada", flagCode: "ca" },
   China: { atlasName: "China", flagCode: "cn" },
+  "Chinese Taipei": { atlasName: "Taiwan", flagCode: "tw" },
   Colombia: { atlasName: "Colombia", flagCode: "co" },
   "Costa Rica": { atlasName: "Costa Rica", flagCode: "cr" },
   Croatia: { atlasName: "Croatia", flagCode: "hr" },
@@ -99,6 +108,7 @@ const countryAlias = {
   Morocco: { atlasName: "Morocco", flagCode: "ma" },
   Netherlands: { atlasName: "Netherlands", flagCode: "nl" },
   Nigeria: { atlasName: "Nigeria", flagCode: "ng" },
+  "North Macedonia": { atlasName: "Macedonia", flagCode: "mk" },
   Poland: { atlasName: "Poland", flagCode: "pl" },
   Portugal: { atlasName: "Portugal", flagCode: "pt" },
   "Puerto Rico": { atlasName: "Puerto Rico", flagCode: "pr" },
@@ -316,11 +326,14 @@ const locationFromEvent = (event) => {
   const eventCountry = cleanCountry(event.country || event.location?.country || event.metadata?.logistics?.country);
   const city = String(event.city || event.location?.city || event.metadata?.logistics?.city || "").trim();
   const directCoordinates = coordinatesFromEvent(event);
+  const exactCityLocation = locationByCityAndCountry.get(`${normalizeText(city)}|${normalizeText(eventCountry)}`);
+  const unscopedCityLocation = locationByCity.get(normalizeText(city));
   const cityLocation =
-    locationByCityAndCountry.get(`${normalizeText(city)}|${normalizeText(eventCountry)}`) ||
-    locationByCity.get(normalizeText(city));
+    exactCityLocation ||
+    (!eventCountry || cleanCountry(unscopedCityLocation?.country) === eventCountry ? unscopedCityLocation : null);
   const country = eventCountry || cityLocation?.country || "";
   const safeDirectCoordinates = coordinatesFitCountry(country, directCoordinates) ? directCoordinates : null;
+  const safeCityCoordinates = coordinatesFitCountry(country, cityLocation?.coordinates) ? cityLocation?.coordinates : null;
 
   return {
     city: city || cityLocation?.city || "",
@@ -336,7 +349,7 @@ const locationFromEvent = (event) => {
       ).trim() ||
       cityLocation?.region ||
       "",
-    coordinates: safeDirectCoordinates || cityLocation?.coordinates || null,
+    coordinates: safeDirectCoordinates || safeCityCoordinates || null,
   };
 };
 
