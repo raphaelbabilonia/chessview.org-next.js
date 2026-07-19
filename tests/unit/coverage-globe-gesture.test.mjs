@@ -4,7 +4,9 @@ import {
   coverageGlobeGesture,
   dampFactor,
   decayVelocity,
+  pointerPairAngle,
   rotationDeltaFromPointer,
+  shortestAngleDelta,
   zoomFromPinch,
 } from "../../src/lib/coverageGlobeGesture.js";
 
@@ -27,9 +29,28 @@ test("rotation deltas are normalized to the canvas size", () => {
   assert.equal(halfGesture.pitch, coverageGlobeGesture.pitchPerFullHeight / 2);
 });
 
+test("two-pointer angles support half turns and wrap without discontinuities", () => {
+  const horizontal = pointerPairAngle({ x: -1, y: 0 }, { x: 1, y: 0 });
+  const vertical = pointerPairAngle({ x: 0, y: -1 }, { x: 0, y: 1 });
+  const reversed = pointerPairAngle({ x: 1, y: 0 }, { x: -1, y: 0 });
+
+  assert.equal(horizontal, 0);
+  assert.equal(vertical, Math.PI / 2);
+  assert.equal(reversed, Math.PI);
+  assert.ok(Math.abs(shortestAngleDelta(reversed, horizontal) - Math.PI) < 0.000001);
+
+  const wrapped = shortestAngleDelta((-179 * Math.PI) / 180, (179 * Math.PI) / 180);
+  assert.ok(Math.abs(wrapped - (2 * Math.PI) / 180) < 0.000001);
+  assert.equal(pointerPairAngle({ x: 2, y: 2 }, { x: 2, y: 2 }), null);
+  assert.equal(shortestAngleDelta(null, horizontal), 0);
+});
+
 test("damping and momentum decay are time based", () => {
-  const damping = dampFactor(coverageGlobeGesture.rotationDampingPerSecond, 0.05);
-  assert.ok(Math.abs(damping - (1 - Math.exp(-1))) < 0.000001);
+  const rotationDamping = dampFactor(coverageGlobeGesture.rotationDampingPerSecond, 0.05);
+  const zoomDamping = dampFactor(coverageGlobeGesture.zoomDampingPerSecond, 0.05);
+  assert.ok(Math.abs(rotationDamping - (1 - Math.exp(-0.7))) < 0.000001);
+  assert.ok(Math.abs(zoomDamping - (1 - Math.exp(-1))) < 0.000001);
+  assert.ok(rotationDamping < zoomDamping);
   assert.ok(decayVelocity(0.75, 0.1) < 0.75);
   assert.equal(decayVelocity(0.75, 0), 0.75);
   assert.equal(decayVelocity(Number.NaN, 0.1), 0);

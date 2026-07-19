@@ -4,7 +4,15 @@ import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { feature } from "topojson-client";
 import worldAtlas from "world-atlas/countries-110m.json";
-import { coverageGlobeGesture, dampFactor, decayVelocity, rotationDeltaFromPointer, zoomFromPinch } from "@/lib/coverageGlobeGesture";
+import {
+  coverageGlobeGesture,
+  dampFactor,
+  decayVelocity,
+  pointerPairAngle,
+  rotationDeltaFromPointer,
+  shortestAngleDelta,
+  zoomFromPinch,
+} from "@/lib/coverageGlobeGesture";
 import { trackAnalyticsEvent } from "@/lib/tracking";
 
 const GLOBE_RADIUS = 2.36;
@@ -373,8 +381,10 @@ export function CoverageThreeGlobe({
     const markerProjectedPosition = new THREE.Vector3();
     const markerWorldPosition = new THREE.Vector3();
     const screenPitchAxis = new THREE.Vector3(1, 0, 0);
+    const screenRollAxis = new THREE.Vector3(0, 0, 1);
     const screenYawAxis = new THREE.Vector3(0, 1, 0);
     const screenPitchRotation = new THREE.Quaternion();
+    const screenRollRotation = new THREE.Quaternion();
     const screenYawRotation = new THREE.Quaternion();
     const hoveredRef = { object: null };
     const activePointers = new Map();
@@ -479,8 +489,13 @@ export function CoverageThreeGlobe({
         return;
       }
 
+      const startAngle = pointerPairAngle(points[0], points[1]);
       pinchState = {
+        didTwist: false,
+        didZoom: false,
+        startAngle,
         startDistance: Math.max(1, Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y)),
+        startRotationTarget: interaction.rotationTarget.clone(),
         startZoom: interaction.zoomTarget,
       };
       pendingActivation = null;
@@ -645,7 +660,7 @@ export function CoverageThreeGlobe({
       interaction.lastFrameTime = time;
 
       const targetDistance = clamp(7.3 - Math.min(Math.max(interaction.zoomTarget - 1, 0), 11) * 0.405, 2.85, 7.3);
-      const zoomDamping = dampFactor(coverageGlobeGesture.rotationDampingPerSecond, deltaSeconds);
+      const zoomDamping = dampFactor(coverageGlobeGesture.zoomDampingPerSecond, deltaSeconds);
       camera.position.z += (targetDistance - camera.position.z) * zoomDamping;
 
       const isAutoRotating = autoRotateRef.current && !reducedMotion && interaction.mode === "idle" && !hoveredRef.object && !domActiveMarkerRef.current;
@@ -735,7 +750,8 @@ export function CoverageThreeGlobe({
         if (interaction.mode !== "pinching" || !pinchState) startPinch();
         if (pinchState) {
           const distance = Math.max(1, Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y));
-          if (Math.abs(distance - pinchState.startDistance) > coverageGlobeGesture.pinchDeadZonePx) {
+          if (pinchState.didZoom || Math.abs(distance - pinchState.startDistance) > coverageGlobeGesture.pinchDeadZonePx) {
+            pinchState.didZoom = true;
             const nextZoom = zoomFromPinch({
               distance,
               startDistance: pinchState.startDistance,
@@ -751,6 +767,19 @@ export function CoverageThreeGlobe({
               zoom: nextZoom,
             };
             container.dataset.coverageZoomTarget = nextZoom.toFixed(3);
+            interaction.hitTargetsDirty = true;
+          }
+
+          const currentAngle = pointerPairAngle(points[0], points[1]);
+          const twistDelta = shortestAngleDelta(currentAngle, pinchState.startAngle);
+          if (pinchState.didTwist || Math.abs(twistDelta) > coverageGlobeGesture.twistDeadZoneRadians) {
+            pinchState.didTwist = true;
+            interaction.rotationTarget.copy(pinchState.startRotationTarget);
+            if (twistDelta) {
+              screenRollRotation.setFromAxisAngle(screenRollAxis, -twistDelta);
+              interaction.rotationTarget.premultiply(screenRollRotation).normalize();
+            }
+            syncOrientationDataset();
             interaction.hitTargetsDirty = true;
           }
           setInteractiveObject(null);
@@ -776,13 +805,14 @@ export function CoverageThreeGlobe({
         const bounds = renderer.domElement.getBoundingClientRect();
         const rotationDelta = rotationDeltaFromPointer({ deltaX, deltaY, height: bounds.height, width: bounds.width });
         applyRotationDelta(rotationDelta.pitch, rotationDelta.yaw);
+        const momentumBlend = dampFactor(coverageGlobeGesture.momentumTrackingPerSecond, deltaSeconds);
         interaction.momentumYaw = clamp(
-          interaction.momentumYaw * 0.6 + (rotationDelta.yaw / deltaSeconds) * 0.4,
+          interaction.momentumYaw + (rotationDelta.yaw / deltaSeconds - interaction.momentumYaw) * momentumBlend,
           -coverageGlobeGesture.momentumMaxRadiansPerSecond,
           coverageGlobeGesture.momentumMaxRadiansPerSecond,
         );
         interaction.momentumPitch = clamp(
-          interaction.momentumPitch * 0.6 + (rotationDelta.pitch / deltaSeconds) * 0.4,
+          interaction.momentumPitch + (rotationDelta.pitch / deltaSeconds - interaction.momentumPitch) * momentumBlend,
           -coverageGlobeGesture.momentumMaxRadiansPerSecond,
           coverageGlobeGesture.momentumMaxRadiansPerSecond,
         );
