@@ -2,9 +2,9 @@ export const coverageAdminBoundaries = Object.freeze({
   assetUrl: "/maps/admin1-boundaries.json",
   countryFadeEnd: 2.5,
   countryFadeStart: 1.5,
-  globeOpacity: 0.3,
-  worldFadeEnd: 6,
-  worldFadeStart: 3,
+  globeOpacity: 0.2,
+  worldFadeEnd: 7,
+  worldFadeStart: 4,
 });
 
 let boundaryDataPromise;

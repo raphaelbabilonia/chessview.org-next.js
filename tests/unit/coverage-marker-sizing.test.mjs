@@ -3,8 +3,6 @@ import test from "node:test";
 import {
   coverageMarkerSizing,
   densityScalesForPoints,
-  flatClusterMarkerDimensions,
-  flatEventMarkerDimensions,
   globeClusterMarkerRadiusPx,
   globeCountryMarkerRadiusPx,
   globeEventMarkerRadiusPx,
@@ -26,19 +24,6 @@ test("marker density shrinks crowded points without changing isolated points", (
   assert.ok(scales[1] <= scales[0]);
   assert.equal(scales[3], 1);
   assert.deepEqual(densityScalesForPoints(points, 10), [1, 1, 1, 1]);
-});
-
-test("flat marker dimensions retain their apparent size across zoom", () => {
-  const lowZoom = flatEventMarkerDimensions({ densityScale: 1, zoom: 1 });
-  const highZoom = flatEventMarkerDimensions({ densityScale: 1, zoom: 12 });
-  const dense = flatEventMarkerDimensions({ densityScale: coverageMarkerSizing.minimumDensityScale, zoom: 1 });
-  const cluster = flatClusterMarkerDimensions({ count: 25, zoom: 5 });
-
-  assert.ok(Math.abs(lowZoom.radius - highZoom.radius * 12) < 0.01);
-  assert.ok(dense.visualRadius < lowZoom.visualRadius);
-  assert.ok(cluster.visualRadius <= coverageMarkerSizing.flatClusterMaxRadius);
-  assert.ok(Math.abs(cluster.radius * 5 - cluster.visualRadius) < 0.01);
-  assert.ok(cluster.targetRadius >= cluster.radius);
 });
 
 test("globe marker radii stay inside the visual caps", () => {

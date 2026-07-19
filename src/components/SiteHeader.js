@@ -20,7 +20,7 @@ export function SiteHeader({ copy, locale }) {
           <Newspaper size={18} aria-hidden="true" />
           {copy.nav.news}
         </Link>
-        <Link href={`/${locale}/coverage`}>
+        <Link href={`/${locale}/maps`}>
           <MapPinned size={18} aria-hidden="true" />
           {copy.nav.maps}
         </Link>

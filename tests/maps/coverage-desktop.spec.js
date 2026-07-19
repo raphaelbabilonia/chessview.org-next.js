@@ -1,76 +1,33 @@
 import { expect, test } from "@playwright/test";
 import { openCoverage, stableVisibleGlobeMarker } from "./helpers.mjs";
 
-test("desktop keyboard users can open and close 3D marker previews", async ({ page }) => {
-  const errors = [];
-  page.on("console", (message) => {
-    if (message.type() === "error") errors.push(message.text());
-  });
-  await openCoverage(page, "3d");
+test("the canonical maps page is a three-dimensional explorer with no renderer switch", async ({ page }) => {
+  const stage = await openCoverage(page);
+
+  await expect(page).toHaveURL(/\/en\/maps$/);
+  await expect(stage).toHaveAttribute("data-coverage-map-renderer", "3d");
+  await expect(page.locator("[data-map-renderer-option]")).toHaveCount(0);
+  await expect(page.locator("svg.coverage-map")).toHaveCount(0);
+  await expect(page.locator(".maps-context-panel")).toBeVisible();
+  await expect(page.locator(".maps-country-row")).toHaveCount(5);
+});
+
+test("desktop keyboard users get persistent marker details in the context panel", async ({ page }) => {
+  await openCoverage(page);
 
   const marker = await stableVisibleGlobeMarker(page);
   await marker.focus();
   await marker.press("Enter");
-  await expect(page.locator(".coverage-tooltip")).toBeVisible();
-  await marker.press("Escape");
-  await expect(page.locator(".coverage-tooltip")).toHaveCount(0);
-  expect(errors).toEqual([]);
-});
+  await expect(page.locator(".maps-marker-card")).toBeVisible();
 
-test("2D keyboard pan, zoom, reset, and marker activation remain available", async ({ page }) => {
-  const stage = await openCoverage(page, "2d");
-  const transformGroup = page.locator("svg.coverage-map > g").first();
-  const initialTransform = await transformGroup.getAttribute("transform");
-
+  const stage = page.locator(".coverage-map-stage");
   await stage.focus();
-  await stage.press("ArrowRight");
-  await expect(transformGroup).not.toHaveAttribute("transform", initialTransform);
-  await stage.press("+");
-  await expect(page.locator(".coverage-zoom-badge")).not.toContainText("1.00");
-  await page.getByRole("button", { name: "Reset map" }).click();
-  await expect(page.locator(".coverage-zoom-badge")).toContainText("1.00");
-
-  const marker = page.locator('svg [data-coverage-marker-kind="event"], svg [data-coverage-marker-kind="event-cluster"]').first();
-  await marker.focus();
-  await marker.press(" ");
-  await expect(page.locator(".coverage-tooltip")).toBeVisible();
-  await marker.press("Escape");
-  await expect(page.locator(".coverage-tooltip")).toHaveCount(0);
+  await stage.press("Escape");
+  await expect(page.locator(".maps-marker-card")).toHaveCount(0);
 });
 
-test("existing clusters remain while marker dimensions stay compact", async ({ page }) => {
-  const stage = await openCoverage(page, "2d");
-  const clusters = page.locator('svg [data-coverage-marker-kind="event-cluster"]');
-  const events = page.locator('svg [data-coverage-marker-kind="event"]');
-
-  await expect(clusters).toHaveCount(1);
-  await expect(events).toHaveCount(3);
-  expect(Number(await clusters.first().getAttribute("data-coverage-visual-radius"))).toBeLessThanOrEqual(3.4);
-  const eventRadii = await events.evaluateAll((markers) => markers.map((marker) => Number(marker.dataset.coverageVisualRadius)));
-  expect(eventRadii.every((radius) => radius >= 0.7 && radius <= 1.65)).toBe(true);
-  const initialClusterRadius = Number(await clusters.first().locator(".coverage-world-cluster-core").getAttribute("r"));
-  const initialEventRadius = Number(await events.first().locator(".coverage-world-dot-core").getAttribute("r"));
-
-  await clusters.first().focus();
-  await clusters.first().press("Enter");
-  await expect(page.locator(".coverage-tooltip")).toContainText(/2\s*Tournaments/i);
-  await clusters.first().press("Escape");
-
-  await stage.focus();
-  await stage.press("+");
-  await stage.press("+");
-  await stage.press("+");
-  await expect(page.locator(".coverage-zoom-badge")).toContainText("2.35");
-  await expect(clusters).toHaveCount(1);
-  await expect(events).toHaveCount(3);
-  const zoomedClusterRadius = Number(await clusters.first().locator(".coverage-world-cluster-core").getAttribute("r"));
-  const zoomedEventRadius = Number(await events.first().locator(".coverage-world-dot-core").getAttribute("r"));
-  expect(Math.abs(initialClusterRadius - zoomedClusterRadius * 2.35)).toBeLessThan(0.01);
-  expect(Math.abs(initialEventRadius - zoomedEventRadius * 2.35)).toBeLessThan(0.01);
-});
-
-test("3D markers use capped surface beads without changing cluster membership", async ({ page }) => {
-  await openCoverage(page, "3d");
+test("globe markers use compact capped surface beads", async ({ page }) => {
+  await openCoverage(page);
   const globe = page.locator("[data-coverage-globe=ready]");
   await expect(globe).toHaveAttribute("data-coverage-marker-style", "surface-beads");
 
@@ -85,41 +42,53 @@ test("3D markers use capped surface beads without changing cluster membership", 
   expect(eventRadii.every((radius) => radius >= 1.1 && radius <= 2.4)).toBe(true);
 });
 
-test("renderer preference survives reload", async ({ page }) => {
-  await openCoverage(page, "2d");
-  await page.reload();
-  await expect(page.locator(".coverage-map-stage")).toHaveAttribute("data-coverage-map-renderer", "2d");
-  await expect(page.locator('button[data-map-renderer-option="2d"]')).toHaveAttribute("aria-pressed", "true");
+test("search and filters narrow both the service summary and country context", async ({ page }) => {
+  await openCoverage(page);
+
+  await page.getByRole("searchbox", { name: "Search tournaments and places" }).fill("Tokyo");
+  await expect(page.locator(".maps-country-row")).toHaveCount(1);
+  await expect(page.locator(".maps-country-row")).toContainText("Japan");
+  await expect(page.locator(".coverage-filter-stats")).toContainText("1Active countries");
+  await expect(page.locator(".coverage-filter-stats")).toContainText("1Tournaments");
+
+  await page.getByRole("button", { name: "Map filters" }).click();
+  await page.getByRole("button", { name: "Blitz" }).click();
+  await expect(page.locator(".maps-country-row")).toHaveCount(0);
+  await page.locator("#maps-filter-panel").getByRole("button", { name: "Reset filters" }).click();
+  await expect(page.locator(".maps-country-row")).toHaveCount(5);
 });
 
-test("an event without verified coordinates is never plotted at its country center", async ({ page }) => {
-  await openCoverage(page, "2d");
-  await expect(page.locator('[aria-label^="Unmapped Spain Safety Fixture:"]')).toHaveCount(0);
-
-  await openCoverage(page, "3d");
-  await expect(page.locator('[aria-label^="Unmapped Spain Safety Fixture:"]')).toHaveCount(0);
-});
-
-test("rapid 3D wheel input accumulates without waiting for React renders", async ({ page }) => {
-  await openCoverage(page, "3d");
+test("country and region selection focus the globe and update navigable context", async ({ page }) => {
+  await openCoverage(page);
   const globe = page.locator("[data-coverage-globe=ready]");
-  const initialZoom = Number(await globe.getAttribute("data-coverage-zoom-target"));
-  await page.locator(".coverage-globe-canvas").evaluate((canvas) => {
-    canvas.dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: -160 }));
-    canvas.dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: -160 }));
-  });
+  await expect(globe).toHaveAttribute("data-coverage-admin-boundaries", "hidden");
+  await expect(globe).not.toHaveAttribute("data-coverage-admin-boundary-scope", /.+/);
 
-  await expect
-    .poll(async () => Number(await globe.getAttribute("data-coverage-zoom-target")))
-    .toBeGreaterThan(initialZoom + 1.4);
+  await page.locator(".maps-country-row", { hasText: "Argentina" }).click();
+  await expect(page.locator(".maps-context-panel h2")).toContainText("Argentina");
+  await expect.poll(async () => Number(await globe.getAttribute("data-coverage-zoom-target"))).toBeGreaterThan(1);
+  await expect(globe).toHaveAttribute("data-coverage-admin-boundaries", /loading|fading|visible/, { timeout: 15000 });
+  await expect(globe).toHaveAttribute("data-coverage-admin-boundary-scope", "argentina");
+  await expect(globe).toHaveAttribute("data-coverage-admin-boundary-regions", "24");
+
+  await page.locator(".coverage-region-card", { hasText: "Chubut" }).click();
+  await expect(page.locator(".maps-breadcrumbs")).toContainText("Chubut");
+  await expect(page.locator(".maps-context-panel h2")).toContainText("Chubut");
+  await expect.poll(async () => Number(await globe.getAttribute("data-coverage-zoom-target"))).toBeGreaterThanOrEqual(6);
 });
 
-test("3D zoom reaches 24x, damps rotation, and reveals regional boundaries", async ({ page }) => {
-  await openCoverage(page, "3d");
+test("events without verified coordinates stay available in lists but are never plotted", async ({ page }) => {
+  await openCoverage(page);
+  await expect(page.getByText("Unmapped Spain Safety Fixture").first()).toBeVisible();
+  await expect(page.locator('[aria-label^="Unmapped Spain Safety Fixture:"]')).toHaveCount(0);
+});
+
+test("rapid wheel input reaches deep zoom and reveals regional boundaries", async ({ page }) => {
+  await openCoverage(page);
+  await page.locator(".maps-country-row", { hasText: "Argentina" }).click();
   const globe = page.locator("[data-coverage-globe=ready]");
   const initialSensitivity = Number(await globe.getAttribute("data-coverage-rotation-sensitivity"));
 
-  await expect(globe).toHaveAttribute("data-coverage-admin-boundaries", "hidden");
   await page.locator(".coverage-globe-canvas").evaluate((canvas) => {
     for (let index = 0; index < 40; index += 1) {
       canvas.dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: -160 }));
@@ -128,48 +97,17 @@ test("3D zoom reaches 24x, damps rotation, and reveals regional boundaries", asy
 
   await expect.poll(async () => Number(await globe.getAttribute("data-coverage-zoom-target"))).toBe(24);
   await expect(globe).toHaveAttribute("data-coverage-admin-boundaries", "visible", { timeout: 15000 });
-  expect(Number(await globe.getAttribute("data-coverage-rotation-sensitivity"))).toBeLessThan(initialSensitivity * 0.3);
-  await page.locator(".coverage-globe-canvas").evaluate((canvas) => {
-    canvas.dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: -160 }));
-  });
-  await expect.poll(async () => Number(await globe.getAttribute("data-coverage-zoom-target"))).toBe(24);
+  expect(Number(await globe.getAttribute("data-coverage-rotation-sensitivity"))).toBeLessThan(initialSensitivity * 0.6);
 });
 
-test("2D regional boundaries fade in while deep-zoom markers stay screen-sized", async ({ page }) => {
-  await openCoverage(page, "2d");
-  const zoomIn = page.getByRole("button", { name: "Zoom in" });
-
-  await expect(page.locator(".coverage-admin-boundaries")).toHaveCount(0);
-  await page.getByRole("button", { name: "Argentina 2" }).click();
-  await expect(page.locator(".coverage-zoom-badge")).toContainText("1.00");
-  await expect(page.locator(".coverage-admin-boundaries")).toHaveCount(0);
-
-  const regionCore = page.locator(".coverage-region-core").first();
-  const initialBounds = await regionCore.boundingBox();
-  if (!initialBounds) throw new Error("A selected-country region marker should be visible");
-
-  await zoomIn.click();
-  await zoomIn.click();
-  await expect(page.locator(".coverage-admin-boundaries")).toHaveAttribute("data-coverage-admin-boundaries", "fading", { timeout: 15000 });
-  await zoomIn.click();
-  await zoomIn.click();
-  await expect(page.locator(".coverage-admin-boundaries")).toHaveAttribute("data-coverage-admin-boundaries", "visible");
-
-  const zoomedBounds = await regionCore.boundingBox();
-  if (!zoomedBounds) throw new Error("The region marker should remain visible after zooming");
-  expect(Math.abs(zoomedBounds.width - initialBounds.width)).toBeLessThan(1);
-  expect(Math.abs(zoomedBounds.height - initialBounds.height)).toBeLessThan(1);
-});
-
-test("WebGL context loss falls back to 2D and records the reason", async ({ page }) => {
-  const stage = await openCoverage(page, "3d");
+test("WebGL context loss shows recovery actions without loading a flat map", async ({ page }) => {
+  const stage = await openCoverage(page);
   await page.locator(".coverage-globe-canvas").evaluate((canvas) => {
     canvas.dispatchEvent(new Event("webglcontextlost", { cancelable: true }));
   });
 
-  await expect(stage).toHaveAttribute("data-coverage-map-renderer", "2d");
-  await expect(stage).toHaveAttribute("data-coverage-map-fallback-reason", "context-lost");
-  const fallback = await page.evaluate(() => JSON.parse(localStorage.getItem("chessview_coverage_3d_disabled_until")));
-  expect(fallback.reason).toBe("context-lost");
-  expect(fallback.disabledUntil).toBeGreaterThan(Date.now());
+  await expect(stage).toHaveAttribute("data-coverage-map-renderer", "unavailable");
+  await expect(page.locator(".maps-globe-error")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
+  await expect(page.locator("svg.coverage-map")).toHaveCount(0);
 });

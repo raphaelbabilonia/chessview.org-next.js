@@ -22,6 +22,20 @@ const nextConfig = {
   output: "standalone",
   poweredByHeader: false,
   reactStrictMode: true,
+  async redirects() {
+    return [
+      {
+        source: "/:locale(en|es|it)/coverage",
+        destination: "/:locale/maps",
+        permanent: true,
+      },
+      {
+        source: "/:locale(en|es|it)/coverpage",
+        destination: "/:locale/maps",
+        permanent: true,
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {

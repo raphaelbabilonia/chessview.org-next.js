@@ -1,5 +1,5 @@
 import { permanentRedirect } from "next/navigation";
 
-export default function LegacyCoveragePage() {
+export default function LegacyCoverPage() {
   permanentRedirect("/en/maps");
 }

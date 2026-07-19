@@ -9,7 +9,7 @@ const urls = [
   "/",
   "/en",
   "/en/events",
-  "/en/coverage",
+  "/en/maps",
   "/en/news",
   "/sitemap.xml",
   "/robots.txt",

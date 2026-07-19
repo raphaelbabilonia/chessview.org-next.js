@@ -1,11 +1,5 @@
 export const coverageMarkerSizing = Object.freeze({
   densityRadius: 12,
-  flatClusterMaxRadius: 3.4,
-  flatClusterRadiusBase: 2.2,
-  flatClusterRadiusPerRootEvent: 0.2,
-  flatEventRadius: 1.65,
-  flatMarkerRingPadding: 0.55,
-  flatMarkerTargetRadius: 4.2,
   globeClusterMaxRadiusPx: 3.6,
   globeClusterMinRadiusPx: 2.6,
   globeCountryMaxRadiusPx: 4.2,
@@ -37,35 +31,6 @@ export const densityScalesForPoints = (points, zoom = 1) => {
     }, 0);
     return markerDensityScale(neighborCount);
   });
-};
-
-export const flatEventMarkerDimensions = ({ densityScale = 1, zoom = 1 } = {}) => {
-  const safeZoom = Math.max(Number(zoom) || 1, 1);
-  const visualRadius = coverageMarkerSizing.flatEventRadius * clamp(Number(densityScale) || 1, coverageMarkerSizing.minimumDensityScale, 1);
-
-  return {
-    radius: rounded(visualRadius / safeZoom),
-    ringRadius: rounded((visualRadius + coverageMarkerSizing.flatMarkerRingPadding) / safeZoom),
-    targetRadius: rounded(coverageMarkerSizing.flatMarkerTargetRadius / safeZoom),
-    visualRadius: rounded(visualRadius),
-  };
-};
-
-export const flatClusterMarkerDimensions = ({ count = 1, zoom = 1 } = {}) => {
-  const safeCount = Math.max(Number(count) || 1, 1);
-  const safeZoom = Math.max(Number(zoom) || 1, 1);
-  const visualRadius = Math.min(
-    coverageMarkerSizing.flatClusterMaxRadius,
-    coverageMarkerSizing.flatClusterRadiusBase + Math.sqrt(safeCount) * coverageMarkerSizing.flatClusterRadiusPerRootEvent,
-  );
-
-  return {
-    dotRadius: rounded(Math.max(0.38, visualRadius * 0.32) / safeZoom),
-    haloRadius: rounded((visualRadius + 0.8) / safeZoom),
-    radius: rounded(visualRadius / safeZoom),
-    targetRadius: rounded(Math.max(coverageMarkerSizing.flatMarkerTargetRadius, visualRadius) / safeZoom),
-    visualRadius: rounded(visualRadius),
-  };
 };
 
 export const globeEventMarkerRadiusPx = (densityScale = 1) =>
