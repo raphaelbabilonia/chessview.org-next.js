@@ -192,7 +192,9 @@ npm run build
 npm run start
 npm run lint
 npm run smoke
+npm run test:maps
 npm run verify
 ```
 
 `npm run verify` runs lint, production build, smoke tests against the local backend, and a dependency audit.
+`npm run test:maps` starts a deterministic fixture API and the local Next.js app, then runs the coverage-map unit and Playwright suites in mobile WebKit and desktop Chromium. Install the browsers once with `npx playwright install chromium webkit`.

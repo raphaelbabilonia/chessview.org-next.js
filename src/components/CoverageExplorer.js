@@ -340,7 +340,7 @@ function EventLinkList({ copy, events = [], locale, limit, placement = "coverage
   );
 }
 
-function TooltipShell({ children, closeLabel, onClose, style }) {
+function TooltipShell({ children, closeLabel, kind, onClose, style }) {
   const stopTooltipGesture = (event) => event.stopPropagation();
   const closeTooltip = (event) => {
     event.stopPropagation();
@@ -350,6 +350,7 @@ function TooltipShell({ children, closeLabel, onClose, style }) {
   return (
     <div
       className="coverage-tooltip"
+      data-coverage-tooltip-kind={kind}
       style={style}
       onClick={stopTooltipGesture}
       onPointerCancel={stopTooltipGesture}
@@ -373,7 +374,7 @@ function CoverageTooltip({ copy, locale, onClose, onOpenCountry, payload, style 
     const { event, country } = payload;
 
     return (
-      <TooltipShell closeLabel={copy.coverage.closePopup} onClose={onClose} style={style}>
+      <TooltipShell closeLabel={copy.coverage.closePopup} kind="event" onClose={onClose} style={style}>
         <div className="coverage-tooltip-heading">
           <CountryFlag country={country} />
           <strong>{event.title}</strong>
@@ -406,7 +407,7 @@ function CoverageTooltip({ copy, locale, onClose, onOpenCountry, payload, style 
     const countryLabel = cluster.countryLabels.slice(0, 3).join(" / ");
 
     return (
-      <TooltipShell closeLabel={copy.coverage.closePopup} onClose={onClose} style={style}>
+      <TooltipShell closeLabel={copy.coverage.closePopup} kind="event-cluster" onClose={onClose} style={style}>
         <div className="coverage-tooltip-heading">
           {leadCountry ? <CountryFlag country={leadCountry} /> : <MapPinned size={18} aria-hidden="true" />}
           <strong>
@@ -424,7 +425,7 @@ function CoverageTooltip({ copy, locale, onClose, onOpenCountry, payload, style 
     const { country, region } = payload;
 
     return (
-      <TooltipShell closeLabel={copy.coverage.closePopup} onClose={onClose} style={style}>
+      <TooltipShell closeLabel={copy.coverage.closePopup} kind="region" onClose={onClose} style={style}>
         <div className="coverage-tooltip-heading">
           <CountryFlag country={country} />
           <strong>{region.label}</strong>
@@ -439,7 +440,7 @@ function CoverageTooltip({ copy, locale, onClose, onOpenCountry, payload, style 
   const { country } = payload;
 
   return (
-    <TooltipShell closeLabel={copy.coverage.closePopup} onClose={onClose} style={style}>
+    <TooltipShell closeLabel={copy.coverage.closePopup} kind="country" onClose={onClose} style={style}>
       <div className="coverage-tooltip-heading">
         <CountryFlag country={country} />
         <strong>{country.label}</strong>
@@ -738,6 +739,17 @@ export function CoverageExplorer({ copy, coverage, locale }) {
     return () => window.cancelAnimationFrame(frame);
   }, []);
 
+  useEffect(
+    () => () => {
+      if (markerGestureRef.current.activationTimer !== null) {
+        window.clearTimeout(markerGestureRef.current.activationTimer);
+      }
+      markerGestureRef.current.activationTimer = null;
+      markerGestureRef.current.pending = null;
+    },
+    [],
+  );
+
   const clearPinnedDetails = () => {
     setHovered(null);
     setPinned(null);
@@ -930,13 +942,16 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   const applyGlobeZoom = useCallback(
     (nextZoom, metadata = {}) => {
       const cleanZoom = clamp(nextZoom, mapZoom.min, mapZoom.globeMax);
-      if (Math.abs(cleanZoom - zoom) < 0.01) return;
-      trackCoverageInteraction("coverage_map_zoom", {
-        direction: cleanZoom > zoom ? "in" : "out",
-        input: metadata.input || "globe",
-        view: "world",
-      });
+      const comparisonZoom = metadata.phase === "commit" && Number.isFinite(metadata.startZoom) ? metadata.startZoom : zoom;
+      if (metadata.phase !== "update" && Math.abs(cleanZoom - comparisonZoom) >= 0.01) {
+        trackCoverageInteraction("coverage_map_zoom", {
+          direction: cleanZoom > comparisonZoom ? "in" : "out",
+          input: metadata.input || "globe",
+          view: "world",
+        });
+      }
       setGlobeAutoRotate(false);
+      if (Math.abs(cleanZoom - zoom) < 0.01) return;
       setZoom(cleanZoom);
     },
     [zoom],
@@ -1226,7 +1241,20 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   };
 
   const handleMapKeyDown = (event) => {
-    if (event.altKey || event.ctrlKey || event.metaKey || isFormControlTarget(event.target)) return;
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      if (activePayload) {
+        clearPinnedDetails();
+        return;
+      }
+
+      if (isFullscreenView) exitFullscreenView();
+      return;
+    }
+
+    if (isFormControlTarget(event.target)) return;
 
     const panStep = event.shiftKey ? 92 : 44;
     const panKeys = {
@@ -1270,15 +1298,6 @@ export function CoverageExplorer({ copy, coverage, locale }) {
       return;
     }
 
-    if (event.key === "Escape") {
-      event.preventDefault();
-      if (activePayload) {
-        clearPinnedDetails();
-        return;
-      }
-
-      if (isFullscreenView) exitFullscreenView();
-    }
   };
 
   const clearFloatingDetails = (event) => {
@@ -1310,6 +1329,8 @@ export function CoverageExplorer({ copy, coverage, locale }) {
           <g
             aria-label={`${title}: ${item.countryLabels.slice(0, 4).join(", ")}`}
             className="coverage-interactive-marker coverage-world-event-cluster"
+            data-coverage-marker-key={item.key}
+            data-coverage-marker-kind="event-cluster"
             key={item.key}
             onBlur={() => setHovered(null)}
             onClick={(event) => handleMarkerClick(event, () => setPinned(payload))}
@@ -1343,6 +1364,8 @@ export function CoverageExplorer({ copy, coverage, locale }) {
         <g
           aria-label={`${event.title}: ${[event.city, event.region, event.countryLabel].filter(Boolean).join(", ")}`}
           className={`coverage-interactive-marker coverage-world-event-dot is-${event.tournamentType}${event.markerSource === "country" ? " is-country-level" : ""}`}
+          data-coverage-marker-key={item.key}
+          data-coverage-marker-kind="event"
           key={item.key}
           onBlur={() => setHovered(null)}
           onClick={(pointerEvent) => handleMarkerClick(pointerEvent, () => setPinned(payload))}
@@ -1378,6 +1401,8 @@ export function CoverageExplorer({ copy, coverage, locale }) {
           <g
             aria-label={`${country.label}: ${country.count} ${copy.coverage.tournaments}`}
             className="coverage-interactive-marker coverage-country-cluster"
+            data-coverage-marker-key={country.countryKey}
+            data-coverage-marker-kind="country"
             key={country.countryKey}
             onBlur={() => setHovered(null)}
             onClick={(event) => handleMarkerClick(event, () => setPinned(payload))}
@@ -1414,6 +1439,8 @@ export function CoverageExplorer({ copy, coverage, locale }) {
           <g
             aria-label={`${region.label}: ${region.count} ${copy.coverage.tournaments}`}
             className={`coverage-interactive-marker coverage-region-marker${selectedRegionKey === region.key ? " is-selected" : ""}`}
+            data-coverage-marker-key={region.key}
+            data-coverage-marker-kind="region"
             key={region.key}
             onBlur={() => setHovered(null)}
             onClick={(event) => handleMarkerClick(event, () => selectRegion(selectedCountry, region))}
@@ -1453,6 +1480,8 @@ export function CoverageExplorer({ copy, coverage, locale }) {
           <g
             aria-label={`${event.title}: ${[event.city, event.region].filter(Boolean).join(", ")}`}
             className={`coverage-interactive-marker coverage-tournament-dot is-${event.tournamentType}`}
+            data-coverage-marker-key={event._id}
+            data-coverage-marker-kind="event"
             key={event._id}
             onBlur={() => setHovered(null)}
             onClick={(pointerEvent) => handleMarkerClick(pointerEvent, () => setPinned(payload))}

@@ -4,12 +4,15 @@ import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { feature } from "topojson-client";
 import worldAtlas from "world-atlas/countries-110m.json";
+import { coverageGlobeGesture, dampFactor, decayVelocity, rotationDeltaFromPointer, zoomFromPinch } from "@/lib/coverageGlobeGesture";
 import { trackAnalyticsEvent } from "@/lib/tracking";
 
 const GLOBE_RADIUS = 2.36;
 const SURFACE_RADIUS = GLOBE_RADIUS + 0.018;
 const COARSE_MARKER_HIT_RADIUS_PX = 22;
-const TAP_SLOP_PX = 10;
+const HIT_TARGET_UPDATE_INTERVAL_MS = 1000 / 15;
+const MOMENTUM_STALE_AFTER_MS = 90;
+const MOMENTUM_STOP_RADIANS_PER_SECOND = 0.01;
 const typeColors = {
   blitz: "#ffb02e",
   classical: "#2f80ed",
@@ -276,6 +279,12 @@ export function CoverageThreeGlobe({
 
   useEffect(() => {
     zoomRef.current = zoom;
+    const interaction = sceneRef.current?.interaction;
+    if (interaction && interaction.mode !== "pinching") {
+      interaction.zoomTarget = zoom;
+      interaction.hitTargetsDirty = true;
+      if (containerRef.current) containerRef.current.dataset.coverageZoomTarget = zoom.toFixed(3);
+    }
   }, [zoom]);
 
   useEffect(() => {
@@ -367,6 +376,18 @@ export function CoverageThreeGlobe({
     let pinchState = null;
     let pendingActivation = null;
     let usedMultiTouch = false;
+    const interaction = {
+      hitTargetsDirty: true,
+      lastFrameTime: 0,
+      lastHitTargetUpdate: 0,
+      mode: "idle",
+      momentumPitch: 0,
+      momentumYaw: 0,
+      pendingZoomReport: null,
+      rotationPitch: globeGroup.rotation.x,
+      rotationYaw: globeGroup.rotation.y,
+      zoomTarget: zoomRef.current,
+    };
     const performanceProbe = {
       elapsed: 0,
       frames: 0,
@@ -377,9 +398,11 @@ export function CoverageThreeGlobe({
       totalDelta: 0,
     };
     const dragState = {
-      active: false,
+      lastTime: 0,
       moved: 0,
       pointerId: null,
+      rotationPitch: globeGroup.rotation.x,
+      rotationYaw: globeGroup.rotation.y,
       startX: 0,
       startY: 0,
       startObject: null,
@@ -405,6 +428,27 @@ export function CoverageThreeGlobe({
       y: event.clientY,
     });
 
+    const setGestureMode = (mode) => {
+      interaction.mode = mode;
+      container.dataset.coverageGestureMode = mode;
+    };
+
+    const resetMomentum = () => {
+      interaction.momentumPitch = 0;
+      interaction.momentumYaw = 0;
+      if (container.dataset.coverageMomentum !== "none") container.dataset.coverageMomentum = "none";
+    };
+
+    const commitPinchZoom = () => {
+      if (!pinchState) return;
+      interaction.pendingZoomReport = null;
+      callbacksRef.current.onZoomChange?.(interaction.zoomTarget, {
+        input: "pinch",
+        phase: "commit",
+        startZoom: pinchState.startZoom,
+      });
+    };
+
     const startPinch = () => {
       const points = [...activePointers.values()];
       if (points.length < 2) {
@@ -413,12 +457,15 @@ export function CoverageThreeGlobe({
       }
 
       pinchState = {
-        distance: Math.max(1, Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y)),
-        zoom: zoomRef.current,
+        startDistance: Math.max(1, Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y)),
+        startZoom: interaction.zoomTarget,
       };
-      dragState.active = false;
+      pendingActivation = null;
+      resetMomentum();
+      setGestureMode("pinching");
       dragState.pointerId = null;
       dragState.startObject = null;
+      interaction.hitTargetsDirty = true;
     };
 
     const resize = () => {
@@ -428,6 +475,7 @@ export function CoverageThreeGlobe({
       renderer.setSize(width, height, false);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
+      interaction.hitTargetsDirty = true;
     };
 
     const isFrontFacing = (worldPosition) => {
@@ -488,7 +536,7 @@ export function CoverageThreeGlobe({
       if (previousObject) callbacksRef.current.onLeave?.();
 
       if (!object) {
-        renderer.domElement.style.cursor = dragState.active ? "grabbing" : "grab";
+        renderer.domElement.style.cursor = activePointers.size ? "grabbing" : "grab";
         return;
       }
 
@@ -522,6 +570,8 @@ export function CoverageThreeGlobe({
         button.style.left = `${((markerProjectedPosition.x + 1) / 2) * 100}%`;
         button.style.top = `${((1 - markerProjectedPosition.y) / 2) * 100}%`;
       }
+
+      interaction.hitTargetsDirty = false;
     };
 
     const reportPerformanceIssue = () => {
@@ -565,20 +615,61 @@ export function CoverageThreeGlobe({
       performanceProbe.reported = true;
     };
 
-    const animate = () => {
+    const animate = (time) => {
       const state = sceneRef.current;
       state.frame = window.requestAnimationFrame(animate);
+      const deltaSeconds = interaction.lastFrameTime ? clamp((time - interaction.lastFrameTime) / 1000, 0, 0.05) : 1 / 60;
+      interaction.lastFrameTime = time;
 
-      const targetDistance = clamp(7.3 - Math.min(Math.max(zoomRef.current - 1, 0), 11) * 0.405, 2.85, 7.3);
-      camera.position.z += (targetDistance - camera.position.z) * 0.12;
+      const targetDistance = clamp(7.3 - Math.min(Math.max(interaction.zoomTarget - 1, 0), 11) * 0.405, 2.85, 7.3);
+      const zoomDamping = dampFactor(coverageGlobeGesture.rotationDampingPerSecond, deltaSeconds);
+      camera.position.z += (targetDistance - camera.position.z) * zoomDamping;
 
-      if (autoRotateRef.current && !reducedMotion && !dragState.active && !pinchState && !hoveredRef.object && !domActiveMarkerRef.current) {
-        globeGroup.rotation.y += 0.0012;
+      const isAutoRotating = autoRotateRef.current && !reducedMotion && interaction.mode === "idle" && !hoveredRef.object && !domActiveMarkerRef.current;
+      if (isAutoRotating) {
+        interaction.rotationYaw += 0.072 * deltaSeconds;
       }
 
+      if (interaction.mode === "idle" && (Math.abs(interaction.momentumYaw) > MOMENTUM_STOP_RADIANS_PER_SECOND || Math.abs(interaction.momentumPitch) > MOMENTUM_STOP_RADIANS_PER_SECOND)) {
+        interaction.rotationYaw += interaction.momentumYaw * deltaSeconds;
+        const nextPitch = clamp(interaction.rotationPitch + interaction.momentumPitch * deltaSeconds, -0.86, 0.78);
+        if (nextPitch === interaction.rotationPitch) interaction.momentumPitch = 0;
+        interaction.rotationPitch = nextPitch;
+        interaction.momentumYaw = decayVelocity(interaction.momentumYaw, deltaSeconds);
+        interaction.momentumPitch = decayVelocity(interaction.momentumPitch, deltaSeconds);
+      } else if (interaction.mode === "idle") {
+        resetMomentum();
+      }
+
+      const rotationDamping = dampFactor(coverageGlobeGesture.rotationDampingPerSecond, deltaSeconds);
+      globeGroup.rotation.x += (interaction.rotationPitch - globeGroup.rotation.x) * rotationDamping;
+      globeGroup.rotation.y += (interaction.rotationYaw - globeGroup.rotation.y) * rotationDamping;
+      const rotationMoving =
+        Math.abs(interaction.rotationPitch - globeGroup.rotation.x) > 0.0001 ||
+        Math.abs(interaction.rotationYaw - globeGroup.rotation.y) > 0.0001 ||
+        Math.abs(interaction.momentumPitch) > MOMENTUM_STOP_RADIANS_PER_SECOND ||
+        Math.abs(interaction.momentumYaw) > MOMENTUM_STOP_RADIANS_PER_SECOND ||
+        isAutoRotating;
+      const zoomMoving = Math.abs(targetDistance - camera.position.z) > 0.001;
+      if (rotationMoving || zoomMoving) interaction.hitTargetsDirty = true;
+
       renderer.render(scene, camera);
-      updateHitTargets();
-      measurePerformance(performance.now());
+      if (
+        interaction.hitTargetsDirty &&
+        activePointers.size === 0 &&
+        time - interaction.lastHitTargetUpdate >= HIT_TARGET_UPDATE_INTERVAL_MS
+      ) {
+        updateHitTargets();
+        interaction.lastHitTargetUpdate = time;
+      }
+
+      if (interaction.pendingZoomReport) {
+        const report = interaction.pendingZoomReport;
+        interaction.pendingZoomReport = null;
+        callbacksRef.current.onZoomChange?.(report.zoom, report.metadata);
+      }
+
+      measurePerformance(time);
     };
 
     const onPointerDown = (event) => {
@@ -601,9 +692,13 @@ export function CoverageThreeGlobe({
         return;
       }
 
-      dragState.active = true;
+      resetMomentum();
+      setGestureMode("pending-rotation");
+      dragState.lastTime = event.timeStamp;
       dragState.moved = 0;
       dragState.pointerId = event.pointerId;
+      dragState.rotationPitch = interaction.rotationPitch;
+      dragState.rotationYaw = interaction.rotationYaw;
       dragState.startObject = raycast(event, event.pointerType === "touch");
       dragState.startX = event.clientX;
       dragState.startY = event.clientY;
@@ -620,24 +715,73 @@ export function CoverageThreeGlobe({
       if (activePointers.size >= 2) {
         usedMultiTouch = true;
         const points = [...activePointers.values()];
-        if (!pinchState) startPinch();
+        if (interaction.mode !== "pinching" || !pinchState) startPinch();
         if (pinchState) {
           const distance = Math.max(1, Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y));
-          const nextZoom = clamp(pinchState.zoom * (distance / pinchState.distance), 1, 12);
-          callbacksRef.current.onZoomChange?.(nextZoom, { input: "pinch" });
+          if (Math.abs(distance - pinchState.startDistance) > coverageGlobeGesture.pinchDeadZonePx) {
+            const nextZoom = zoomFromPinch({
+              distance,
+              startDistance: pinchState.startDistance,
+              startZoom: pinchState.startZoom,
+            });
+            interaction.zoomTarget = nextZoom;
+            interaction.pendingZoomReport = {
+              metadata: {
+                input: "pinch",
+                phase: "update",
+                startZoom: pinchState.startZoom,
+              },
+              zoom: nextZoom,
+            };
+            container.dataset.coverageZoomTarget = nextZoom.toFixed(3);
+            interaction.hitTargetsDirty = true;
+          }
           setInteractiveObject(null);
         }
         return;
       }
 
-      if (dragState.active && dragState.pointerId === event.pointerId) {
-        const deltaX = event.clientX - dragState.x;
-        const deltaY = event.clientY - dragState.y;
+      if (dragState.pointerId === event.pointerId && activePointers.has(event.pointerId)) {
+        const totalDistance = Math.hypot(event.clientX - dragState.startX, event.clientY - dragState.startY);
+        dragState.moved = Math.max(dragState.moved, totalDistance);
+
+        if (interaction.mode === "pending-rotation" && dragState.moved <= coverageGlobeGesture.rotationStartPx) return;
+
+        const startingRotation = interaction.mode === "pending-rotation";
+        if (startingRotation) setGestureMode("rotating");
+        const deltaX = event.clientX - (startingRotation ? dragState.startX : dragState.x);
+        const deltaY = event.clientY - (startingRotation ? dragState.startY : dragState.y);
+        const deltaSeconds = clamp((event.timeStamp - dragState.lastTime) / 1000, 1 / 240, 0.08);
         dragState.x = event.clientX;
         dragState.y = event.clientY;
-        dragState.moved = Math.max(dragState.moved, Math.hypot(event.clientX - dragState.startX, event.clientY - dragState.startY));
-        globeGroup.rotation.y += deltaX * 0.0058;
-        globeGroup.rotation.x = clamp(globeGroup.rotation.x + deltaY * 0.0034, -0.86, 0.78);
+        dragState.lastTime = event.timeStamp;
+
+        const bounds = renderer.domElement.getBoundingClientRect();
+        const rotationDelta = rotationDeltaFromPointer({ deltaX, deltaY, height: bounds.height, width: bounds.width });
+        const nextPitch = clamp(interaction.rotationPitch + rotationDelta.pitch, -0.86, 0.78);
+        interaction.rotationYaw += rotationDelta.yaw;
+        interaction.rotationPitch = nextPitch;
+        interaction.momentumYaw = clamp(
+          interaction.momentumYaw * 0.6 + (rotationDelta.yaw / deltaSeconds) * 0.4,
+          -coverageGlobeGesture.momentumMaxRadiansPerSecond,
+          coverageGlobeGesture.momentumMaxRadiansPerSecond,
+        );
+        interaction.momentumPitch =
+          nextPitch === -0.86 || nextPitch === 0.78
+            ? 0
+            : clamp(
+                interaction.momentumPitch * 0.6 + (rotationDelta.pitch / deltaSeconds) * 0.4,
+                -coverageGlobeGesture.momentumMaxRadiansPerSecond,
+                coverageGlobeGesture.momentumMaxRadiansPerSecond,
+              );
+        if (
+          container.dataset.coverageMomentum !== "active" &&
+          (Math.abs(interaction.momentumPitch) > MOMENTUM_STOP_RADIANS_PER_SECOND ||
+            Math.abs(interaction.momentumYaw) > MOMENTUM_STOP_RADIANS_PER_SECOND)
+        ) {
+          container.dataset.coverageMomentum = "active";
+        }
+        interaction.hitTargetsDirty = true;
         setInteractiveObject(null);
         return;
       }
@@ -646,13 +790,15 @@ export function CoverageThreeGlobe({
     };
 
     const onPointerUp = (event) => {
-      const isGesturePointer = dragState.active && dragState.pointerId === event.pointerId;
+      const wasPinching = interaction.mode === "pinching";
+      const wasRotating = interaction.mode === "rotating";
+      const isGesturePointer = !wasPinching && dragState.pointerId === event.pointerId;
       const startObject = dragState.startObject;
       const endObject = isGesturePointer ? raycast(event, event.pointerType === "touch") : null;
       const canActivate =
         isGesturePointer &&
         !usedMultiTouch &&
-        dragState.moved <= TAP_SLOP_PX &&
+        dragState.moved <= coverageGlobeGesture.tapSlopPx &&
         startObject &&
         endObject === startObject;
 
@@ -664,11 +810,17 @@ export function CoverageThreeGlobe({
         // The click fallback below still handles activation if capture is gone.
       }
       activePointers.delete(event.pointerId);
-      dragState.active = false;
-      dragState.pointerId = null;
-      pinchState = null;
       renderer.domElement.style.cursor = "grab";
-      dragState.startObject = null;
+
+      if (wasPinching && activePointers.size < 2) commitPinchZoom();
+      pinchState = null;
+      if (canActivate) {
+        interaction.rotationPitch = dragState.rotationPitch;
+        interaction.rotationYaw = dragState.rotationYaw;
+      }
+      const hasFreshMomentum = event.timeStamp - dragState.lastTime <= MOMENTUM_STALE_AFTER_MS;
+      if (!wasRotating || canActivate || reducedMotion || !hasFreshMomentum) resetMomentum();
+
       pendingActivation = canActivate
         ? {
             input: event.pointerType === "touch" ? "touch" : "pointer",
@@ -676,16 +828,28 @@ export function CoverageThreeGlobe({
           }
         : null;
 
-      if (activePointers.size === 1) {
+      if (activePointers.size >= 2) {
+        startPinch();
+      } else if (activePointers.size === 1) {
         const [remainingPoint] = activePointers.values();
-        dragState.active = true;
+        setGestureMode("pending-rotation");
+        resetMomentum();
+        dragState.lastTime = event.timeStamp;
         dragState.moved = 0;
         dragState.pointerId = [...activePointers.keys()][0];
+        dragState.rotationPitch = interaction.rotationPitch;
+        dragState.rotationYaw = interaction.rotationYaw;
+        dragState.startObject = null;
         dragState.startX = remainingPoint.x;
         dragState.startY = remainingPoint.y;
         dragState.x = remainingPoint.x;
         dragState.y = remainingPoint.y;
+      } else {
+        setGestureMode("idle");
+        dragState.pointerId = null;
+        dragState.startObject = null;
       }
+      interaction.hitTargetsDirty = true;
     };
 
     const onPointerCancel = () => {
@@ -703,11 +867,17 @@ export function CoverageThreeGlobe({
       }
 
       activePointers.clear();
+      if (interaction.pendingZoomReport) {
+        callbacksRef.current.onZoomChange?.(interaction.zoomTarget, interaction.pendingZoomReport.metadata);
+      }
+      interaction.pendingZoomReport = null;
       pinchState = null;
-      dragState.active = false;
       dragState.moved = 0;
       dragState.pointerId = null;
       dragState.startObject = null;
+      resetMomentum();
+      setGestureMode("idle");
+      interaction.hitTargetsDirty = true;
       renderer.domElement.style.cursor = "grab";
       setInteractiveObject(null);
     };
@@ -725,20 +895,28 @@ export function CoverageThreeGlobe({
     };
 
     const onPointerLeave = () => {
-      if (!dragState.active) setInteractiveObject(null);
+      if (!activePointers.size) setInteractiveObject(null);
     };
 
     const onWheel = (event) => {
       event.preventDefault();
       stopAutoRotate("wheel");
       const delta = clamp(event.deltaY, -160, 160);
-      callbacksRef.current.onZoomChange?.(zoomRef.current - delta * 0.0045, { input: "wheel" });
+      const startZoom = interaction.zoomTarget;
+      interaction.zoomTarget = clamp(startZoom - delta * 0.0045, coverageGlobeGesture.zoomMin, coverageGlobeGesture.zoomMax);
+      interaction.hitTargetsDirty = true;
+      container.dataset.coverageZoomTarget = interaction.zoomTarget.toFixed(3);
+      callbacksRef.current.onZoomChange?.(interaction.zoomTarget, { input: "wheel", phase: "commit", startZoom });
     };
 
     const onDoubleClick = (event) => {
       event.preventDefault();
       stopAutoRotate("double_click");
-      callbacksRef.current.onZoomChange?.(zoomRef.current + (event.shiftKey ? -0.85 : 0.85), { input: "double_click" });
+      const startZoom = interaction.zoomTarget;
+      interaction.zoomTarget = clamp(startZoom + (event.shiftKey ? -0.85 : 0.85), coverageGlobeGesture.zoomMin, coverageGlobeGesture.zoomMax);
+      interaction.hitTargetsDirty = true;
+      container.dataset.coverageZoomTarget = interaction.zoomTarget.toFixed(3);
+      callbacksRef.current.onZoomChange?.(interaction.zoomTarget, { input: "double_click", phase: "commit", startZoom });
     };
 
     renderer.domElement.addEventListener("pointerdown", onPointerDown);
@@ -764,6 +942,7 @@ export function CoverageThreeGlobe({
     sceneRef.current = {
       camera,
       frame: 0,
+      interaction,
       markerByKey: new Map(),
       markerDefinitions: [],
       markerGroup,
@@ -771,7 +950,10 @@ export function CoverageThreeGlobe({
       renderer,
       scene,
     };
-    animate();
+    setGestureMode("idle");
+    resetMomentum();
+    container.dataset.coverageZoomTarget = interaction.zoomTarget.toFixed(3);
+    sceneRef.current.frame = window.requestAnimationFrame(animate);
 
     return () => {
       const state = sceneRef.current;
@@ -790,6 +972,9 @@ export function CoverageThreeGlobe({
       renderer.dispose();
       renderer.forceContextLoss?.();
       renderer.domElement.remove();
+      delete container.dataset.coverageGestureMode;
+      delete container.dataset.coverageMomentum;
+      delete container.dataset.coverageZoomTarget;
       sceneRef.current = null;
     };
   }, [mapSize]);
@@ -802,6 +987,7 @@ export function CoverageThreeGlobe({
     state.markerObjects = [];
     state.markerByKey = new Map();
     state.markerDefinitions = markers;
+    state.interaction.hitTargetsDirty = true;
 
     for (const marker of markers) {
       const position = lonLatToVector3(marker.coordinates, GLOBE_RADIUS + 0.105);
@@ -857,6 +1043,8 @@ export function CoverageThreeGlobe({
           <button
             aria-label={markerLabel(marker, copy)}
             className={`coverage-globe-hit-target is-${marker.kind}`}
+            data-coverage-marker-key={marker.key}
+            data-coverage-marker-kind={marker.kind}
             key={marker.key}
             ref={(node) => {
               if (node) buttonRefs.current.set(marker.key, node);

@@ -3,14 +3,45 @@ name: Deploy ChessView Website
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
-  group: chessview-website-production
+  group: chessview-website-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  map-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.19.0"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install map test browsers
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Run lint
+        run: npm run lint
+
+      - name: Run deterministic map tests
+        run: npm run test:maps
+
   deploy:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    needs: map-tests
     runs-on: ubuntu-latest
     permissions:
       contents: read
