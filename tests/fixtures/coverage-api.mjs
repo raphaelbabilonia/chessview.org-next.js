@@ -73,6 +73,19 @@ const events = [
     timeControl: "classical",
     title: "Sarajevo Fixture Open",
   },
+  {
+    _id: "fixture-unmapped-spain",
+    city: "Venue to be confirmed",
+    country: "Spain",
+    endDate: futureDate(25),
+    region: "",
+    slug: "fixture-unmapped-spain",
+    source: { name: "Fixture Federation" },
+    startDate: futureDate(23),
+    status: "published",
+    timeControl: "classical",
+    title: "Unmapped Spain Safety Fixture",
+  },
 ];
 
 const json = (response, status, payload) => {

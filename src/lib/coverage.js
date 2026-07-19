@@ -3,6 +3,7 @@ import { feature } from "topojson-client";
 import worldAtlas from "world-atlas/countries-110m.json";
 import { formatCountryName } from "@/lib/format";
 import { countryHref, localizedEventHref, slugifySegment } from "@/lib/tournament";
+import { tournamentMarkerCoordinates } from "@/lib/coverageCoordinateSafety";
 
 export const coverageMapSize = {
   width: 960,
@@ -276,6 +277,12 @@ const locationRows = [
 const locationByCityAndCountry = new Map();
 const locationByCity = new Map();
 
+const cityLookupKeys = (city) => {
+  const value = String(city || "").trim();
+  const leadingPlace = value.match(/^([^.,;]{3,60})\.\s+\S/)?.[1]?.trim();
+  return [...new Set([value, leadingPlace].filter(Boolean).map(normalizeText))];
+};
+
 for (const [city, country, region, coordinates] of locationRows) {
   const item = {
     city,
@@ -326,8 +333,11 @@ const locationFromEvent = (event) => {
   const eventCountry = cleanCountry(event.country || event.location?.country || event.metadata?.logistics?.country);
   const city = String(event.city || event.location?.city || event.metadata?.logistics?.city || "").trim();
   const directCoordinates = coordinatesFromEvent(event);
-  const exactCityLocation = locationByCityAndCountry.get(`${normalizeText(city)}|${normalizeText(eventCountry)}`);
-  const unscopedCityLocation = locationByCity.get(normalizeText(city));
+  const lookupKeys = cityLookupKeys(city);
+  const exactCityLocation = lookupKeys
+    .map((cityKey) => locationByCityAndCountry.get(`${cityKey}|${normalizeText(eventCountry)}`))
+    .find(Boolean);
+  const unscopedCityLocation = lookupKeys.map((cityKey) => locationByCity.get(cityKey)).find(Boolean);
   const cityLocation =
     exactCityLocation ||
     (!eventCountry || cleanCountry(unscopedCityLocation?.country) === eventCountry ? unscopedCityLocation : null);
@@ -664,16 +674,16 @@ const buildWorldEvents = (allCountries) => {
 
   for (const country of allCountries) {
     for (const event of country.events) {
-      const projected = event.coordinates ? worldProjection(event.coordinates) : country.marker ? [country.marker.x, country.marker.y] : null;
+      const coordinates = tournamentMarkerCoordinates(event);
+      if (!coordinates) continue;
+
+      const projected = worldProjection(coordinates);
       if (!projected || !Number.isFinite(projected[0]) || !Number.isFinite(projected[1])) continue;
 
       const point = projectedPoint(projected);
-      const markerSource = event.coordinates ? "city" : "country";
-      const globeCoordinates = cleanGlobeCoordinates(event.coordinates || country.globeCoordinates);
-      const markerKey =
-        markerSource === "city"
-          ? `city|${event.coordinates.map((value) => Number(value).toFixed(3)).join(",")}`
-          : `country|${country.countryKey}`;
+      const markerSource = "city";
+      const globeCoordinates = cleanGlobeCoordinates(coordinates);
+      const markerKey = `city|${coordinates.map((value) => Number(value).toFixed(3)).join(",")}`;
 
       const candidate = {
         ...event,
@@ -699,9 +709,9 @@ const buildWorldEvents = (allCountries) => {
     bucketIndexes.set(candidate.markerKey, index + 1);
 
     const marker = spreadPoint(candidate.point, index, totalAtPoint, {
-      maxDistance: candidate.markerSource === "country" ? 18 : 10,
-      startDistance: candidate.markerSource === "country" ? 2.6 : 1.8,
-      stepDistance: candidate.markerSource === "country" ? 2.15 : 1.45,
+      maxDistance: 10,
+      startDistance: 1.8,
+      stepDistance: 1.45,
     });
 
     const { markerKey, point, ...event } = candidate;
@@ -711,7 +721,7 @@ const buildWorldEvents = (allCountries) => {
       anchor: point,
       marker: {
         ...marker,
-        radius: candidate.markerSource === "country" ? 1.55 : 1.85,
+        radius: 1.85,
       },
     };
   });
@@ -767,9 +777,7 @@ export function buildCountryCoverage(events = [], locale = "en") {
       };
     })
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
-  const worldEvents = buildWorldEvents(allCountries).sort(
-    (a, b) => Number(a.markerSource === "country") - Number(b.markerSource === "country") || String(a.startDate).localeCompare(String(b.startDate)),
-  );
+  const worldEvents = buildWorldEvents(allCountries).sort((a, b) => String(a.startDate).localeCompare(String(b.startDate)));
 
   return {
     allCountries,

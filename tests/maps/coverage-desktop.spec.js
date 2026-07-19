@@ -45,6 +45,14 @@ test("renderer preference survives reload", async ({ page }) => {
   await expect(page.locator('button[data-map-renderer-option="2d"]')).toHaveAttribute("aria-pressed", "true");
 });
 
+test("an event without verified coordinates is never plotted at its country center", async ({ page }) => {
+  await openCoverage(page, "2d");
+  await expect(page.locator('[aria-label^="Unmapped Spain Safety Fixture:"]')).toHaveCount(0);
+
+  await openCoverage(page, "3d");
+  await expect(page.locator('[aria-label^="Unmapped Spain Safety Fixture:"]')).toHaveCount(0);
+});
+
 test("rapid 3D wheel input accumulates without waiting for React renders", async ({ page }) => {
   await openCoverage(page, "3d");
   const globe = page.locator("[data-coverage-globe=ready]");
