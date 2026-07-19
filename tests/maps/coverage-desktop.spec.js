@@ -114,6 +114,48 @@ test("rapid 3D wheel input accumulates without waiting for React renders", async
     .toBeGreaterThan(initialZoom + 1.4);
 });
 
+test("3D zoom reaches 24x, damps rotation, and reveals regional boundaries", async ({ page }) => {
+  await openCoverage(page, "3d");
+  const globe = page.locator("[data-coverage-globe=ready]");
+  const zoomIn = page.getByRole("button", { name: "Zoom in" });
+  const initialSensitivity = Number(await globe.getAttribute("data-coverage-rotation-sensitivity"));
+
+  await expect(globe).toHaveAttribute("data-coverage-admin-boundaries", "hidden");
+  for (let index = 0; index < 20; index += 1) await zoomIn.click();
+
+  await expect.poll(async () => Number(await globe.getAttribute("data-coverage-zoom-target"))).toBe(24);
+  await expect(globe).toHaveAttribute("data-coverage-admin-boundaries", "visible", { timeout: 15000 });
+  expect(Number(await globe.getAttribute("data-coverage-rotation-sensitivity"))).toBeLessThan(initialSensitivity * 0.3);
+  await zoomIn.click();
+  await expect.poll(async () => Number(await globe.getAttribute("data-coverage-zoom-target"))).toBe(24);
+});
+
+test("2D regional boundaries fade in while deep-zoom markers stay screen-sized", async ({ page }) => {
+  await openCoverage(page, "2d");
+  const zoomIn = page.getByRole("button", { name: "Zoom in" });
+
+  await expect(page.locator(".coverage-admin-boundaries")).toHaveCount(0);
+  await page.getByRole("button", { name: "Argentina 2" }).click();
+  await expect(page.locator(".coverage-zoom-badge")).toContainText("1.00");
+  await expect(page.locator(".coverage-admin-boundaries")).toHaveCount(0);
+
+  const regionCore = page.locator(".coverage-region-core").first();
+  const initialBounds = await regionCore.boundingBox();
+  if (!initialBounds) throw new Error("A selected-country region marker should be visible");
+
+  await zoomIn.click();
+  await zoomIn.click();
+  await expect(page.locator(".coverage-admin-boundaries")).toHaveAttribute("data-coverage-admin-boundaries", "fading", { timeout: 15000 });
+  await zoomIn.click();
+  await zoomIn.click();
+  await expect(page.locator(".coverage-admin-boundaries")).toHaveAttribute("data-coverage-admin-boundaries", "visible");
+
+  const zoomedBounds = await regionCore.boundingBox();
+  if (!zoomedBounds) throw new Error("The region marker should remain visible after zooming");
+  expect(Math.abs(zoomedBounds.width - initialBounds.width)).toBeLessThan(1);
+  expect(Math.abs(zoomedBounds.height - initialBounds.height)).toBeLessThan(1);
+});
+
 test("WebGL context loss falls back to 2D and records the reason", async ({ page }) => {
   const stage = await openCoverage(page, "3d");
   await page.locator(".coverage-globe-canvas").evaluate((canvas) => {

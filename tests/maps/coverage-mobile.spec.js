@@ -103,6 +103,28 @@ test("pinch zoom is logarithmic and finger transitions do not jump", async ({ pa
   await expect(page.locator(".coverage-tooltip")).toHaveCount(0);
 });
 
+test("repeated mobile pinch reaches the 24x limit and reveals regional boundaries", async ({ page }) => {
+  await openCoverage(page, "3d");
+  await stopGlobeRotation(page);
+  const globe = page.locator("[data-coverage-globe=ready]");
+  const bounds = await page.locator(".coverage-globe-canvas").boundingBox();
+  if (!bounds) throw new Error("The 3D canvas has no bounding box");
+  const centerX = bounds.x + bounds.width / 2;
+  const centerY = bounds.y + bounds.height / 2;
+
+  for (let gesture = 0; gesture < 2; gesture += 1) {
+    await dispatchTouch(page, "pointerdown", 1, centerX - 20, centerY);
+    await dispatchTouch(page, "pointerdown", 2, centerX + 20, centerY);
+    await dispatchTouch(page, "pointermove", 1, centerX - 170, centerY);
+    await dispatchTouch(page, "pointermove", 2, centerX + 170, centerY);
+    await dispatchTouch(page, "pointerup", 1, centerX - 170, centerY);
+    await dispatchTouch(page, "pointerup", 2, centerX + 170, centerY);
+  }
+
+  await expect.poll(async () => Number(await globe.getAttribute("data-coverage-zoom-target"))).toBe(24);
+  await expect(globe).toHaveAttribute("data-coverage-admin-boundaries", "visible", { timeout: 15000 });
+});
+
 test("a two-finger half turn rolls the globe in place without changing zoom", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await openCoverage(page, "3d");

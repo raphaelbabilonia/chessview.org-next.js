@@ -4199,6 +4199,15 @@ textarea:focus {
   stroke-width: 0.8;
 }
 
+.coverage-admin-boundaries {
+  fill: none;
+  stroke: rgba(253, 252, 253, 0.34);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 0.85;
+  pointer-events: none;
+}
+
 @media (pointer: coarse) {
   .coverage-world-dot-target,
   .coverage-world-cluster-target,

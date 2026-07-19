@@ -53,33 +53,38 @@ export async function stableVisibleGlobeMarker(page) {
 }
 
 export async function lowestGlobeMarkerPoint(page) {
-  return page.evaluate(() => {
-    const canvas = document.querySelector(".coverage-globe-canvas");
-    const canvasBounds = canvas?.getBoundingClientRect();
-    if (!canvasBounds) return null;
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const marker = await page.evaluate(() => {
+      const canvas = document.querySelector(".coverage-globe-canvas");
+      const canvasBounds = canvas?.getBoundingClientRect();
+      if (!canvasBounds) return null;
 
-    return [...document.querySelectorAll(".coverage-globe-hit-target:not([hidden])")]
-      .map((element) => {
-        const bounds = element.getBoundingClientRect();
-        const x = bounds.left + bounds.width / 2;
-        const y = bounds.top + bounds.height / 2;
-        return {
-          key: element.dataset.coverageMarkerKey,
-          topClass: document.elementFromPoint(x, y)?.className || "",
-          x,
-          y,
-        };
-      })
-      .filter(
-        ({ topClass, x, y }) =>
-          x >= canvasBounds.left &&
-          x <= canvasBounds.right &&
-          y >= canvasBounds.top &&
-          y <= canvasBounds.bottom &&
-          String(topClass).includes("coverage-globe-canvas"),
-      )
-      .sort((first, second) => second.y - first.y)[0] || null;
-  });
+      return [...document.querySelectorAll(".coverage-globe-hit-target:not([hidden])")]
+        .map((element) => {
+          const bounds = element.getBoundingClientRect();
+          const x = bounds.left + bounds.width / 2;
+          const y = bounds.top + bounds.height / 2;
+          return {
+            key: element.dataset.coverageMarkerKey,
+            topClass: document.elementFromPoint(x, y)?.className || "",
+            x,
+            y,
+          };
+        })
+        .filter(
+          ({ topClass, x, y }) =>
+            x >= canvasBounds.left &&
+            x <= canvasBounds.right &&
+            y >= canvasBounds.top &&
+            y <= canvasBounds.bottom &&
+            String(topClass).includes("coverage-globe-canvas"),
+        )
+        .sort((first, second) => second.y - first.y)[0] || null;
+    });
+    if (marker) return marker;
+    await page.waitForTimeout(50);
+  }
+  return null;
 }
 
 export async function lowestFlatMarkerPoint(page) {

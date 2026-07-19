@@ -8,11 +8,21 @@ import {
   coverageGlobeGesture,
   dampFactor,
   decayVelocity,
+  globeCameraDistanceForZoom,
   pointerPairAngle,
   rotationDeltaFromPointer,
+  rotationSensitivityForZoom,
   shortestAngleDelta,
+  zoomControlStep,
   zoomFromPinch,
 } from "@/lib/coverageGlobeGesture";
+import {
+  coverageAdminBoundaries,
+  coverageAdminBoundaryOpacity,
+  decodedCoverageBoundaryLines,
+  loadCoverageAdminBoundaries,
+  shouldLoadCoverageAdminBoundaries,
+} from "@/lib/coverageAdminBoundaries";
 import {
   coverageMarkerSizing,
   globeClusterMarkerRadiusPx,
@@ -137,6 +147,16 @@ const buildGraticulePositions = () => {
     }
   }
 
+  return new Float32Array(positions);
+};
+
+const buildAdminBoundaryPositions = (lines) => {
+  const positions = [];
+  for (const line of lines) {
+    for (let index = 1; index < line.length; index += 1) {
+      pushLineSegment(positions, line[index - 1], line[index], GLOBE_RADIUS + 0.024);
+    }
+  }
   return new Float32Array(positions);
 };
 
@@ -375,6 +395,9 @@ export function CoverageThreeGlobe({
     );
     globeGroup.add(landBoundaries);
 
+    const adminBoundaryGroup = new THREE.Group();
+    globeGroup.add(adminBoundaryGroup);
+
     const markerGroup = new THREE.Group();
     globeGroup.add(markerGroup);
 
@@ -607,6 +630,18 @@ export function CoverageThreeGlobe({
       }
     };
 
+    const updateAdminBoundaries = () => {
+      const boundaryLine = sceneRef.current?.adminBoundaryLine;
+      if (!boundaryLine) return;
+      const fade = coverageAdminBoundaryOpacity(interaction.zoomTarget);
+      boundaryLine.visible = fade > 0;
+      boundaryLine.material.opacity = coverageAdminBoundaries.globeOpacity * fade;
+      const boundaryState = fade <= 0 ? "hidden" : fade >= 1 ? "visible" : "fading";
+      if (container.dataset.coverageAdminBoundaries !== boundaryState) {
+        container.dataset.coverageAdminBoundaries = boundaryState;
+      }
+    };
+
     const markerPayload = (object) => {
       const marker = object?.userData?.marker;
       if (!marker) return null;
@@ -708,9 +743,13 @@ export function CoverageThreeGlobe({
       const deltaSeconds = interaction.lastFrameTime ? clamp((time - interaction.lastFrameTime) / 1000, 0, 0.05) : 1 / 60;
       interaction.lastFrameTime = time;
 
-      const targetDistance = clamp(7.3 - Math.min(Math.max(interaction.zoomTarget - 1, 0), 11) * 0.405, 2.85, 7.3);
+      const targetDistance = globeCameraDistanceForZoom(interaction.zoomTarget, GLOBE_RADIUS);
       const zoomDamping = dampFactor(coverageGlobeGesture.zoomDampingPerSecond, deltaSeconds);
       camera.position.z += (targetDistance - camera.position.z) * zoomDamping;
+      const rotationSensitivity = rotationSensitivityForZoom(interaction.zoomTarget).toFixed(3);
+      if (container.dataset.coverageRotationSensitivity !== rotationSensitivity) {
+        container.dataset.coverageRotationSensitivity = rotationSensitivity;
+      }
 
       const isAutoRotating = autoRotateRef.current && !reducedMotion && interaction.mode === "idle" && !hoveredRef.object && !domActiveMarkerRef.current;
       if (isAutoRotating) {
@@ -736,6 +775,7 @@ export function CoverageThreeGlobe({
       if (rotationMoving || zoomMoving) interaction.hitTargetsDirty = true;
 
       updateMarkerMeshes();
+      updateAdminBoundaries();
       renderer.render(scene, camera);
       if (
         interaction.hitTargetsDirty &&
@@ -853,18 +893,25 @@ export function CoverageThreeGlobe({
         dragState.lastTime = event.timeStamp;
 
         const bounds = renderer.domElement.getBoundingClientRect();
-        const rotationDelta = rotationDeltaFromPointer({ deltaX, deltaY, height: bounds.height, width: bounds.width });
+        const rotationDelta = rotationDeltaFromPointer({
+          deltaX,
+          deltaY,
+          height: bounds.height,
+          width: bounds.width,
+          zoom: interaction.zoomTarget,
+        });
         applyRotationDelta(rotationDelta.pitch, rotationDelta.yaw);
         const momentumBlend = dampFactor(coverageGlobeGesture.momentumTrackingPerSecond, deltaSeconds);
+        const momentumMax = coverageGlobeGesture.momentumMaxRadiansPerSecond * rotationSensitivityForZoom(interaction.zoomTarget);
         interaction.momentumYaw = clamp(
           interaction.momentumYaw + (rotationDelta.yaw / deltaSeconds - interaction.momentumYaw) * momentumBlend,
-          -coverageGlobeGesture.momentumMaxRadiansPerSecond,
-          coverageGlobeGesture.momentumMaxRadiansPerSecond,
+          -momentumMax,
+          momentumMax,
         );
         interaction.momentumPitch = clamp(
           interaction.momentumPitch + (rotationDelta.pitch / deltaSeconds - interaction.momentumPitch) * momentumBlend,
-          -coverageGlobeGesture.momentumMaxRadiansPerSecond,
-          coverageGlobeGesture.momentumMaxRadiansPerSecond,
+          -momentumMax,
+          momentumMax,
         );
         if (
           container.dataset.coverageMomentum !== "active" &&
@@ -1004,7 +1051,8 @@ export function CoverageThreeGlobe({
       event.preventDefault();
       stopAutoRotate("double_click");
       const startZoom = interaction.zoomTarget;
-      interaction.zoomTarget = clamp(startZoom + (event.shiftKey ? -0.85 : 0.85), coverageGlobeGesture.zoomMin, coverageGlobeGesture.zoomMax);
+      const step = zoomControlStep(startZoom, 0.85);
+      interaction.zoomTarget = clamp(startZoom + (event.shiftKey ? -step : step), coverageGlobeGesture.zoomMin, coverageGlobeGesture.zoomMax);
       interaction.hitTargetsDirty = true;
       container.dataset.coverageZoomTarget = interaction.zoomTarget.toFixed(3);
       callbacksRef.current.onZoomChange?.(interaction.zoomTarget, { input: "double_click", phase: "commit", startZoom });
@@ -1031,6 +1079,8 @@ export function CoverageThreeGlobe({
     resize();
 
     sceneRef.current = {
+      adminBoundaryGroup,
+      adminBoundaryLine: null,
       camera,
       frame: 0,
       interaction,
@@ -1065,11 +1115,52 @@ export function CoverageThreeGlobe({
       renderer.forceContextLoss?.();
       renderer.domElement.remove();
       delete container.dataset.coverageGestureMode;
+      delete container.dataset.coverageAdminBoundaries;
       delete container.dataset.coverageMomentum;
+      delete container.dataset.coverageRotationSensitivity;
       delete container.dataset.coverageZoomTarget;
       sceneRef.current = null;
     };
   }, [mapSize]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const state = sceneRef.current;
+    if (!container || !state) return undefined;
+
+    if (state.adminBoundaryLine) return undefined;
+    if (!shouldLoadCoverageAdminBoundaries(zoom)) {
+      container.dataset.coverageAdminBoundaries = "hidden";
+      return undefined;
+    }
+
+    let active = true;
+    container.dataset.coverageAdminBoundaries = "loading";
+    loadCoverageAdminBoundaries()
+      .then((data) => {
+        if (!active || sceneRef.current !== state || state.adminBoundaryLine) return;
+        const positions = buildAdminBoundaryPositions(decodedCoverageBoundaryLines(data));
+        if (!positions.length) throw new Error("Coverage Admin-1 asset contained no usable lines");
+        const boundaryLine = new THREE.LineSegments(
+          new THREE.BufferGeometry().setAttribute("position", new THREE.BufferAttribute(positions, 3)),
+          new THREE.LineBasicMaterial({
+            color: 0xfdfcfd,
+            opacity: 0,
+            transparent: true,
+          }),
+        );
+        boundaryLine.visible = false;
+        state.adminBoundaryGroup.add(boundaryLine);
+        state.adminBoundaryLine = boundaryLine;
+      })
+      .catch(() => {
+        if (active && containerRef.current === container) container.dataset.coverageAdminBoundaries = "error";
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [zoom]);
 
   useEffect(() => {
     const state = sceneRef.current;

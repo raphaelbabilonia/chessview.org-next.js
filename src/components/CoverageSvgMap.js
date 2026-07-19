@@ -7,6 +7,7 @@ export function CoverageSvgMap({
   mapPaths,
   mapRef,
   offset,
+  renderAdminBoundaries,
   renderRegionMarkers,
   renderTournamentDots,
   renderWorldCountrySelectors,
@@ -38,6 +39,7 @@ export function CoverageSvgMap({
         <path className="coverage-map-sphere" d={mapPaths.sphere} />
         <path className="coverage-map-graticule" d={mapPaths.graticule} />
         <path className={isCountryMode ? "coverage-map-country-land" : "coverage-map-land"} d={mapPaths.land} />
+        {renderAdminBoundaries?.()}
         {!isCountryMode ? <path className="coverage-map-scan" d="M104 410H856" /> : null}
         {selectedCountry?.flatMapPaths?.boundary ? <path className="coverage-country-flat-boundary" d={selectedCountry.flatMapPaths.boundary} /> : null}
         {!selectedCountry && !showWorldCountrySelectors ? renderWorldEventDots() : null}

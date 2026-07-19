@@ -4,9 +4,12 @@ import {
   coverageGlobeGesture,
   dampFactor,
   decayVelocity,
+  globeCameraDistanceForZoom,
   pointerPairAngle,
   rotationDeltaFromPointer,
+  rotationSensitivityForZoom,
   shortestAngleDelta,
+  zoomControlStep,
   zoomFromPinch,
 } from "../../src/lib/coverageGlobeGesture.js";
 
@@ -27,6 +30,32 @@ test("rotation deltas are normalized to the canvas size", () => {
   assert.equal(fullGesture.pitch, coverageGlobeGesture.pitchPerFullHeight);
   assert.equal(halfGesture.yaw, coverageGlobeGesture.yawPerFullWidth / 2);
   assert.equal(halfGesture.pitch, coverageGlobeGesture.pitchPerFullHeight / 2);
+});
+
+test("deep zoom progressively reduces horizontal and vertical rotation sensitivity", () => {
+  const base = rotationDeltaFromPointer({ deltaX: 120, deltaY: 80, height: 600, width: 800, zoom: 1 });
+  const medium = rotationDeltaFromPointer({ deltaX: 120, deltaY: 80, height: 600, width: 800, zoom: 12 });
+  const deep = rotationDeltaFromPointer({ deltaX: 120, deltaY: 80, height: 600, width: 800, zoom: 24 });
+
+  assert.ok(Math.abs(medium.yaw) < Math.abs(base.yaw));
+  assert.ok(Math.abs(deep.yaw) < Math.abs(medium.yaw));
+  assert.ok(Math.abs(deep.pitch) < Math.abs(medium.pitch));
+  assert.equal(rotationSensitivityForZoom(24), coverageGlobeGesture.rotationSensitivityMin);
+});
+
+test("camera distance and control steps support the full 24x range", () => {
+  const globeRadius = 2.36;
+  const worldDistance = globeCameraDistanceForZoom(1, globeRadius);
+  const formerMaxDistance = globeCameraDistanceForZoom(12, globeRadius);
+  const deepDistance = globeCameraDistanceForZoom(24, globeRadius);
+
+  assert.ok(Math.abs(worldDistance - 7.3) < 0.001);
+  assert.ok(Math.abs(formerMaxDistance - 2.85) < 0.02);
+  assert.ok(deepDistance > globeRadius + 0.2);
+  assert.ok(deepDistance < formerMaxDistance);
+  assert.equal(zoomControlStep(1, 0.65), 0.65);
+  assert.equal(zoomControlStep(8, 0.65), 1);
+  assert.equal(zoomControlStep(18, 0.65), 2);
 });
 
 test("two-pointer angles support half turns and wrap without discontinuities", () => {

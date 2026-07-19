@@ -768,6 +768,7 @@ export function buildCountryCoverage(events = [], locale = "en") {
         href: countryGroup.country === "Location TBA" ? "" : `/${locale}${countryHref(countryGroup.country)}`,
         label: formatCountryName(countryGroup.country, locale),
         liveCount,
+        mapFeatureName: info.focusFeatureName || info.atlasName || countryGroup.country,
         marker,
         plottedEvents: regions.flatMap((region) => region.events.filter((event) => event.marker)),
         regions,

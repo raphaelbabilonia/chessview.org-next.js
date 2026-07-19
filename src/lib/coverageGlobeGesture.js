@@ -11,9 +11,14 @@ export const coverageGlobeGesture = Object.freeze({
   twistDeadZoneRadians: Math.PI / 180,
   yawPerFullWidth: 2.1,
   zoomDampingPerSecond: 20,
-  zoomMax: 12,
+  zoomMax: 24,
   zoomMin: 1,
+  cameraBaseClearance: 4.94,
+  cameraZoomExponent: 0.9303,
+  rotationSensitivityMin: 0.22,
 });
+
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
 export const dampFactor = (ratePerSecond, deltaSeconds) => {
   if (!Number.isFinite(ratePerSecond) || !Number.isFinite(deltaSeconds) || ratePerSecond <= 0 || deltaSeconds <= 0) return 0;
@@ -26,10 +31,32 @@ export const decayVelocity = (velocity, deltaSeconds, decayPerSecond = coverageG
   return velocity * Math.exp(-decayPerSecond * deltaSeconds);
 };
 
-export const rotationDeltaFromPointer = ({ deltaX, deltaY, height, width }) => ({
-  pitch: (Number(deltaY) / Math.max(Number(height) || 0, 1)) * coverageGlobeGesture.pitchPerFullHeight,
-  yaw: (Number(deltaX) / Math.max(Number(width) || 0, 1)) * coverageGlobeGesture.yawPerFullWidth,
-});
+export const rotationSensitivityForZoom = (zoom) =>
+  Math.max(
+    coverageGlobeGesture.rotationSensitivityMin,
+    1 / Math.sqrt(clamp(Number(zoom) || coverageGlobeGesture.zoomMin, coverageGlobeGesture.zoomMin, coverageGlobeGesture.zoomMax)),
+  );
+
+export const rotationDeltaFromPointer = ({ deltaX, deltaY, height, width, zoom = coverageGlobeGesture.zoomMin }) => {
+  const sensitivity = rotationSensitivityForZoom(zoom);
+  return {
+    pitch: (Number(deltaY) / Math.max(Number(height) || 0, 1)) * coverageGlobeGesture.pitchPerFullHeight * sensitivity,
+    yaw: (Number(deltaX) / Math.max(Number(width) || 0, 1)) * coverageGlobeGesture.yawPerFullWidth * sensitivity,
+  };
+};
+
+export const globeCameraDistanceForZoom = (zoom, globeRadius) => {
+  const safeZoom = clamp(Number(zoom) || coverageGlobeGesture.zoomMin, coverageGlobeGesture.zoomMin, coverageGlobeGesture.zoomMax);
+  const safeRadius = Math.max(Number(globeRadius) || 0, 0);
+  return safeRadius + coverageGlobeGesture.cameraBaseClearance / safeZoom ** coverageGlobeGesture.cameraZoomExponent;
+};
+
+export const zoomControlStep = (zoom, fineStep) => {
+  const safeZoom = clamp(Number(zoom) || coverageGlobeGesture.zoomMin, coverageGlobeGesture.zoomMin, coverageGlobeGesture.zoomMax);
+  if (safeZoom >= 12) return 2;
+  if (safeZoom >= 4) return 1;
+  return Math.max(Number(fineStep) || 0, 0.1);
+};
 
 export const pointerPairAngle = (first, second) => {
   const deltaX = Number(second?.x) - Number(first?.x);

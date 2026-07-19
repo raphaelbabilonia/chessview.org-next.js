@@ -17,11 +17,13 @@ import {
   rememberCoverageMap3dFallback,
   writeCoverageMapModePreference,
 } from "@/lib/coverageMapCapability";
+import { shouldLoadCoverageAdminBoundaries } from "@/lib/coverageAdminBoundaries";
 import {
   densityScalesForPoints,
   flatClusterMarkerDimensions,
   flatEventMarkerDimensions,
 } from "@/lib/coverageMarkerSizing";
+import { zoomControlStep } from "@/lib/coverageGlobeGesture";
 import { formatDateRange } from "@/lib/format";
 import { trackAnalyticsEvent } from "@/lib/tracking";
 
@@ -30,12 +32,17 @@ const CoverageThreeGlobe = dynamic(() => import("@/components/CoverageThreeGlobe
   ssr: false,
 });
 
+const CoverageAdminBoundaryLayer = dynamic(
+  () => import("@/components/CoverageAdminBoundaryLayer").then((mod) => mod.CoverageAdminBoundaryLayer),
+  { ssr: false },
+);
+
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
 const mapZoom = {
-  countryMax: 10,
+  countryMax: 24,
   doubleStep: 0.7,
-  globeMax: 12,
+  globeMax: 24,
   globeStep: 0.65,
   min: 1,
   step: 0.45,
@@ -630,7 +637,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
   const activeAutoFallbackReason =
     rendererResolved === coverageMapModes.flat && rendererPreference !== coverageMapModes.flat ? detectedRendererFallbackReason : null;
   const currentMaxZoom = isCountryMode ? mapZoom.countryMax : shouldRenderGlobe ? mapZoom.globeMax : mapZoom.worldMax;
-  const currentZoomStep = shouldRenderGlobe ? mapZoom.globeStep : mapZoom.step;
+  const currentZoomStep = zoomControlStep(zoom, shouldRenderGlobe ? mapZoom.globeStep : mapZoom.step);
   const activePayload = hovered || pinned;
   const activePoint = activePayload?.point;
   const mapViewLabel = selectedRegion
@@ -1248,7 +1255,8 @@ export function CoverageExplorer({ copy, coverage, locale }) {
 
   const zoomFromPointer = (event) => {
     event.preventDefault();
-    applyZoomAtClientPoint(pointerPosition(event), zoom + (event.shiftKey ? -mapZoom.doubleStep : mapZoom.doubleStep));
+    const doubleStep = zoomControlStep(zoom, mapZoom.doubleStep);
+    applyZoomAtClientPoint(pointerPosition(event), zoom + (event.shiftKey ? -doubleStep : doubleStep));
   };
 
   const handleMapKeyDown = (event) => {
@@ -1428,10 +1436,10 @@ export function CoverageExplorer({ copy, coverage, locale }) {
             onPointerDown={(event) => handleMarkerPointerDown(event, () => setPinned(payload))}
             role="button"
             tabIndex={0}
-            transform={`translate(${country.marker.x} ${country.marker.y})`}
+            transform={`translate(${country.marker.x} ${country.marker.y}) scale(${1 / zoom})`}
           >
             <title>{`${country.label}: ${country.count} ${copy.coverage.tournaments}`}</title>
-            <circle className="coverage-marker-target" r={visualRadius} />
+            <circle className="coverage-marker-target" r="18" />
             <circle className="coverage-marker-halo" r={visualRadius + 2.3} />
             <circle className="coverage-marker-core" r={visualRadius} />
             <circle className="coverage-marker-dot" r="1.25" />
@@ -1466,7 +1474,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
             onPointerDown={(event) => handleMarkerPointerDown(event, () => selectRegion(selectedCountry, region))}
             role="button"
             tabIndex={0}
-            transform={`translate(${region.marker.x} ${region.marker.y})`}
+            transform={`translate(${region.marker.x} ${region.marker.y}) scale(${1 / zoom})`}
           >
             <title>{`${region.label}: ${region.count} ${copy.coverage.tournaments}`}</title>
             <circle className="coverage-marker-target" r={Math.max(region.marker.radius + 9, 18)} />
@@ -1507,15 +1515,27 @@ export function CoverageExplorer({ copy, coverage, locale }) {
             onPointerDown={(pointerEvent) => handleMarkerPointerDown(pointerEvent, () => setPinned(payload))}
             role="button"
             tabIndex={0}
-            transform={`translate(${event.marker.x} ${event.marker.y})`}
+            transform={`translate(${event.marker.x} ${event.marker.y}) scale(${1 / zoom})`}
           >
             <title>{event.title}</title>
-            <circle className="coverage-dot-target" r="9" />
+            <circle className="coverage-dot-target" r="18" />
             <circle className="coverage-dot-ring" r="5.4" />
             <circle className="coverage-dot-core" r="3.2" />
           </g>
         );
       });
+
+  const renderAdminBoundaries = () => {
+    if (!shouldLoadCoverageAdminBoundaries(zoom, isCountryMode)) return null;
+    return (
+      <CoverageAdminBoundaryLayer
+        countryMode={isCountryMode}
+        countryName={selectedCountry?.country}
+        mapFeatureName={selectedCountry?.mapFeatureName}
+        zoom={zoom}
+      />
+    );
+  };
 
   return (
     <section className="coverage-explorer" aria-label={copy.coverage.mapLabel}>
@@ -1717,6 +1737,7 @@ export function CoverageExplorer({ copy, coverage, locale }) {
               mapPaths={mapPaths}
               mapRef={mapRef}
               offset={offset}
+              renderAdminBoundaries={renderAdminBoundaries}
               renderRegionMarkers={renderRegionMarkers}
               renderTournamentDots={renderTournamentDots}
               renderWorldCountrySelectors={renderWorldCountrySelectors}
