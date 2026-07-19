@@ -371,6 +371,10 @@ export function CoverageThreeGlobe({
     const cameraDirection = new THREE.Vector3();
     const markerProjectedPosition = new THREE.Vector3();
     const markerWorldPosition = new THREE.Vector3();
+    const screenPitchAxis = new THREE.Vector3(1, 0, 0);
+    const screenYawAxis = new THREE.Vector3(0, 1, 0);
+    const screenPitchRotation = new THREE.Quaternion();
+    const screenYawRotation = new THREE.Quaternion();
     const hoveredRef = { object: null };
     const activePointers = new Map();
     let pinchState = null;
@@ -384,8 +388,7 @@ export function CoverageThreeGlobe({
       momentumPitch: 0,
       momentumYaw: 0,
       pendingZoomReport: null,
-      rotationPitch: globeGroup.rotation.x,
-      rotationYaw: globeGroup.rotation.y,
+      rotationTarget: globeGroup.quaternion.clone(),
       zoomTarget: zoomRef.current,
     };
     const performanceProbe = {
@@ -401,8 +404,7 @@ export function CoverageThreeGlobe({
       lastTime: 0,
       moved: 0,
       pointerId: null,
-      rotationPitch: globeGroup.rotation.x,
-      rotationYaw: globeGroup.rotation.y,
+      rotationTarget: globeGroup.quaternion.clone(),
       startX: 0,
       startY: 0,
       startObject: null,
@@ -437,6 +439,26 @@ export function CoverageThreeGlobe({
       interaction.momentumPitch = 0;
       interaction.momentumYaw = 0;
       if (container.dataset.coverageMomentum !== "none") container.dataset.coverageMomentum = "none";
+    };
+
+    const syncOrientationDataset = () => {
+      container.dataset.coverageOrientation = interaction.rotationTarget
+        .toArray()
+        .map((value) => value.toFixed(6))
+        .join(",");
+    };
+
+    const applyRotationDelta = (pitch, yaw, syncDataset = true) => {
+      if (yaw) {
+        screenYawRotation.setFromAxisAngle(screenYawAxis, yaw);
+        interaction.rotationTarget.premultiply(screenYawRotation);
+      }
+      if (pitch) {
+        screenPitchRotation.setFromAxisAngle(screenPitchAxis, pitch);
+        interaction.rotationTarget.premultiply(screenPitchRotation);
+      }
+      interaction.rotationTarget.normalize();
+      if (syncDataset) syncOrientationDataset();
     };
 
     const commitPinchZoom = () => {
@@ -627,14 +649,11 @@ export function CoverageThreeGlobe({
 
       const isAutoRotating = autoRotateRef.current && !reducedMotion && interaction.mode === "idle" && !hoveredRef.object && !domActiveMarkerRef.current;
       if (isAutoRotating) {
-        interaction.rotationYaw += 0.072 * deltaSeconds;
+        applyRotationDelta(0, 0.072 * deltaSeconds, false);
       }
 
       if (interaction.mode === "idle" && (Math.abs(interaction.momentumYaw) > MOMENTUM_STOP_RADIANS_PER_SECOND || Math.abs(interaction.momentumPitch) > MOMENTUM_STOP_RADIANS_PER_SECOND)) {
-        interaction.rotationYaw += interaction.momentumYaw * deltaSeconds;
-        const nextPitch = clamp(interaction.rotationPitch + interaction.momentumPitch * deltaSeconds, -0.86, 0.78);
-        if (nextPitch === interaction.rotationPitch) interaction.momentumPitch = 0;
-        interaction.rotationPitch = nextPitch;
+        applyRotationDelta(interaction.momentumPitch * deltaSeconds, interaction.momentumYaw * deltaSeconds, false);
         interaction.momentumYaw = decayVelocity(interaction.momentumYaw, deltaSeconds);
         interaction.momentumPitch = decayVelocity(interaction.momentumPitch, deltaSeconds);
       } else if (interaction.mode === "idle") {
@@ -642,11 +661,9 @@ export function CoverageThreeGlobe({
       }
 
       const rotationDamping = dampFactor(coverageGlobeGesture.rotationDampingPerSecond, deltaSeconds);
-      globeGroup.rotation.x += (interaction.rotationPitch - globeGroup.rotation.x) * rotationDamping;
-      globeGroup.rotation.y += (interaction.rotationYaw - globeGroup.rotation.y) * rotationDamping;
+      globeGroup.quaternion.slerp(interaction.rotationTarget, rotationDamping);
       const rotationMoving =
-        Math.abs(interaction.rotationPitch - globeGroup.rotation.x) > 0.0001 ||
-        Math.abs(interaction.rotationYaw - globeGroup.rotation.y) > 0.0001 ||
+        globeGroup.quaternion.angleTo(interaction.rotationTarget) > 0.0001 ||
         Math.abs(interaction.momentumPitch) > MOMENTUM_STOP_RADIANS_PER_SECOND ||
         Math.abs(interaction.momentumYaw) > MOMENTUM_STOP_RADIANS_PER_SECOND ||
         isAutoRotating;
@@ -697,8 +714,7 @@ export function CoverageThreeGlobe({
       dragState.lastTime = event.timeStamp;
       dragState.moved = 0;
       dragState.pointerId = event.pointerId;
-      dragState.rotationPitch = interaction.rotationPitch;
-      dragState.rotationYaw = interaction.rotationYaw;
+      dragState.rotationTarget.copy(interaction.rotationTarget);
       dragState.startObject = raycast(event, event.pointerType === "touch");
       dragState.startX = event.clientX;
       dragState.startY = event.clientY;
@@ -758,22 +774,17 @@ export function CoverageThreeGlobe({
 
         const bounds = renderer.domElement.getBoundingClientRect();
         const rotationDelta = rotationDeltaFromPointer({ deltaX, deltaY, height: bounds.height, width: bounds.width });
-        const nextPitch = clamp(interaction.rotationPitch + rotationDelta.pitch, -0.86, 0.78);
-        interaction.rotationYaw += rotationDelta.yaw;
-        interaction.rotationPitch = nextPitch;
+        applyRotationDelta(rotationDelta.pitch, rotationDelta.yaw);
         interaction.momentumYaw = clamp(
           interaction.momentumYaw * 0.6 + (rotationDelta.yaw / deltaSeconds) * 0.4,
           -coverageGlobeGesture.momentumMaxRadiansPerSecond,
           coverageGlobeGesture.momentumMaxRadiansPerSecond,
         );
-        interaction.momentumPitch =
-          nextPitch === -0.86 || nextPitch === 0.78
-            ? 0
-            : clamp(
-                interaction.momentumPitch * 0.6 + (rotationDelta.pitch / deltaSeconds) * 0.4,
-                -coverageGlobeGesture.momentumMaxRadiansPerSecond,
-                coverageGlobeGesture.momentumMaxRadiansPerSecond,
-              );
+        interaction.momentumPitch = clamp(
+          interaction.momentumPitch * 0.6 + (rotationDelta.pitch / deltaSeconds) * 0.4,
+          -coverageGlobeGesture.momentumMaxRadiansPerSecond,
+          coverageGlobeGesture.momentumMaxRadiansPerSecond,
+        );
         if (
           container.dataset.coverageMomentum !== "active" &&
           (Math.abs(interaction.momentumPitch) > MOMENTUM_STOP_RADIANS_PER_SECOND ||
@@ -815,8 +826,8 @@ export function CoverageThreeGlobe({
       if (wasPinching && activePointers.size < 2) commitPinchZoom();
       pinchState = null;
       if (canActivate) {
-        interaction.rotationPitch = dragState.rotationPitch;
-        interaction.rotationYaw = dragState.rotationYaw;
+        interaction.rotationTarget.copy(dragState.rotationTarget);
+        syncOrientationDataset();
       }
       const hasFreshMomentum = event.timeStamp - dragState.lastTime <= MOMENTUM_STALE_AFTER_MS;
       if (!wasRotating || canActivate || reducedMotion || !hasFreshMomentum) resetMomentum();
@@ -837,8 +848,7 @@ export function CoverageThreeGlobe({
         dragState.lastTime = event.timeStamp;
         dragState.moved = 0;
         dragState.pointerId = [...activePointers.keys()][0];
-        dragState.rotationPitch = interaction.rotationPitch;
-        dragState.rotationYaw = interaction.rotationYaw;
+        dragState.rotationTarget.copy(interaction.rotationTarget);
         dragState.startObject = null;
         dragState.startX = remainingPoint.x;
         dragState.startY = remainingPoint.y;
@@ -952,6 +962,7 @@ export function CoverageThreeGlobe({
     };
     setGestureMode("idle");
     resetMomentum();
+    syncOrientationDataset();
     container.dataset.coverageZoomTarget = interaction.zoomTarget.toFixed(3);
     sceneRef.current.frame = window.requestAnimationFrame(animate);
 

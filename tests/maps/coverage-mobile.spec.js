@@ -99,6 +99,49 @@ test("rotation waits for intent and cancellation clears the gesture", async ({ p
   await expect(page.locator(".coverage-tooltip")).toHaveCount(0);
 });
 
+test("rotation crosses both poles and stays responsive in every direction", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await openCoverage(page, "3d");
+  const globe = page.locator("[data-coverage-globe=ready]");
+  const bounds = await page.locator(".coverage-globe-canvas").boundingBox();
+  if (!bounds) throw new Error("The 3D canvas has no bounding box");
+
+  const orientation = async () => {
+    const value = await globe.getAttribute("data-coverage-orientation");
+    if (!value) throw new Error("The globe orientation is unavailable");
+    return value.split(",").map(Number);
+  };
+  const angularDistance = (first, second) => {
+    const dot = first.reduce((total, value, index) => total + value * second[index], 0);
+    return 2 * Math.acos(Math.min(1, Math.abs(dot)));
+  };
+  const drag = async (pointerId, startX, startY, endX, endY) => {
+    await dispatchTouch(page, "pointerdown", pointerId, startX, startY);
+    await dispatchTouch(page, "pointermove", pointerId, endX, endY);
+    await dispatchTouch(page, "pointerup", pointerId, endX, endY);
+  };
+
+  const centerX = bounds.x + bounds.width / 2;
+  const centerY = bounds.y + bounds.height / 2;
+  const initialOrientation = await orientation();
+
+  for (let index = 0; index < 6; index += 1) {
+    await drag(index + 1, centerX, centerY + bounds.height * 0.25, centerX, centerY - bounds.height * 0.25);
+  }
+  const beyondBothPoles = await orientation();
+  expect(angularDistance(initialOrientation, beyondBothPoles)).toBeGreaterThan(2.4);
+
+  await drag(20, centerX, centerY + bounds.height * 0.25, centerX, centerY - bounds.height * 0.25);
+  const continuedVerticalRotation = await orientation();
+  expect(angularDistance(beyondBothPoles, continuedVerticalRotation)).toBeGreaterThan(0.45);
+
+  await drag(21, centerX - bounds.width * 0.25, centerY, centerX + bounds.width * 0.25, centerY);
+  const horizontalRotationAfterPole = await orientation();
+  expect(angularDistance(continuedVerticalRotation, horizontalRotationAfterPole)).toBeGreaterThan(0.8);
+  await expect(globe).toHaveAttribute("data-coverage-gesture-mode", "idle");
+  await expect(page.locator(".coverage-tooltip")).toHaveCount(0);
+});
+
 test("tap slop activates once while a deliberate drag never activates", async ({ page }) => {
   await openCoverage(page, "3d");
   await stopGlobeRotation(page);
