@@ -19,10 +19,37 @@ export async function openCoverage(page, renderer) {
 
 export async function stopGlobeRotation(page) {
   const canvas = page.locator(".coverage-globe-canvas");
-  const bounds = await canvas.boundingBox();
-  if (!bounds) throw new Error("The 3D canvas has no bounding box");
-  await page.touchscreen.tap(bounds.x + 4, bounds.y + 4);
-  await page.waitForTimeout(120);
+  await canvas.evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    const eventInit = {
+      bubbles: true,
+      button: 0,
+      cancelable: true,
+      clientX: bounds.left + 4,
+      clientY: bounds.top + 4,
+      isPrimary: true,
+      pointerId: 999,
+      pointerType: "mouse",
+    };
+    element.dispatchEvent(new PointerEvent("pointerdown", eventInit));
+    element.dispatchEvent(new PointerEvent("pointerup", eventInit));
+    element.dispatchEvent(new MouseEvent("click", eventInit));
+  });
+  await expect(page.locator("[data-coverage-globe=ready]")).toHaveAttribute("data-coverage-gesture-mode", "idle");
+  await page.waitForTimeout(200);
+}
+
+export async function stableVisibleGlobeMarker(page) {
+  await stopGlobeRotation(page);
+  const visibleMarker = page.locator(".coverage-globe-hit-target:not([hidden])").first();
+  await expect(visibleMarker).toBeVisible();
+  const markerKey = await visibleMarker.getAttribute("data-coverage-marker-key");
+  if (!markerKey) throw new Error("A visible 3D marker has no stable key");
+
+  const stableMarker = page.locator(`.coverage-globe-hit-target[data-coverage-marker-key=${JSON.stringify(markerKey)}]`);
+  await page.waitForTimeout(150);
+  await expect(stableMarker).toBeVisible();
+  return stableMarker;
 }
 
 export async function lowestGlobeMarkerPoint(page) {

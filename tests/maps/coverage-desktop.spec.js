@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openCoverage } from "./helpers.mjs";
+import { openCoverage, stableVisibleGlobeMarker } from "./helpers.mjs";
 
 test("desktop keyboard users can open and close 3D marker previews", async ({ page }) => {
   const errors = [];
@@ -8,8 +8,7 @@ test("desktop keyboard users can open and close 3D marker previews", async ({ pa
   });
   await openCoverage(page, "3d");
 
-  const marker = page.locator(".coverage-globe-hit-target:not([hidden])").first();
-  await expect(marker).toHaveAttribute("data-coverage-marker-key", /.+/);
+  const marker = await stableVisibleGlobeMarker(page);
   await marker.focus();
   await marker.press("Enter");
   await expect(page.locator(".coverage-tooltip")).toBeVisible();

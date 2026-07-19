@@ -32,6 +32,7 @@ export default defineConfig({
       env: {
         ...process.env,
         API_BASE_URL: apiUrl,
+        NEXT_PUBLIC_COVERAGE_MAP_PERFORMANCE_PROBE: "false",
         NEXT_PUBLIC_SITE_URL: siteUrl,
         NEXT_PUBLIC_TRACKING_ENABLED: "false",
       },

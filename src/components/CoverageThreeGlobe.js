@@ -13,6 +13,7 @@ const COARSE_MARKER_HIT_RADIUS_PX = 22;
 const HIT_TARGET_UPDATE_INTERVAL_MS = 1000 / 15;
 const MOMENTUM_STALE_AFTER_MS = 90;
 const MOMENTUM_STOP_RADIANS_PER_SECOND = 0.01;
+const PERFORMANCE_PROBE_ENABLED = process.env.NEXT_PUBLIC_COVERAGE_MAP_PERFORMANCE_PROBE !== "false";
 const typeColors = {
   blitz: "#ffb02e",
   classical: "#2f80ed",
@@ -597,7 +598,7 @@ export function CoverageThreeGlobe({
     };
 
     const reportPerformanceIssue = () => {
-      if (performanceProbe.reported) return;
+      if (!PERFORMANCE_PROBE_ENABLED || performanceProbe.reported) return;
       performanceProbe.reported = true;
       callbacksRef.current.onPerformanceIssue?.("low-fps");
     };
@@ -615,7 +616,7 @@ export function CoverageThreeGlobe({
         return;
       }
 
-      if (performanceProbe.reported) return;
+      if (!PERFORMANCE_PROBE_ENABLED || performanceProbe.reported) return;
 
       const delta = time - performanceProbe.lastTime;
       performanceProbe.lastTime = time;
@@ -1041,6 +1042,17 @@ export function CoverageThreeGlobe({
 
   const focusDomMarker = (marker) => {
     domActiveMarkerRef.current = marker.key;
+    if (!autoRotateRef.current) return;
+
+    autoRotateRef.current = false;
+    trackAnalyticsEvent("coverage_map_interaction", {
+      routeType: "coverage",
+      metadata: {
+        input: "keyboard",
+        renderer: "3d",
+      },
+    });
+    callbacksRef.current.onUserInteraction?.();
   };
 
   const leaveDomMarker = () => {
