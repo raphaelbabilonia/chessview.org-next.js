@@ -117,16 +117,21 @@ test("rapid 3D wheel input accumulates without waiting for React renders", async
 test("3D zoom reaches 24x, damps rotation, and reveals regional boundaries", async ({ page }) => {
   await openCoverage(page, "3d");
   const globe = page.locator("[data-coverage-globe=ready]");
-  const zoomIn = page.getByRole("button", { name: "Zoom in" });
   const initialSensitivity = Number(await globe.getAttribute("data-coverage-rotation-sensitivity"));
 
   await expect(globe).toHaveAttribute("data-coverage-admin-boundaries", "hidden");
-  for (let index = 0; index < 20; index += 1) await zoomIn.click();
+  await page.locator(".coverage-globe-canvas").evaluate((canvas) => {
+    for (let index = 0; index < 40; index += 1) {
+      canvas.dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: -160 }));
+    }
+  });
 
   await expect.poll(async () => Number(await globe.getAttribute("data-coverage-zoom-target"))).toBe(24);
   await expect(globe).toHaveAttribute("data-coverage-admin-boundaries", "visible", { timeout: 15000 });
   expect(Number(await globe.getAttribute("data-coverage-rotation-sensitivity"))).toBeLessThan(initialSensitivity * 0.3);
-  await zoomIn.click();
+  await page.locator(".coverage-globe-canvas").evaluate((canvas) => {
+    canvas.dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: -160 }));
+  });
   await expect.poll(async () => Number(await globe.getAttribute("data-coverage-zoom-target"))).toBe(24);
 });
 

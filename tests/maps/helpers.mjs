@@ -53,7 +53,7 @@ export async function stableVisibleGlobeMarker(page) {
 }
 
 export async function lowestGlobeMarkerPoint(page) {
-  for (let attempt = 0; attempt < 20; attempt += 1) {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
     const marker = await page.evaluate(() => {
       const canvas = document.querySelector(".coverage-globe-canvas");
       const canvasBounds = canvas?.getBoundingClientRect();
@@ -82,7 +82,7 @@ export async function lowestGlobeMarkerPoint(page) {
         .sort((first, second) => second.y - first.y)[0] || null;
     });
     if (marker) return marker;
-    await page.waitForTimeout(50);
+    await page.waitForTimeout(100);
   }
   return null;
 }

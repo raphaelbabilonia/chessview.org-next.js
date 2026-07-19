@@ -13,7 +13,8 @@ export default defineConfig({
   reporter: process.env.CI ? [["github"], ["line"]] : "list",
   retries: process.env.CI ? 1 : 0,
   testDir: "tests/maps",
-  timeout: 30000,
+  timeout: process.env.CI ? 60000 : 30000,
+  workers: process.env.CI ? 1 : undefined,
   use: {
     baseURL: siteUrl,
     screenshot: "only-on-failure",

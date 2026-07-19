@@ -267,7 +267,8 @@ test("tap slop activates once while a deliberate drag never activates", async ({
   );
   await expect(page.locator(".coverage-tooltip")).toHaveCount(1);
 
-  await openCoverage(page, "3d");
+  await page.locator(".coverage-tooltip-close").tap();
+  await expect(page.locator(".coverage-tooltip")).toHaveCount(0);
   await stopGlobeRotation(page);
   marker = await lowestGlobeMarkerPoint(page);
   expect(marker).not.toBeNull();
