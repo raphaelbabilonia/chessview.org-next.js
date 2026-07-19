@@ -2765,11 +2765,6 @@ textarea:focus {
   margin: 0;
 }
 
-.registration-panel {
-  border-color: color-mix(in srgb, var(--accent) 44%, var(--border));
-  background: color-mix(in srgb, var(--surface) 88%, var(--accent) 7%);
-}
-
 .announcement-panel {
   border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
 }

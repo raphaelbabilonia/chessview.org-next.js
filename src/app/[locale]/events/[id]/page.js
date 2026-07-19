@@ -253,7 +253,6 @@ export default async function EventDetailPage({ params }) {
   const primaryLink = originalSiteLink(event, copy);
   const announcementDocument = announcementDocumentFor(event, copy);
   const announcementHref = announcementDocument ? documentHref(announcementDocument) : "";
-  const sourceName = event.source?.name || primaryLink?.label || copy.event.tba;
   const metadata = isPlainObject(event.metadata) ? event.metadata : {};
   const metadataGroups = metadataGroupsFor(metadata, copy);
   const hasAdvancedMetadata = Boolean(metadata.summary || metadataGroups.length);
@@ -381,38 +380,6 @@ export default async function EventDetailPage({ params }) {
             ) : null}
           </dl>
         </article>
-
-        <aside className="info-panel registration-panel">
-          <h2>{copy.event.registrationCtaTitle}</h2>
-          <p>{copy.event.registrationCtaBody}</p>
-          <dl className="detail-list">
-            <div>
-              <dt>{copy.event.sourceName}</dt>
-              <dd>{sourceName}</dd>
-            </div>
-          </dl>
-          <div className="link-list">
-            {primaryLink ? (
-              <a
-                data-tracking-entity-id={event._id}
-                data-tracking-entity-slug={event.slug}
-                data-tracking-entity-title={event.title}
-                data-tracking-entity-type="event"
-                data-tracking-event="event_original_click"
-                data-tracking-outbound-url={primaryLink.href}
-                data-tracking-placement="event_registration_panel"
-                href={primaryLink.href}
-                rel="noreferrer"
-                target="_blank"
-              >
-                <ExternalLink size={16} aria-hidden="true" />
-                {copy.event.goToOriginalSite}
-              </a>
-            ) : (
-              <span className="muted">{copy.event.noOriginalSite}</span>
-            )}
-          </div>
-        </aside>
 
         {announcementDocument ? (
           <article className="info-panel announcement-panel" id="documents">
