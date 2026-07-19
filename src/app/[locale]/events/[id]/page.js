@@ -251,6 +251,7 @@ export default async function EventDetailPage({ params }) {
   const timeControl = formatTimeControl(event.timeControl, locale, copy.event.timeControlTba);
   const sectionNames = uniqueValues((event.sections || []).map((section) => section.name)).join(", ");
   const primaryLink = originalSiteLink(event, copy);
+  const sourceName = event.source?.name || copy.event.tba;
   const announcementDocument = announcementDocumentFor(event, copy);
   const announcementHref = announcementDocument ? documentHref(announcementDocument) : "";
   const metadata = isPlainObject(event.metadata) ? event.metadata : {};
@@ -367,6 +368,10 @@ export default async function EventDetailPage({ params }) {
             <div>
               <dt>{copy.event.organizer}</dt>
               <dd>{organizerName || copy.event.tba}</dd>
+            </div>
+            <div>
+              <dt>{copy.event.source}</dt>
+              <dd>{sourceName}</dd>
             </div>
             <div>
               <dt>{copy.event.contact}</dt>
