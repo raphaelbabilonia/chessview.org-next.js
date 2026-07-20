@@ -21,6 +21,23 @@ const quaternionAngularDistance = (first, second) => {
   return 2 * Math.acos(Math.min(1, Math.abs(dot)));
 };
 
+const expectMarkerOverlayInsideMap = async (page) => {
+  const stage = page.locator(".coverage-map-stage");
+  const overlay = page.locator(".maps-marker-overlay");
+  await expect(overlay).toBeVisible();
+  await expect(overlay).toBeFocused();
+  const stageBounds = await stage.boundingBox();
+  const overlayBounds = await overlay.boundingBox();
+  if (!stageBounds || !overlayBounds) throw new Error("The map overlay has no measurable bounds");
+  expect(overlayBounds.x).toBeGreaterThanOrEqual(stageBounds.x);
+  expect(overlayBounds.y).toBeGreaterThanOrEqual(stageBounds.y);
+  expect(overlayBounds.x + overlayBounds.width).toBeLessThanOrEqual(stageBounds.x + stageBounds.width + 1);
+  expect(overlayBounds.y + overlayBounds.height).toBeLessThanOrEqual(stageBounds.y + stageBounds.height + 1);
+  expect(overlayBounds.y).toBeGreaterThanOrEqual(0);
+  expect(overlayBounds.y + overlayBounds.height).toBeLessThanOrEqual(page.viewportSize().height + 1);
+  return overlay;
+};
+
 const moveTouchPair = async (
   page,
   { centerX, centerY, endAngle, endRadius, startRadius, steps = 12 },
@@ -60,7 +77,8 @@ test("a low 3D marker needs a separate touch to navigate", async ({ page }) => {
   ).not.toBeNull();
   await page.touchscreen.tap(marker.x, marker.y);
 
-  const markerCard = page.locator(".maps-marker-card");
+  const overlay = await expectMarkerOverlayInsideMap(page);
+  const markerCard = overlay.locator(".maps-marker-card");
   await expect(markerCard).toBeVisible();
   await page.waitForTimeout(150);
   await expect(page).toHaveURL(/\/en\/maps$/);
@@ -75,6 +93,28 @@ test("a low 3D marker needs a separate touch to navigate", async ({ page }) => {
 
   await markerCard.locator("a").first().tap();
   await expect(page).toHaveURL(/\/en\/events\/fixture-/);
+});
+
+test("mobile marker details close inside the map without navigation", async ({ page }) => {
+  await openCoverage(page);
+  await stopGlobeRotation(page);
+  const marker = await lowestGlobeMarkerPoint(page);
+  expect(marker).not.toBeNull();
+  await page.touchscreen.tap(marker.x, marker.y);
+  const overlay = await expectMarkerOverlayInsideMap(page);
+  await overlay.getByRole("button", { name: "Close tournament details" }).tap();
+  await expect(overlay).toHaveCount(0);
+  await expect(page).toHaveURL(/\/en\/maps$/);
+});
+
+test("tablet marker details remain inside the visible map viewport", async ({ page }) => {
+  await page.setViewportSize({ height: 900, width: 900 });
+  await openCoverage(page);
+  await stopGlobeRotation(page);
+  const marker = await lowestGlobeMarkerPoint(page);
+  expect(marker).not.toBeNull();
+  await page.touchscreen.tap(marker.x, marker.y);
+  await expectMarkerOverlayInsideMap(page);
 });
 
 test("pinch zoom is logarithmic and finger transitions do not jump", async ({
@@ -126,7 +166,14 @@ test("repeated mobile pinch reaches the 24x limit and reveals regional boundarie
   page,
 }) => {
   await openCoverage(page);
-  await page.locator(".maps-country-row", { hasText: "Argentina" }).click();
+  await page.getByRole("searchbox", { name: "Search tournaments and places" }).fill("Argentina");
+  await page.getByRole("button", { name: "Map filters" }).click();
+  await page.getByRole("checkbox", { name: "Group markers by country" }).check();
+  const countryMarker = page.locator('[data-coverage-marker-kind="country"]');
+  await expect(countryMarker).toHaveCount(1);
+  await countryMarker.focus();
+  await countryMarker.press("Enter");
+  await page.locator('.maps-marker-overlay [data-maps-marker-kind="country"]').getByRole("button", { name: "Focus country" }).click();
   await stopGlobeRotation(page);
   const globe = page.locator("[data-coverage-globe=ready]");
   const bounds = await page.locator(".coverage-globe-canvas").boundingBox();
