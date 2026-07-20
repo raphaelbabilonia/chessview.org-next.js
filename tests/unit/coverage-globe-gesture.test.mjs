@@ -5,6 +5,8 @@ import {
   dampFactor,
   decayVelocity,
   globeCameraDistanceForZoom,
+  nextOrientationStep,
+  orientationDegreesForStep,
   pointerPairAngle,
   rotationDeltaFromPointer,
   rotationSensitivityForZoom,
@@ -56,6 +58,16 @@ test("camera distance and control steps support the full 24x range", () => {
   assert.equal(zoomControlStep(1, 0.65), 0.65);
   assert.equal(zoomControlStep(8, 0.65), 1);
   assert.equal(zoomControlStep(18, 0.65), 2);
+});
+
+test("orientation control restores north-up before cycling in 45 degree steps", () => {
+  assert.equal(nextOrientationStep(null), 0);
+  assert.equal(nextOrientationStep(0), 1);
+  assert.equal(nextOrientationStep(7), 0);
+  assert.equal(orientationDegreesForStep(0), 0);
+  assert.equal(orientationDegreesForStep(1), 45);
+  assert.equal(orientationDegreesForStep(7), 315);
+  assert.equal(orientationDegreesForStep(8), 0);
 });
 
 test("two-pointer angles support half turns and wrap without discontinuities", () => {
