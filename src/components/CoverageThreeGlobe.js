@@ -19,9 +19,10 @@ import {
 import {
   coverageAdminBoundaries,
   coverageAdminBoundaryOpacity,
+  coverageBoundaryCountry,
   decodedCoverageBoundaryLines,
   loadCoverageAdminBoundaries,
-  shouldLoadCoverageAdminBoundaries,
+  normalizeCoverageCountryName,
 } from "@/lib/coverageAdminBoundaries";
 import {
   coverageMarkerSizing,
@@ -154,7 +155,7 @@ const buildAdminBoundaryPositions = (lines) => {
   const positions = [];
   for (const line of lines) {
     for (let index = 1; index < line.length; index += 1) {
-      pushLineSegment(positions, line[index - 1], line[index], GLOBE_RADIUS + 0.024);
+      pushLineSegment(positions, line[index - 1], line[index], SURFACE_RADIUS);
     }
   }
   return new Float32Array(positions);
@@ -233,7 +234,9 @@ export function CoverageThreeGlobe({
   autoRotate = true,
   copy,
   countries = [],
+  focusTarget = null,
   items = [],
+  keyboardCommand = null,
   mapSize,
   onHover,
   onLeave,
@@ -243,6 +246,7 @@ export function CoverageThreeGlobe({
   onUserInteraction,
   onUnavailable,
   onZoomChange,
+  quality = "full",
   showCountryMarkers,
   zoom,
 }) {
@@ -254,6 +258,10 @@ export function CoverageThreeGlobe({
   const sceneRef = useRef(null);
   const trackedMarkerRef = useRef({ at: 0, key: "" });
   const zoomRef = useRef(zoom);
+  const boundaryCountryNames = useMemo(
+    () => (focusTarget?.view === "world" ? [] : [...new Set((focusTarget?.countryNames || []).filter(Boolean))]),
+    [focusTarget],
+  );
 
   const markers = useMemo(() => {
     if (showCountryMarkers) {
@@ -341,7 +349,11 @@ export function CoverageThreeGlobe({
     let renderer;
 
     try {
-      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "high-performance" });
+      renderer = new THREE.WebGLRenderer({
+        alpha: true,
+        antialias: quality !== "reduced",
+        powerPreference: quality === "reduced" ? "low-power" : "high-performance",
+      });
     } catch {
       callbacksRef.current.onUnavailable?.("init-error");
       return undefined;
@@ -350,7 +362,7 @@ export function CoverageThreeGlobe({
     renderer.domElement.className = "coverage-globe-canvas";
     renderer.domElement.setAttribute("aria-hidden", "true");
     renderer.setClearColor(0x000000, 0);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, coarsePointer ? 1.5 : 2));
+    renderer.setPixelRatio(quality === "reduced" ? 1 : Math.min(window.devicePixelRatio || 1, coarsePointer ? 1.5 : 2));
     container.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
@@ -362,7 +374,7 @@ export function CoverageThreeGlobe({
     scene.add(globeGroup);
 
     const ocean = new THREE.Mesh(
-      new THREE.SphereGeometry(GLOBE_RADIUS, 96, 64),
+      new THREE.SphereGeometry(GLOBE_RADIUS, quality === "reduced" ? 64 : 96, quality === "reduced" ? 40 : 64),
       new THREE.MeshPhongMaterial({
         color: 0x061833,
         emissive: 0x031225,
@@ -372,16 +384,18 @@ export function CoverageThreeGlobe({
     );
     globeGroup.add(ocean);
 
-    const atmosphere = new THREE.Mesh(
-      new THREE.SphereGeometry(GLOBE_RADIUS + 0.055, 96, 64),
-      new THREE.MeshBasicMaterial({
-        color: 0xba9b4a,
-        opacity: 0.07,
-        side: THREE.BackSide,
-        transparent: true,
-      }),
-    );
-    globeGroup.add(atmosphere);
+    if (quality !== "reduced") {
+      const atmosphere = new THREE.Mesh(
+        new THREE.SphereGeometry(GLOBE_RADIUS + 0.055, 96, 64),
+        new THREE.MeshBasicMaterial({
+          color: 0xba9b4a,
+          opacity: 0.07,
+          side: THREE.BackSide,
+          transparent: true,
+        }),
+      );
+      globeGroup.add(atmosphere);
+    }
 
     const graticule = new THREE.LineSegments(
       new THREE.BufferGeometry().setAttribute("position", new THREE.BufferAttribute(buildGraticulePositions(), 3)),
@@ -443,7 +457,7 @@ export function CoverageThreeGlobe({
       frames: 0,
       lastTime: 0,
       ready: false,
-      reported: false,
+      reported: quality === "reduced",
       slowFrames: 0,
       totalDelta: 0,
     };
@@ -631,9 +645,10 @@ export function CoverageThreeGlobe({
     };
 
     const updateAdminBoundaries = () => {
-      const boundaryLine = sceneRef.current?.adminBoundaryLine;
+      const currentState = sceneRef.current;
+      const boundaryLine = currentState?.adminBoundaryLine;
       if (!boundaryLine) return;
-      const fade = coverageAdminBoundaryOpacity(interaction.zoomTarget);
+      const fade = coverageAdminBoundaryOpacity(interaction.zoomTarget, currentState.adminBoundaryCountryMode);
       boundaryLine.visible = fade > 0;
       boundaryLine.material.opacity = coverageAdminBoundaries.globeOpacity * fade;
       const boundaryState = fade <= 0 ? "hidden" : fade >= 1 ? "visible" : "fading";
@@ -1081,14 +1096,20 @@ export function CoverageThreeGlobe({
     sceneRef.current = {
       adminBoundaryGroup,
       adminBoundaryLine: null,
+      adminBoundaryCountryMode: false,
+      adminBoundaryLoadScope: "",
+      adminBoundaryScope: "",
       camera,
       frame: 0,
+      globeGroup,
+      initialQuaternion: globeGroup.quaternion.clone(),
       interaction,
       markerByKey: new Map(),
       markerDefinitions: [],
       markerGroup,
       markerObjects: [],
       renderer,
+      reducedMotion,
       scene,
     };
     setGestureMode("idle");
@@ -1116,31 +1137,98 @@ export function CoverageThreeGlobe({
       renderer.domElement.remove();
       delete container.dataset.coverageGestureMode;
       delete container.dataset.coverageAdminBoundaries;
+      delete container.dataset.coverageAdminBoundaryRegions;
+      delete container.dataset.coverageAdminBoundaryScope;
       delete container.dataset.coverageMomentum;
       delete container.dataset.coverageRotationSensitivity;
       delete container.dataset.coverageZoomTarget;
       sceneRef.current = null;
     };
-  }, [mapSize]);
+  }, [mapSize, quality]);
+
+  useEffect(() => {
+    const state = sceneRef.current;
+    if (!state || !focusTarget) return;
+
+    const targetQuaternion = state.initialQuaternion.clone();
+    const coordinates = cleanCoordinates(focusTarget.coordinates);
+    if (focusTarget.view !== "world" && coordinates) {
+      const direction = lonLatToVector3(coordinates, 1).normalize();
+      targetQuaternion.setFromUnitVectors(direction, new THREE.Vector3(0, 0, 1));
+    }
+
+    state.interaction.rotationTarget.copy(targetQuaternion);
+    state.interaction.momentumPitch = 0;
+    state.interaction.momentumYaw = 0;
+    state.interaction.hitTargetsDirty = true;
+    if (state.reducedMotion) state.globeGroup.quaternion.copy(targetQuaternion);
+  }, [focusTarget, quality]);
+
+  useEffect(() => {
+    const state = sceneRef.current;
+    if (!state || !keyboardCommand) return;
+
+    const sensitivity = rotationSensitivityForZoom(state.interaction.zoomTarget);
+    const yaw = Number(keyboardCommand.yaw || 0) * sensitivity;
+    const pitch = Number(keyboardCommand.pitch || 0) * sensitivity;
+    if (!yaw && !pitch) return;
+
+    const yawRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+    const pitchRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), pitch);
+    state.interaction.rotationTarget.premultiply(yawRotation).premultiply(pitchRotation).normalize();
+    state.interaction.momentumPitch = 0;
+    state.interaction.momentumYaw = 0;
+    state.interaction.hitTargetsDirty = true;
+    if (state.reducedMotion) state.globeGroup.quaternion.copy(state.interaction.rotationTarget);
+  }, [keyboardCommand]);
 
   useEffect(() => {
     const container = containerRef.current;
     const state = sceneRef.current;
     if (!container || !state) return undefined;
 
-    if (state.adminBoundaryLine) return undefined;
-    if (!shouldLoadCoverageAdminBoundaries(zoom)) {
+    const scopeKey = boundaryCountryNames.map(normalizeCoverageCountryName).filter(Boolean).join("|");
+    const clearBoundaryLine = () => {
+      if (!state.adminBoundaryLine) return;
+      state.adminBoundaryGroup.remove(state.adminBoundaryLine);
+      disposeObject(state.adminBoundaryLine);
+      state.adminBoundaryLine = null;
+    };
+
+    if (!scopeKey) {
+      clearBoundaryLine();
+      state.adminBoundaryCountryMode = false;
+      state.adminBoundaryLoadScope = "";
+      state.adminBoundaryScope = "";
       container.dataset.coverageAdminBoundaries = "hidden";
+      delete container.dataset.coverageAdminBoundaryRegions;
+      delete container.dataset.coverageAdminBoundaryScope;
       return undefined;
     }
 
+    if (state.adminBoundaryScope === scopeKey) return undefined;
+    if (state.adminBoundaryLoadScope === scopeKey) return undefined;
+
+    clearBoundaryLine();
+    state.adminBoundaryCountryMode = true;
+    state.adminBoundaryLoadScope = scopeKey;
+    state.adminBoundaryScope = "";
     let active = true;
     container.dataset.coverageAdminBoundaries = "loading";
+    container.dataset.coverageAdminBoundaryScope = scopeKey;
+    delete container.dataset.coverageAdminBoundaryRegions;
     loadCoverageAdminBoundaries()
       .then((data) => {
-        if (!active || sceneRef.current !== state || state.adminBoundaryLine) return;
-        const positions = buildAdminBoundaryPositions(decodedCoverageBoundaryLines(data));
-        if (!positions.length) throw new Error("Coverage Admin-1 asset contained no usable lines");
+        if (!active || sceneRef.current !== state || state.adminBoundaryLoadScope !== scopeKey) return;
+        const country = coverageBoundaryCountry(data, boundaryCountryNames);
+        const positions = buildAdminBoundaryPositions(decodedCoverageBoundaryLines(data, boundaryCountryNames));
+        if (!country || !positions.length) {
+          state.adminBoundaryLoadScope = "";
+          state.adminBoundaryScope = scopeKey;
+          container.dataset.coverageAdminBoundaries = "hidden";
+          container.dataset.coverageAdminBoundaryRegions = "0";
+          return;
+        }
         const boundaryLine = new THREE.LineSegments(
           new THREE.BufferGeometry().setAttribute("position", new THREE.BufferAttribute(positions, 3)),
           new THREE.LineBasicMaterial({
@@ -1152,15 +1240,22 @@ export function CoverageThreeGlobe({
         boundaryLine.visible = false;
         state.adminBoundaryGroup.add(boundaryLine);
         state.adminBoundaryLine = boundaryLine;
+        state.adminBoundaryLoadScope = "";
+        state.adminBoundaryScope = scopeKey;
+        container.dataset.coverageAdminBoundaryScope = normalizeCoverageCountryName(country.name);
+        container.dataset.coverageAdminBoundaryRegions = String(country.regionNames?.length || 0);
       })
       .catch(() => {
-        if (active && containerRef.current === container) container.dataset.coverageAdminBoundaries = "error";
+        if (active && containerRef.current === container) {
+          state.adminBoundaryLoadScope = "";
+          container.dataset.coverageAdminBoundaries = "error";
+        }
       });
 
     return () => {
       active = false;
     };
-  }, [zoom]);
+  }, [boundaryCountryNames, mapSize, quality]);
 
   useEffect(() => {
     const state = sceneRef.current;

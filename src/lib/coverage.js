@@ -1,4 +1,4 @@
-import { geoBounds, geoCentroid, geoContains, geoEqualEarth, geoGraticule10, geoMercator, geoPath } from "d3-geo";
+import { geoBounds, geoCentroid, geoContains, geoEqualEarth, geoGraticule10, geoPath } from "d3-geo";
 import { feature } from "topojson-client";
 import worldAtlas from "world-atlas/countries-110m.json";
 import { formatCountryName } from "@/lib/format";
@@ -455,26 +455,37 @@ const coordinatesFitCountry = (country, coordinates) => {
   );
 };
 
-const countryMarkerFor = (country, count) => {
-  const info = countryInfo(country);
-  const atlasFeature = featureByName.get(info.atlasName) || featureByName.get(country);
-  const coordinates = info.coordinates || (atlasFeature ? geoCentroid(atlasFeature) : null);
-  const projected = coordinates ? worldProjection(coordinates) : null;
-
-  if (!projected) return null;
-
-  return {
-    x: Number(projected[0].toFixed(2)),
-    y: Number(projected[1].toFixed(2)),
-    radius: Number(Math.max(8, Math.min(23, 7 + Math.sqrt(count) * 3.2)).toFixed(2)),
-  };
-};
-
 const cleanGlobeCoordinates = (coordinates) => {
   const cleanCoordinates = coordinatesFromValue(coordinates);
   if (!cleanCoordinates) return null;
 
   return cleanCoordinates.map((value) => Number(value.toFixed(4)));
+};
+
+export const averageGlobeCoordinates = (coordinatesList = []) => {
+  const coordinates = coordinatesList.map(cleanGlobeCoordinates).filter(Boolean);
+  if (!coordinates.length) return null;
+
+  const vector = coordinates.reduce(
+    (sum, [longitude, latitude]) => {
+      const lon = (longitude * Math.PI) / 180;
+      const lat = (latitude * Math.PI) / 180;
+      const cosLat = Math.cos(lat);
+      return {
+        x: sum.x + cosLat * Math.cos(lon),
+        y: sum.y + Math.sin(lat),
+        z: sum.z + cosLat * Math.sin(lon),
+      };
+    },
+    { x: 0, y: 0, z: 0 },
+  );
+  const length = Math.hypot(vector.x, vector.y, vector.z);
+  if (!length) return coordinates[0];
+
+  return [
+    Number(((Math.atan2(vector.z, vector.x) * 180) / Math.PI).toFixed(4)),
+    Number(((Math.atan2(vector.y, Math.hypot(vector.x, vector.z)) * 180) / Math.PI).toFixed(4)),
+  ];
 };
 
 const countryGlobeCoordinatesFor = (country) => {
@@ -500,45 +511,6 @@ const spreadPoint = (point, index, totalAtPoint, options = {}) => {
   return {
     x: Number((point.x + Math.cos(angle) * distance).toFixed(2)),
     y: Number((point.y + Math.sin(angle) * distance).toFixed(2)),
-  };
-};
-
-const makeFlatMap = (country, events) => {
-  const mapFeature = countryFeatureFor(country);
-  const coordinateEvents = events.filter((event) => event.coordinates);
-  const fitFeature =
-    mapFeature ||
-    (coordinateEvents.length
-      ? {
-          type: "MultiPoint",
-          coordinates: coordinateEvents.map((event) => event.coordinates),
-        }
-      : null);
-
-  if (!fitFeature) {
-    return {
-      paths: null,
-      projection: null,
-    };
-  }
-
-  const projection = geoMercator().fitExtent(
-    [
-      [62, 42],
-      [898, 438],
-    ],
-    fitFeature,
-  );
-  const path = geoPath(projection);
-
-  return {
-    paths: {
-      boundary: mapFeature ? path(mapFeature) : "",
-      graticule: path(geoGraticule10()),
-      land: mapFeature ? path(mapFeature) : "",
-      sphere: path({ type: "Sphere" }),
-    },
-    projection,
   };
 };
 
@@ -575,16 +547,6 @@ const normalizeEvent = (event, index, locale, today) => {
   };
 };
 
-const markerFromProjected = (projected, index, totalAtPoint) => {
-  const point = projectedPoint(projected);
-
-  return spreadPoint(point, index, totalAtPoint, {
-    maxDistance: 9.5,
-    startDistance: 2,
-    stepDistance: 1.45,
-  });
-};
-
 const typeCounts = (events) =>
   events.reduce(
     (counts, event) => ({
@@ -594,35 +556,15 @@ const typeCounts = (events) =>
     { blitz: 0, classical: 0, other: 0, rapid: 0 },
   );
 
-const buildRegions = (events, projection) => {
-  const pointCounts = new Map();
-  const pointBuckets = new Map();
+const buildRegions = (events) => {
   const regions = new Map();
 
   for (const event of events) {
-    if (!event.coordinates) continue;
     const regionName = event.region || "Area TBA";
     const regionKey = slugifySegment(regionName) || "area-tba";
-    const locationKey = `${event.coordinates.map((value) => value.toFixed(3)).join(",")}|${regionKey}`;
-    pointCounts.set(locationKey, (pointCounts.get(locationKey) || 0) + 1);
-  }
-
-  for (const event of events) {
-    const regionName = event.region || "Area TBA";
-    const regionKey = slugifySegment(regionName) || "area-tba";
-    const plotted = projection && event.coordinates ? projection(event.coordinates) : null;
-    const locationKey = event.coordinates
-      ? `${event.coordinates.map((value) => value.toFixed(3)).join(",")}|${regionKey}`
-      : "";
-    const currentPointCount = locationKey ? pointBuckets.get(locationKey) || 0 : 0;
-    const totalPointCount = locationKey ? pointCounts.get(locationKey) || 1 : 1;
-
-    if (locationKey) pointBuckets.set(locationKey, currentPointCount + 1);
-
-    const marker = plotted ? markerFromProjected(plotted, currentPointCount, totalPointCount) : null;
     const normalizedEvent = {
       ...event,
-      marker,
+      globeCoordinates: cleanGlobeCoordinates(event.coordinates),
       regionKey,
     };
 
@@ -633,7 +575,7 @@ const buildRegions = (events, projection) => {
         key: regionKey,
         label: regionName,
         liveCount: 0,
-        marker: null,
+        globeCoordinates: null,
         upcomingCount: 0,
       });
     }
@@ -646,19 +588,12 @@ const buildRegions = (events, projection) => {
   }
 
   const allRegions = [...regions.values()].map((region) => {
-    const plottedEvents = region.events.filter((event) => event.marker);
-    const marker = plottedEvents.length
-      ? {
-          x: Number((plottedEvents.reduce((sum, event) => sum + event.marker.x, 0) / plottedEvents.length).toFixed(2)),
-          y: Number((plottedEvents.reduce((sum, event) => sum + event.marker.y, 0) / plottedEvents.length).toFixed(2)),
-          radius: Number(Math.max(5.5, Math.min(12, 4.6 + Math.sqrt(region.count) * 1.6)).toFixed(2)),
-        }
-      : null;
+    const plottedEvents = region.events.filter((event) => event.globeCoordinates);
 
     return {
       ...region,
       events: region.events.sort(sortEvents),
-      marker,
+      globeCoordinates: averageGlobeCoordinates(plottedEvents.map((event) => event.globeCoordinates)),
       plottedCount: plottedEvents.length,
       typeCounts: typeCounts(region.events),
       unmappedCount: region.events.length - plottedEvents.length,
@@ -749,10 +684,8 @@ export function buildCountryCoverage(events = [], locale = "en") {
   const allCountries = [...countries.values()]
     .map((countryGroup) => {
       const eventsForCountry = countryGroup.events.sort(sortEvents);
-      const { paths: flatMapPaths, projection } = makeFlatMap(countryGroup.country, eventsForCountry);
-      const regions = buildRegions(eventsForCountry, projection);
+      const regions = buildRegions(eventsForCountry);
       const info = countryInfo(countryGroup.country);
-      const marker = countryGroup.country === "Location TBA" ? null : countryMarkerFor(countryGroup.country, eventsForCountry.length);
       const globeCoordinates = countryGroup.country === "Location TBA" ? null : countryGlobeCoordinatesFor(countryGroup.country);
       const liveCount = eventsForCountry.filter((event) => event.liveNow).length;
       const atlasFeature = featureByName.get(info.atlasName) || featureByName.get(countryGroup.country);
@@ -763,14 +696,12 @@ export function buildCountryCoverage(events = [], locale = "en") {
         count: eventsForCountry.length,
         events: eventsForCountry,
         flagCode: info.flagCode || "xx",
-        flatMapPaths,
         globeCoordinates,
         href: countryGroup.country === "Location TBA" ? "" : `/${locale}${countryHref(countryGroup.country)}`,
         label: formatCountryName(countryGroup.country, locale),
         liveCount,
         mapFeatureName: info.focusFeatureName || info.atlasName || countryGroup.country,
-        marker,
-        plottedEvents: regions.flatMap((region) => region.events.filter((event) => event.marker)),
+        plottedEvents: regions.flatMap((region) => region.events.filter((event) => event.globeCoordinates)),
         regions,
         typeCounts: typeCounts(eventsForCountry),
         unmappedEvents: eventsForCountry.filter((event) => !event.coordinates),
@@ -791,7 +722,7 @@ export function buildCountryCoverage(events = [], locale = "en") {
     totalLive: allCountries.reduce((sum, country) => sum + country.liveCount, 0),
     totalTournaments: normalizedEvents.length,
     totalUpcoming: allCountries.reduce((sum, country) => sum + country.upcomingCount, 0),
-    unmappedCountries: allCountries.filter((country) => !country.marker),
+    unmappedCountries: allCountries.filter((country) => !country.globeCoordinates),
     worldEvents,
   };
 }

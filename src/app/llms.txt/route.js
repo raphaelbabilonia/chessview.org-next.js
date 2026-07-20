@@ -13,7 +13,7 @@ const lines = [
   "",
   `- Homepage: ${absoluteUrl("/en")}`,
   `- Tournament search: ${absoluteUrl("/en/events")}`,
-  `- Coverage map: ${absoluteUrl("/en/coverage")}`,
+  `- Tournament maps: ${absoluteUrl("/en/maps")}`,
   `- Chess news bridge: ${absoluteUrl("/en/news")}`,
   `- Collaborate: ${absoluteUrl("/en/collaborate")}`,
   `- Agent collaboration instructions: ${absoluteUrl("/en/collaborate/agents")}`,

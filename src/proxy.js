@@ -45,10 +45,10 @@ const rememberLocale = (response, locale) => {
   return response;
 };
 
-const redirectToLocale = (request, locale, pathname) => {
+const redirectToLocale = (request, locale, pathname, status = 307) => {
   const url = request.nextUrl.clone();
   url.pathname = pathname === "/" ? `/${locale}` : `/${locale}${pathname}`;
-  return rememberLocale(NextResponse.redirect(url), locale);
+  return rememberLocale(NextResponse.redirect(url, status), locale);
 };
 
 export function proxy(request) {
@@ -69,13 +69,11 @@ export function proxy(request) {
     );
   }
 
-  if (
-    pathname === "/" ||
-    pathname === "/coverage" ||
-    pathname === "/events" ||
-    pathname.startsWith("/events/") ||
-    pathname === "/news"
-  ) {
+  if (pathname === "/coverage" || pathname === "/coverpage") {
+    return redirectToLocale(request, preferredLocale(request), "/maps");
+  }
+
+  if (pathname === "/" || pathname === "/maps" || pathname === "/events" || pathname.startsWith("/events/") || pathname === "/news") {
     return redirectToLocale(request, preferredLocale(request), pathname);
   }
 

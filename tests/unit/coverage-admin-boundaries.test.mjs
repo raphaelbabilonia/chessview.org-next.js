@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   coverageAdminBoundaryOpacity,
@@ -12,13 +13,39 @@ import {
 test("regional boundaries remain hidden at minimum zoom and fade in progressively", () => {
   assert.equal(coverageAdminBoundaryOpacity(1), 0);
   assert.equal(coverageAdminBoundaryOpacity(3), 0);
-  assert.ok(coverageAdminBoundaryOpacity(4.5) > 0);
-  assert.equal(coverageAdminBoundaryOpacity(6), 1);
+  assert.equal(coverageAdminBoundaryOpacity(4), 0);
+  assert.ok(coverageAdminBoundaryOpacity(5.5) > 0);
+  assert.equal(coverageAdminBoundaryOpacity(7), 1);
   assert.equal(coverageAdminBoundaryOpacity(1, true), 0);
   assert.ok(coverageAdminBoundaryOpacity(2, true) > 0);
   assert.equal(coverageAdminBoundaryOpacity(2.5, true), 1);
-  assert.equal(shouldLoadCoverageAdminBoundaries(3), false);
-  assert.equal(shouldLoadCoverageAdminBoundaries(3.01), true);
+  assert.equal(shouldLoadCoverageAdminBoundaries(4), false);
+  assert.equal(shouldLoadCoverageAdminBoundaries(4.01), true);
+});
+
+test("generated boundaries use restrained first subdivisions instead of lower-level Italian provinces", () => {
+  const data = JSON.parse(readFileSync(new URL("../../public/maps/admin1-boundaries.json", import.meta.url), "utf8"));
+  const italy = data.countries.italy;
+
+  assert.equal(data.version, 2);
+  assert.equal(italy.sourceGrouping, "parent-region");
+  assert.equal(italy.regionNames.length, 20);
+  assert.ok(italy.regionNames.includes("Piemonte"));
+  assert.ok(italy.regionNames.includes("Lombardia"));
+  assert.ok(italy.regionNames.includes("Lazio"));
+  assert.equal(italy.regionNames.includes("Torino"), false);
+  assert.equal(italy.regionNames.includes("Milano"), false);
+  assert.equal(italy.regionNames.includes("Roma"), false);
+  assert.equal(data.countries.france.regionNames.length, 18);
+  assert.equal(data.countries.germany.regionNames.length, 16);
+  assert.equal(data.countries.canada.regionNames.length, 13);
+  assert.equal(data.countries.unitedstatesofamerica.regionNames.length, 51);
+  assert.equal(data.countries.japan.regionNames.length, 47);
+  assert.equal(data.countries.macedonia.regionNames.length, 9);
+  assert.equal(data.countries.malta.regionNames.length, 3);
+  assert.equal(data.countries.russia.regionNames.length, 6);
+  assert.equal(data.countries.thailand.regionNames.length, 6);
+  assert.ok(Object.values(data.countries).every((country) => country.regionNames.length >= 2 && country.lines.length >= 1));
 });
 
 test("delta encoded boundary lines decode to longitude and latitude", () => {

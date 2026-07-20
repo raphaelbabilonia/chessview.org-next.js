@@ -1,17 +1,11 @@
 import { expect } from "@playwright/test";
 
-export async function openCoverage(page, renderer) {
-  await page.goto("/en/coverage", { waitUntil: "domcontentloaded" });
+export async function openCoverage(page) {
+  await page.goto("/en/maps", { waitUntil: "domcontentloaded" });
   const stage = page.locator(".coverage-map-stage");
   await expect(stage).toBeVisible();
-  await page.locator(`button[data-map-renderer-option="${renderer}"]`).click();
-  await expect(stage).toHaveAttribute("data-coverage-map-renderer", renderer);
-
-  if (renderer === "3d") {
-    await expect(page.locator("[data-coverage-globe=ready] .coverage-globe-canvas")).toBeVisible();
-  } else {
-    await expect(stage.locator("svg.coverage-map")).toBeVisible();
-  }
+  await expect(stage).toHaveAttribute("data-coverage-map-renderer", "3d");
+  await expect(page.locator("[data-coverage-globe=ready] .coverage-globe-canvas")).toBeVisible();
 
   await stage.scrollIntoViewIfNeeded();
   return stage;
@@ -85,26 +79,6 @@ export async function lowestGlobeMarkerPoint(page) {
     await page.waitForTimeout(100);
   }
   return null;
-}
-
-export async function lowestFlatMarkerPoint(page) {
-  return page.evaluate(() => {
-    const stageBounds = document.querySelector(".coverage-map-stage")?.getBoundingClientRect();
-    if (!stageBounds) return null;
-
-    return [...document.querySelectorAll('[data-coverage-marker-kind="event"], [data-coverage-marker-kind="event-cluster"]')]
-      .filter((element) => element.closest("svg.coverage-map"))
-      .map((element) => {
-        const bounds = element.getBoundingClientRect();
-        return {
-          key: element.dataset.coverageMarkerKey,
-          x: bounds.left + bounds.width / 2,
-          y: bounds.top + bounds.height / 2,
-        };
-      })
-      .filter(({ x, y }) => x >= stageBounds.left && x <= stageBounds.right && y >= stageBounds.top && y <= stageBounds.bottom)
-      .sort((first, second) => second.y - first.y)[0] || null;
-  });
 }
 
 export async function captureMapEvents(page, property = "__coverageMapEvents") {

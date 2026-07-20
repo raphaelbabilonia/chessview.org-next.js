@@ -1,10 +1,13 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { mesh } from "topojson-client";
+import { topology } from "topojson-server";
 
 const sourceCommit = "ca96624a56bd078437bca8184e78163e5039ad19";
-const sourceUrl = `https://raw.githubusercontent.com/nvkelso/natural-earth-vector/${sourceCommit}/geojson/ne_10m_admin_1_states_provinces_lines.geojson`;
+const sourceUrl = `https://raw.githubusercontent.com/nvkelso/natural-earth-vector/${sourceCommit}/geojson/ne_10m_admin_1_states_provinces.geojson`;
 const coordinatePrecision = 1000;
 const simplificationTolerance = 0.015;
+const topologyQuantization = 100000;
 const outputPath = path.resolve("public/maps/admin1-boundaries.json");
 
 const normalizedName = (value) =>
@@ -15,6 +18,11 @@ const normalizedName = (value) =>
     .replace(/&/g, " and ")
     .replace(/[^a-z0-9]+/g, "")
     .trim();
+
+const cleanName = (value) => {
+  const name = String(value || "").trim();
+  return name && name !== "-99" ? name : "";
+};
 
 const squaredSegmentDistance = (point, start, end) => {
   let x = start[0];
@@ -87,24 +95,94 @@ const encodeLine = (coordinates) => {
   return encoded;
 };
 
+const featureUnitName = (feature) => {
+  const properties = feature.properties || {};
+  return cleanName(properties.name) || cleanName(properties.name_en) || cleanName(properties.name_local) || cleanName(properties.adm1_code);
+};
+
+const parentRegionName = (feature) => cleanName(feature.properties?.region);
+
+const featureUnitKey = (feature) => {
+  const properties = feature.properties || {};
+  return cleanName(properties.adm1_code) || cleanName(properties.iso_3166_2) || featureUnitName(feature);
+};
+
+const shouldUseParentRegions = (features) => {
+  const parentNames = features.map(parentRegionName).filter(Boolean);
+  const uniqueParents = new Set(parentNames);
+  if (uniqueParents.size < 2 || uniqueParents.size >= features.length || parentNames.length / features.length < 0.8) return false;
+
+  const geonamesLevels = features.map((feature) => Number(feature.properties?.gn_level)).filter((level) => level > 0);
+  const lowerLevelRatio = geonamesLevels.length
+    ? geonamesLevels.filter((level) => level >= 2).length / geonamesLevels.length
+    : 0;
+  const tooDenseForCountryView = features.length > 60 && uniqueParents.size <= 25;
+  return lowerLevelRatio >= 0.7 || tooDenseForCountryView;
+};
+
+const internalRegionLines = (features, useParentRegions) => {
+  const regionFeatures = features
+    .map((feature) => {
+      const coverageRegionName = useParentRegions ? parentRegionName(feature) : featureUnitName(feature);
+      const coverageRegionKey = useParentRegions ? normalizedName(coverageRegionName) : featureUnitKey(feature);
+      if (!coverageRegionKey || !coverageRegionName) return null;
+      return {
+        ...feature,
+        properties: {
+          coverageRegionKey,
+          coverageRegionName,
+        },
+      };
+    })
+    .filter(Boolean);
+  if (regionFeatures.length < 2) return { lines: [], regionNames: [] };
+
+  const regionNames = [...new Set(regionFeatures.map((feature) => feature.properties.coverageRegionName))].sort((first, second) =>
+    first.localeCompare(second, "en"),
+  );
+  const regionTopology = topology(
+    {
+      regions: {
+        type: "FeatureCollection",
+        features: regionFeatures,
+      },
+    },
+    topologyQuantization,
+  );
+  const boundaryMesh = mesh(
+    regionTopology,
+    regionTopology.objects.regions,
+    (first, second) => first !== second && first.properties?.coverageRegionKey !== second.properties?.coverageRegionKey,
+  );
+  const lines = (boundaryMesh.coordinates || []).map(encodeLine).filter(Boolean);
+  return { lines, regionNames };
+};
+
 const response = await fetch(sourceUrl);
 if (!response.ok) throw new Error(`Natural Earth download failed with ${response.status}`);
 const source = await response.json();
-const countries = {};
+const featuresByCountry = new Map();
 
 for (const feature of source.features || []) {
-  const countryName = String(feature.properties?.ADM0_NAME || "").trim();
+  if (!feature?.geometry || !["Polygon", "MultiPolygon"].includes(feature.geometry.type)) continue;
+  const countryName = cleanName(feature.properties?.admin) || cleanName(feature.properties?.geonunit);
   const countryKey = normalizedName(countryName);
   if (!countryKey) continue;
-  const geometry = feature.geometry;
-  const lines = geometry?.type === "MultiLineString" ? geometry.coordinates : geometry?.type === "LineString" ? [geometry.coordinates] : [];
+  if (!featuresByCountry.has(countryKey)) featuresByCountry.set(countryKey, { features: [], name: countryName });
+  featuresByCountry.get(countryKey).features.push(feature);
+}
 
-  for (const line of lines) {
-    const encoded = encodeLine(line);
-    if (!encoded) continue;
-    if (!countries[countryKey]) countries[countryKey] = { name: countryName, lines: [] };
-    countries[countryKey].lines.push(encoded);
-  }
+const countries = {};
+for (const [countryKey, country] of [...featuresByCountry].sort(([first], [second]) => first.localeCompare(second))) {
+  const useParentRegions = shouldUseParentRegions(country.features);
+  const { lines, regionNames } = internalRegionLines(country.features, useParentRegions);
+  if (!lines.length || regionNames.length < 2) continue;
+  countries[countryKey] = {
+    lines,
+    name: country.name,
+    regionNames,
+    sourceGrouping: useParentRegions ? "parent-region" : "admin-unit",
+  };
 }
 
 const payload = {
@@ -112,13 +190,15 @@ const payload = {
   countries,
   generatedFrom: sourceUrl,
   simplificationTolerance,
-  source: "Natural Earth Admin-1 states/provinces lines",
+  source: "Natural Earth Admin-1 states/provinces polygons, dissolved to the first useful country subdivision",
   sourceCommit,
-  version: 1,
+  topologyQuantization,
+  version: 2,
 };
 
 await mkdir(path.dirname(outputPath), { recursive: true });
 await writeFile(outputPath, JSON.stringify(payload));
 
 const totalLines = Object.values(countries).reduce((sum, country) => sum + country.lines.length, 0);
-console.log(`Wrote ${Object.keys(countries).length} countries and ${totalLines} lines to ${outputPath}`);
+const totalRegions = Object.values(countries).reduce((sum, country) => sum + country.regionNames.length, 0);
+console.log(`Wrote ${Object.keys(countries).length} countries, ${totalRegions} subdivisions, and ${totalLines} internal lines to ${outputPath}`);

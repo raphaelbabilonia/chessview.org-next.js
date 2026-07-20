@@ -151,9 +151,20 @@ await check("legacy coverage route redirects by cookie", async () => {
   });
   assert(response.status === 307, `/coverage returned ${response.status}`);
   assert(
-    response.headers.get("location") === "/it/coverage",
-    `expected /it/coverage, got ${response.headers.get("location")}`
+    response.headers.get("location") === "/it/maps",
+    `expected /it/maps, got ${response.headers.get("location")}`
   );
+});
+
+await check("maps entry route redirects by cookie", async () => {
+  const response = await fetch(`${siteUrl}/maps`, {
+    redirect: "manual",
+    headers: {
+      Cookie: "chessview_locale=it",
+    },
+  });
+  assert(response.status === 307, `/maps returned ${response.status}`);
+  assert(response.headers.get("location") === "/it/maps", `expected /it/maps, got ${response.headers.get("location")}`);
 });
 
 await check("news bridge page renders source-first cards", async () => {
@@ -171,25 +182,31 @@ await check("event list pages render translations", async () => {
   assert(text.includes(`/es/events/${firstEvent.slug}`), "Event list did not include first event link");
 });
 
-await check("coverage map pages render", async () => {
+await check("maps pages render the three-dimensional service", async () => {
   const expected = {
-    en: "Explore tournament coverage",
-    es: "Explora la cobertura de torneos",
-    it: "Esplora la copertura tornei",
+    en: "Explore chess tournaments worldwide",
+    es: "Explora torneos de ajedrez en todo el mundo",
+    it: "Esplora i tornei di scacchi nel mondo",
   };
 
   for (const [locale, title] of Object.entries(expected)) {
-    const { response, text } = await getText(`/${locale}/coverage`);
-    assert(response.status === 200, `/${locale}/coverage returned ${response.status}`);
-    assert(htmlIncludesText(text, title), `/${locale}/coverage did not include title`);
-    assert(text.includes(`/${locale}/events/${firstEvent.slug}`), `/${locale}/coverage did not include first event link`);
-    assert(text.includes("coverage-country-button"), `/${locale}/coverage did not include country controls`);
-    assert(text.includes("coverage-filter-toggle"), `/${locale}/coverage did not include map filter controls`);
-    assert(
-      text.includes("coverage-globe-loading") || text.includes("coverage-world-event-dot") || text.includes("coverage-world-event-cluster"),
-      `/${locale}/coverage did not include a coverage map renderer`
-    );
-    assert(text.includes("coverage-filter-stats"), `/${locale}/coverage did not include visible filter stats`);
+    const { response, text } = await getText(`/${locale}/maps`);
+    assert(response.status === 200, `/${locale}/maps returned ${response.status}`);
+    assert(htmlIncludesText(text, title), `/${locale}/maps did not include title`);
+    assert(text.includes(`/${locale}/events/${firstEvent.slug}`), `/${locale}/maps did not include first event link`);
+    assert(text.includes("maps-country-row"), `/${locale}/maps did not include country controls`);
+    assert(text.includes("coverage-filter-toggle"), `/${locale}/maps did not include map filter controls`);
+    assert(text.includes("coverage-globe-loading"), `/${locale}/maps did not include the 3D globe loader`);
+    assert(text.includes("coverage-filter-stats"), `/${locale}/maps did not include visible filter stats`);
+  }
+});
+
+await check("localized legacy map routes redirect permanently", async () => {
+  for (const path of ["/en/coverage", "/es/coverpage"]) {
+    const response = await fetch(`${siteUrl}${path}`, { redirect: "manual" });
+    assert(response.status === 308, `${path} returned ${response.status}`);
+    const locale = path.split("/")[1];
+    assert(response.headers.get("location") === `/${locale}/maps`, `${path} did not redirect to /${locale}/maps`);
   }
 });
 
@@ -238,7 +255,7 @@ await check("sitemap includes localized event URLs", async () => {
   assert(text.includes('hreflang="x-default"'), "sitemap missing x-default hreflang alternates");
   for (const locale of ["en", "es", "it"]) {
     assert(text.includes(`/${locale}/news`), `sitemap missing ${locale} news URL`);
-    assert(text.includes(`/${locale}/coverage`), `sitemap missing ${locale} coverage URL`);
+    assert(text.includes(`/${locale}/maps`), `sitemap missing ${locale} maps URL`);
     assert(text.includes(`/${locale}/collaborate`), `sitemap missing ${locale} collaboration URL`);
   }
   for (const locale of ["en", "es", "it"]) {

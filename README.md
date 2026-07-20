@@ -116,7 +116,7 @@ The public app exposes:
 
 The collaboration pages expose the source repositories, public agent submission contract, OpenAPI document, and JSON Schema. The public API queues submissions only; publication happens later through backend review automation.
 
-After deploying SEO changes, submit `https://chessview.org/sitemap.xml` in Google Search Console and request indexing for `https://chessview.org/en`, `https://chessview.org/en/events`, `https://chessview.org/en/coverage`, and `https://chessview.org/en/news`.
+After deploying SEO changes, submit `https://chessview.org/sitemap.xml` in Google Search Console and request indexing for `https://chessview.org/en`, `https://chessview.org/en/events`, `https://chessview.org/en/maps`, and `https://chessview.org/en/news`.
 
 To notify IndexNow-compatible search engines after the key file is live:
 

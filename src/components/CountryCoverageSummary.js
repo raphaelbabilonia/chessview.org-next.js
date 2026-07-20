@@ -73,7 +73,7 @@ export function CountryCoverageSummary({ copy, coverage, locale }) {
             <div className="country-coverage-empty">{coverageCopy.empty}</div>
           )}
         </div>
-        <Link className="button button-small country-coverage-cta" href={`/${locale}/coverage`}>
+        <Link className="button button-small country-coverage-cta" href={`/${locale}/maps`}>
           <MapPinned size={16} aria-hidden="true" />
           {coverageCopy.cta}
         </Link>

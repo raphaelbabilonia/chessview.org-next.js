@@ -39,7 +39,7 @@ export default defineConfig({
       },
       reuseExistingServer: !process.env.CI,
       timeout: 120000,
-      url: `${siteUrl}/en/coverage`,
+      url: `${siteUrl}/en/maps`,
     },
   ],
   projects: [

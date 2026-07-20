@@ -37,10 +37,10 @@ export default function manifest() {
         icons: [{ src: "/brand/chessview-favicon.svg", sizes: "64x64", type: "image/svg+xml" }],
       },
       {
-        name: "Explore coverage",
-        short_name: "Coverage",
-        description: "Open the country coverage map for chess tournaments.",
-        url: "/en/coverage",
+        name: "Explore tournament maps",
+        short_name: "Maps",
+        description: "Explore live and upcoming chess tournaments on a 3D globe.",
+        url: "/en/maps",
         icons: [{ src: "/brand/chessview-favicon.svg", sizes: "64x64", type: "image/svg+xml" }],
       },
       {
