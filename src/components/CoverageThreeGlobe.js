@@ -9,6 +9,7 @@ import {
   dampFactor,
   decayVelocity,
   globeCameraDistanceForZoom,
+  orientationDegreesForStep,
   pointerPairAngle,
   rotationDeltaFromPointer,
   rotationSensitivityForZoom,
@@ -53,6 +54,29 @@ const typeColors = {
 };
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+const northUpQuaternionFor = (rotationTarget) => {
+  const screenForward = new THREE.Vector3(0, 0, 1);
+  const localCenter = screenForward.clone().applyQuaternion(rotationTarget.clone().invert()).normalize();
+  const localNorth = new THREE.Vector3(0, 1, 0).addScaledVector(localCenter, -localCenter.y);
+
+  if (localNorth.lengthSq() < 0.000001) {
+    localNorth.set(0, 0, localCenter.y >= 0 ? -1 : 1);
+  }
+  localNorth.normalize();
+
+  const northUp = new THREE.Quaternion().setFromUnitVectors(localCenter, screenForward);
+  const projectedNorth = localNorth.applyQuaternion(northUp);
+  const correction = Math.atan2(projectedNorth.x, projectedNorth.y);
+  const correctionRotation = new THREE.Quaternion().setFromAxisAngle(screenForward, correction);
+  return correctionRotation.multiply(northUp).normalize();
+};
+
+const quaternionDatasetValue = (quaternion) =>
+  quaternion
+    .toArray()
+    .map((value) => value.toFixed(6))
+    .join(",");
 
 const supportsWebGl = () => {
   try {
@@ -240,6 +264,7 @@ export function CoverageThreeGlobe({
   items = [],
   keyboardCommand = null,
   mapSize,
+  orientationCommand = null,
   onHover,
   onLeave,
   onPin,
@@ -481,16 +506,20 @@ export function CoverageThreeGlobe({
     };
 
     const stopAutoRotate = (input) => {
-      if (!autoRotateRef.current) return;
-      autoRotateRef.current = false;
-      trackAnalyticsEvent("coverage_map_interaction", {
-        routeType: "coverage",
-        metadata: {
-          input,
-          renderer: "3d",
-        },
-      });
-      callbacksRef.current.onUserInteraction?.();
+      if (autoRotateRef.current) {
+        autoRotateRef.current = false;
+        trackAnalyticsEvent("coverage_map_interaction", {
+          routeType: "coverage",
+          metadata: {
+            input,
+            renderer: "3d",
+          },
+        });
+      }
+      if (input === "pointer" || input === "touch") {
+        container.dataset.coverageOrientationStep = "manual";
+      }
+      callbacksRef.current.onUserInteraction?.({ input });
     };
 
     const eventPoint = (event) => ({
@@ -1122,6 +1151,7 @@ export function CoverageThreeGlobe({
     setGestureMode("idle");
     resetMomentum();
     syncOrientationDataset();
+    container.dataset.coverageOrientationStep = "manual";
     container.dataset.coverageZoomTarget = interaction.zoomTarget.toFixed(3);
     sceneRef.current.frame = window.requestAnimationFrame(animate);
 
@@ -1147,6 +1177,7 @@ export function CoverageThreeGlobe({
       delete container.dataset.coverageAdminBoundaryRegions;
       delete container.dataset.coverageAdminBoundaryScope;
       delete container.dataset.coverageMomentum;
+      delete container.dataset.coverageOrientationStep;
       delete container.dataset.coverageRotationSensitivity;
       delete container.dataset.coverageZoomTarget;
       sceneRef.current = null;
@@ -1168,8 +1199,32 @@ export function CoverageThreeGlobe({
     state.interaction.momentumPitch = 0;
     state.interaction.momentumYaw = 0;
     state.interaction.hitTargetsDirty = true;
+    if (containerRef.current) {
+      containerRef.current.dataset.coverageOrientation = quaternionDatasetValue(targetQuaternion);
+      containerRef.current.dataset.coverageOrientationStep = "manual";
+    }
     if (state.reducedMotion) state.globeGroup.quaternion.copy(targetQuaternion);
   }, [focusTarget, quality]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const state = sceneRef.current;
+    if (!container || !state || !orientationCommand) return;
+
+    const northUp = northUpQuaternionFor(state.interaction.rotationTarget);
+    const roll = THREE.MathUtils.degToRad(orientationDegreesForStep(orientationCommand.step));
+    const rollRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -roll);
+    const targetQuaternion = rollRotation.multiply(northUp).normalize();
+
+    state.interaction.rotationTarget.copy(targetQuaternion);
+    state.interaction.momentumPitch = 0;
+    state.interaction.momentumYaw = 0;
+    state.interaction.hitTargetsDirty = true;
+    container.dataset.coverageMomentum = "none";
+    container.dataset.coverageOrientation = quaternionDatasetValue(targetQuaternion);
+    container.dataset.coverageOrientationStep = String(orientationCommand.step);
+    if (state.reducedMotion) state.globeGroup.quaternion.copy(targetQuaternion);
+  }, [orientationCommand]);
 
   useEffect(() => {
     const state = sceneRef.current;
@@ -1186,6 +1241,10 @@ export function CoverageThreeGlobe({
     state.interaction.momentumPitch = 0;
     state.interaction.momentumYaw = 0;
     state.interaction.hitTargetsDirty = true;
+    if (containerRef.current) {
+      containerRef.current.dataset.coverageOrientation = quaternionDatasetValue(state.interaction.rotationTarget);
+      containerRef.current.dataset.coverageOrientationStep = "manual";
+    }
     if (state.reducedMotion) state.globeGroup.quaternion.copy(state.interaction.rotationTarget);
   }, [keyboardCommand]);
 

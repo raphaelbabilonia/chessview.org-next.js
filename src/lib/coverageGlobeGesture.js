@@ -18,6 +18,8 @@ export const coverageGlobeGesture = Object.freeze({
   rotationSensitivityMin: 0.22,
 });
 
+export const coverageOrientationSteps = 8;
+
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
 export const dampFactor = (ratePerSecond, deltaSeconds) => {
@@ -56,6 +58,17 @@ export const zoomControlStep = (zoom, fineStep) => {
   if (safeZoom >= 12) return 2;
   if (safeZoom >= 4) return 1;
   return Math.max(Number(fineStep) || 0, 0.1);
+};
+
+export const nextOrientationStep = (currentStep) =>
+  typeof currentStep === "number" && Number.isInteger(currentStep)
+    ? (currentStep + 1) % coverageOrientationSteps
+    : 0;
+
+export const orientationDegreesForStep = (step) => {
+  const numericStep = Number.isFinite(Number(step)) ? Math.trunc(Number(step)) : 0;
+  const normalizedStep = ((numericStep % coverageOrientationSteps) + coverageOrientationSteps) % coverageOrientationSteps;
+  return normalizedStep * (360 / coverageOrientationSteps);
 };
 
 export const pointerPairAngle = (first, second) => {

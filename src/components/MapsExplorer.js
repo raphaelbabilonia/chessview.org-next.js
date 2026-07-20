@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   ChevronDown,
   ChevronUp,
+  Compass,
   ExternalLink,
   Globe2,
   Maximize2,
@@ -21,7 +22,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CountryFlag } from "@/components/CountryFlag";
 import { getCoverageMapCapability } from "@/lib/coverageMapCapability";
 import { densityScalesForPoints } from "@/lib/coverageMarkerSizing";
-import { zoomControlStep } from "@/lib/coverageGlobeGesture";
+import {
+  nextOrientationStep,
+  orientationDegreesForStep,
+  zoomControlStep,
+} from "@/lib/coverageGlobeGesture";
 import { formatDateRange } from "@/lib/format";
 import { trackAnalyticsEvent } from "@/lib/tracking";
 
@@ -337,6 +342,8 @@ export function MapsExplorer({ copy, coverage, locale }) {
   const [isFullscreenView, setIsFullscreenView] = useState(false);
   const [focusRequest, setFocusRequest] = useState(0);
   const [keyboardCommand, setKeyboardCommand] = useState(null);
+  const [orientationCommand, setOrientationCommand] = useState(null);
+  const [orientationStep, setOrientationStep] = useState(null);
   const [globeAutoRotate, setGlobeAutoRotate] = useState(true);
   const [globeQuality, setGlobeQuality] = useState("full");
   const [globeStatus, setGlobeStatus] = useState("checking");
@@ -476,6 +483,7 @@ export function MapsExplorer({ copy, coverage, locale }) {
 
   const focusView = (nextView, coordinates) => {
     setGlobeAutoRotate(false);
+    setOrientationStep(null);
     setZoom(focusZoomFor(nextView, coordinates));
     setFocusRequest((value) => value + 1);
   };
@@ -502,6 +510,7 @@ export function MapsExplorer({ copy, coverage, locale }) {
     setSelectedCountryKey("");
     setZoom(1);
     setGlobeAutoRotate(false);
+    setOrientationStep(null);
     setFocusRequest((value) => value + 1);
   };
 
@@ -531,8 +540,18 @@ export function MapsExplorer({ copy, coverage, locale }) {
     setZoom(focusZoomFor(view, focusCoordinates));
     setFocusRequest((value) => value + 1);
     setGlobeAutoRotate(false);
+    setOrientationStep(null);
     clearMarkerDetails();
     trackCoverageInteraction("coverage_map_reset", { view });
+  };
+
+  const orientMap = () => {
+    const nextStep = nextOrientationStep(orientationStep);
+    const degrees = orientationDegreesForStep(nextStep);
+    setGlobeAutoRotate(false);
+    setOrientationStep(nextStep);
+    setOrientationCommand((current) => ({ id: (current?.id || 0) + 1, step: nextStep }));
+    trackCoverageInteraction("coverage_map_orient", { degrees, view });
   };
 
   const handleMapKeyDown = (event) => {
@@ -543,6 +562,7 @@ export function MapsExplorer({ copy, coverage, locale }) {
     else if (event.key === "Escape") clearMarkerDetails();
     else if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) {
       setGlobeAutoRotate(false);
+      setOrientationStep(null);
       setKeyboardCommand({
         id: Date.now(),
         pitch: event.key === "ArrowUp" ? -0.16 : event.key === "ArrowDown" ? 0.16 : 0,
@@ -642,6 +662,16 @@ export function MapsExplorer({ copy, coverage, locale }) {
             {selectedCountry ? <button className="icon-button" type="button" onClick={backOneLevel} aria-label={copy.coverage.backToWorld} title={copy.coverage.backToWorld}><ArrowLeft size={18} aria-hidden="true" /></button> : null}
             <button className="icon-button" type="button" onClick={() => applyZoom(zoom + zoomControlStep(zoom, mapZoom.step))} aria-label={copy.coverage.zoomIn} title={copy.coverage.zoomIn}><Plus size={18} aria-hidden="true" /></button>
             <button className="icon-button" type="button" onClick={() => applyZoom(zoom - zoomControlStep(zoom, mapZoom.step))} aria-label={copy.coverage.zoomOut} title={copy.coverage.zoomOut}><Minus size={18} aria-hidden="true" /></button>
+            <button
+              className="icon-button coverage-orientation-control"
+              data-coverage-orientation-control={orientationStep === null ? "manual" : orientationStep}
+              type="button"
+              onClick={orientMap}
+              aria-label={orientationStep === null ? copy.coverage.orientNorthUp : copy.coverage.rotateMap45}
+              title={orientationStep === null ? copy.coverage.orientNorthUp : copy.coverage.rotateMap45}
+            >
+              <Compass size={18} aria-hidden="true" />
+            </button>
             <button className="icon-button" type="button" onClick={resetViewport} aria-label={copy.coverage.resetMap} title={copy.coverage.resetMap}><RotateCcw size={18} aria-hidden="true" /></button>
             <button className="icon-button" type="button" onClick={toggleFullscreen} aria-label={isFullscreenView ? copy.coverage.exitFullscreen : copy.coverage.enterFullscreen} aria-pressed={isFullscreenView} title={isFullscreenView ? copy.coverage.exitFullscreen : copy.coverage.enterFullscreen}>{isFullscreenView ? <Minimize2 size={18} aria-hidden="true" /> : <Maximize2 size={18} aria-hidden="true" />}</button>
           </div>
@@ -669,6 +699,7 @@ export function MapsExplorer({ copy, coverage, locale }) {
                 keyboardCommand={keyboardCommand}
                 key={globeInstance}
                 mapSize={coverage.mapSize}
+                orientationCommand={orientationCommand}
                 quality={globeQuality}
                 showCountryMarkers={view === "world" && groupByCountry}
                 zoom={zoom}
@@ -676,7 +707,10 @@ export function MapsExplorer({ copy, coverage, locale }) {
                 onPerformanceIssue={handlePerformanceIssue}
                 onReady={() => setGlobeStatus(globeQuality === "reduced" ? "degraded" : "ready")}
                 onUnavailable={handleGlobeUnavailable}
-                onUserInteraction={() => setGlobeAutoRotate(false)}
+                onUserInteraction={(metadata) => {
+                  setGlobeAutoRotate(false);
+                  if (metadata?.input === "pointer" || metadata?.input === "touch") setOrientationStep(null);
+                }}
                 onZoomChange={(nextZoom) => setZoom(clamp(nextZoom, mapZoom.min, mapZoom.max))}
               />
             ) : null}
