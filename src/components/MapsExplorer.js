@@ -328,6 +328,7 @@ export function MapsExplorer({ copy, coverage, locale }) {
   const shellRef = useRef(null);
   const mapStageRef = useRef(null);
   const markerOverlayRef = useRef(null);
+  const filterTrackingReadyRef = useRef(false);
   const today = useMemo(() => eventDateKey(coverage.today) || "1970-01-01", [coverage.today]);
   const [selectedCountryKey, setSelectedCountryKey] = useState("");
   const [pinned, setPinned] = useState(null);
@@ -471,6 +472,26 @@ export function MapsExplorer({ copy, coverage, locale }) {
   const trackCoverageInteraction = (eventName, metadata = {}) => {
     trackAnalyticsEvent(eventName, { routeType: "coverage", metadata: { surface: "maps", ...metadata } });
   };
+
+  useEffect(() => {
+    if (!filterTrackingReadyRef.current) {
+      filterTrackingReadyRef.current = true;
+      return undefined;
+    }
+    const timeout = window.setTimeout(() => {
+      trackAnalyticsEvent("coverage_filter_change", {
+        routeType: "coverage",
+        filters: {
+          datePreset,
+          groupByCountry,
+          hasSearch: Boolean(normalizedQuery),
+          typeCount: activeTypes.length,
+        },
+        metadata: { surface: "maps" },
+      });
+    }, 400);
+    return () => window.clearTimeout(timeout);
+  }, [activeTypes, datePreset, groupByCountry, normalizedQuery]);
 
   const clearMarkerDetails = () => {
     setPinned(null);
