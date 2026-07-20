@@ -23,6 +23,7 @@ import {
   decodedCoverageBoundaryLines,
   loadCoverageAdminBoundaries,
   normalizeCoverageCountryName,
+  shouldLoadCoverageAdminBoundaries,
 } from "@/lib/coverageAdminBoundaries";
 import {
   coverageMarkerSizing,
@@ -37,6 +38,7 @@ import { trackAnalyticsEvent } from "@/lib/tracking";
 
 const GLOBE_RADIUS = 2.36;
 const SURFACE_RADIUS = GLOBE_RADIUS + 0.018;
+const ADMIN_BOUNDARY_RADIUS = SURFACE_RADIUS + 0.012;
 const COARSE_MARKER_HIT_RADIUS_PX = 22;
 const FINE_MARKER_HIT_RADIUS_PX = 8;
 const HIT_TARGET_UPDATE_INTERVAL_MS = 1000 / 15;
@@ -155,7 +157,7 @@ const buildAdminBoundaryPositions = (lines) => {
   const positions = [];
   for (const line of lines) {
     for (let index = 1; index < line.length; index += 1) {
-      pushLineSegment(positions, line[index - 1], line[index], SURFACE_RADIUS);
+      pushLineSegment(positions, line[index - 1], line[index], ADMIN_BOUNDARY_RADIUS);
     }
   }
   return new Float32Array(positions);
@@ -262,6 +264,11 @@ export function CoverageThreeGlobe({
     () => (focusTarget?.view === "world" ? [] : [...new Set((focusTarget?.countryNames || []).filter(Boolean))]),
     [focusTarget],
   );
+  const boundaryCountryMode = boundaryCountryNames.length > 0;
+  const boundaryScopeKey = boundaryCountryMode
+    ? boundaryCountryNames.map(normalizeCoverageCountryName).filter(Boolean).join("|")
+    : "world";
+  const boundariesShouldLoad = shouldLoadCoverageAdminBoundaries(zoom, boundaryCountryMode);
 
   const markers = useMemo(() => {
     if (showCountryMarkers) {
@@ -1187,7 +1194,6 @@ export function CoverageThreeGlobe({
     const state = sceneRef.current;
     if (!container || !state) return undefined;
 
-    const scopeKey = boundaryCountryNames.map(normalizeCoverageCountryName).filter(Boolean).join("|");
     const clearBoundaryLine = () => {
       if (!state.adminBoundaryLine) return;
       state.adminBoundaryGroup.remove(state.adminBoundaryLine);
@@ -1195,9 +1201,9 @@ export function CoverageThreeGlobe({
       state.adminBoundaryLine = null;
     };
 
-    if (!scopeKey) {
+    if (!boundariesShouldLoad) {
       clearBoundaryLine();
-      state.adminBoundaryCountryMode = false;
+      state.adminBoundaryCountryMode = boundaryCountryMode;
       state.adminBoundaryLoadScope = "";
       state.adminBoundaryScope = "";
       container.dataset.coverageAdminBoundaries = "hidden";
@@ -1206,25 +1212,27 @@ export function CoverageThreeGlobe({
       return undefined;
     }
 
-    if (state.adminBoundaryScope === scopeKey) return undefined;
-    if (state.adminBoundaryLoadScope === scopeKey) return undefined;
+    if (state.adminBoundaryScope === boundaryScopeKey) return undefined;
+    if (state.adminBoundaryLoadScope === boundaryScopeKey) return undefined;
 
     clearBoundaryLine();
-    state.adminBoundaryCountryMode = true;
-    state.adminBoundaryLoadScope = scopeKey;
+    state.adminBoundaryCountryMode = boundaryCountryMode;
+    state.adminBoundaryLoadScope = boundaryScopeKey;
     state.adminBoundaryScope = "";
     let active = true;
     container.dataset.coverageAdminBoundaries = "loading";
-    container.dataset.coverageAdminBoundaryScope = scopeKey;
+    container.dataset.coverageAdminBoundaryScope = boundaryScopeKey;
     delete container.dataset.coverageAdminBoundaryRegions;
     loadCoverageAdminBoundaries()
       .then((data) => {
-        if (!active || sceneRef.current !== state || state.adminBoundaryLoadScope !== scopeKey) return;
-        const country = coverageBoundaryCountry(data, boundaryCountryNames);
-        const positions = buildAdminBoundaryPositions(decodedCoverageBoundaryLines(data, boundaryCountryNames));
-        if (!country || !positions.length) {
+        if (!active || sceneRef.current !== state || state.adminBoundaryLoadScope !== boundaryScopeKey) return;
+        const country = boundaryCountryMode ? coverageBoundaryCountry(data, boundaryCountryNames) : null;
+        const positions = buildAdminBoundaryPositions(
+          decodedCoverageBoundaryLines(data, boundaryCountryMode ? boundaryCountryNames : undefined),
+        );
+        if ((boundaryCountryMode && !country) || !positions.length) {
           state.adminBoundaryLoadScope = "";
-          state.adminBoundaryScope = scopeKey;
+          state.adminBoundaryScope = boundaryScopeKey;
           container.dataset.coverageAdminBoundaries = "hidden";
           container.dataset.coverageAdminBoundaryRegions = "0";
           return;
@@ -1232,18 +1240,27 @@ export function CoverageThreeGlobe({
         const boundaryLine = new THREE.LineSegments(
           new THREE.BufferGeometry().setAttribute("position", new THREE.BufferAttribute(positions, 3)),
           new THREE.LineBasicMaterial({
-            color: 0xfdfcfd,
+            color: 0xe8d695,
+            depthWrite: false,
             opacity: 0,
+            toneMapped: false,
             transparent: true,
           }),
         );
         boundaryLine.visible = false;
+        boundaryLine.renderOrder = 2;
         state.adminBoundaryGroup.add(boundaryLine);
         state.adminBoundaryLine = boundaryLine;
         state.adminBoundaryLoadScope = "";
-        state.adminBoundaryScope = scopeKey;
-        container.dataset.coverageAdminBoundaryScope = normalizeCoverageCountryName(country.name);
-        container.dataset.coverageAdminBoundaryRegions = String(country.regionNames?.length || 0);
+        state.adminBoundaryScope = boundaryScopeKey;
+        container.dataset.coverageAdminBoundaryScope = boundaryCountryMode
+          ? normalizeCoverageCountryName(country.name)
+          : "world";
+        container.dataset.coverageAdminBoundaryRegions = String(
+          boundaryCountryMode
+            ? country.regionNames?.length || 0
+            : Object.values(data.countries || {}).reduce((total, entry) => total + (entry.regionNames?.length || 0), 0),
+        );
       })
       .catch(() => {
         if (active && containerRef.current === container) {
@@ -1255,7 +1272,7 @@ export function CoverageThreeGlobe({
     return () => {
       active = false;
     };
-  }, [boundaryCountryNames, mapSize, quality]);
+  }, [boundariesShouldLoad, boundaryCountryMode, boundaryCountryNames, boundaryScopeKey, mapSize, quality]);
 
   useEffect(() => {
     const state = sceneRef.current;

@@ -13,6 +13,7 @@ import {
   RotateCcw,
   Search,
   SlidersHorizontal,
+  X,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -236,7 +237,7 @@ function EventLinkList({ copy, events = [], locale, limit }) {
           data-tracking-entity-title={event.title}
           data-tracking-entity-type="event"
           data-tracking-event="coverage_event_open"
-          data-tracking-placement="maps_context_panel"
+          data-tracking-placement="maps_marker_overlay"
           href={event.href}
           key={event._id}
         >
@@ -253,39 +254,65 @@ function EventLinkList({ copy, events = [], locale, limit }) {
   );
 }
 
-function MarkerDetails({ copy, locale, onOpenCountry, payload }) {
+function MarkerCardShell({ children, copy, kind, onClose, variant }) {
+  return (
+    <section
+      aria-label={copy.coverage.currentSelection}
+      className={`maps-marker-card${variant === "overlay" ? " is-map-overlay" : ""}`}
+      data-maps-marker-kind={kind}
+    >
+      {onClose ? (
+        <button
+          aria-label={copy.coverage.closePopup}
+          className="maps-marker-card-close"
+          title={copy.coverage.closePopup}
+          type="button"
+          onClick={onClose}
+        >
+          <X aria-hidden="true" size={17} />
+        </button>
+      ) : null}
+      {children}
+    </section>
+  );
+}
+
+function MarkerDetails({ copy, locale, onClose, onOpenCountry, payload, variant = "panel" }) {
   if (!payload) return null;
   if (payload.kind === "event") {
     return (
-      <section className="maps-marker-card" aria-label={copy.coverage.currentSelection}>
+      <MarkerCardShell copy={copy} kind="event" onClose={onClose} variant={variant}>
         <p className="eyebrow">{copy.coverage.selectedTournament}</p>
-        <h3>{payload.event.title}</h3>
+        <div className="maps-context-title">
+          <CountryFlag country={payload.country} />
+          <h3>{payload.event.title}</h3>
+        </div>
         <TypeBadge copy={copy} type={payload.event.tournamentType} />
         <p>{[payload.event.city, payload.event.region, formatDateRange(payload.event.startDate, payload.event.endDate, locale)].filter(Boolean).join(" / ")}</p>
         <Link className="button button-small" href={payload.event.href}>
           {copy.coverage.openEvent}<ExternalLink size={14} aria-hidden="true" />
         </Link>
-      </section>
+      </MarkerCardShell>
     );
   }
 
   if (payload.kind === "eventCluster") {
     return (
-      <section className="maps-marker-card" aria-label={copy.coverage.currentSelection}>
+      <MarkerCardShell copy={copy} kind="event-cluster" onClose={onClose} variant={variant}>
         <p className="eyebrow">{copy.coverage.selectedCluster}</p>
         <h3>{payload.cluster.count} {copy.coverage.tournaments}</h3>
         <EventLinkList copy={copy} events={payload.cluster.events} locale={locale} limit={4} />
-      </section>
+      </MarkerCardShell>
     );
   }
 
   if (payload.kind === "country") {
     return (
-      <section className="maps-marker-card" aria-label={copy.coverage.currentSelection}>
+      <MarkerCardShell copy={copy} kind="country" onClose={onClose} variant={variant}>
         <div className="maps-context-title"><CountryFlag country={payload.country} /><h3>{payload.country.label}</h3></div>
         <CountStats copy={copy} item={payload.country} />
         <button className="button button-small" type="button" onClick={() => onOpenCountry(payload.country)}>{copy.coverage.focusCountry}</button>
-      </section>
+      </MarkerCardShell>
     );
   }
 
@@ -294,10 +321,10 @@ function MarkerDetails({ copy, locale, onOpenCountry, payload }) {
 
 export function MapsExplorer({ copy, coverage, locale }) {
   const shellRef = useRef(null);
+  const mapStageRef = useRef(null);
+  const markerOverlayRef = useRef(null);
   const today = useMemo(() => eventDateKey(coverage.today) || "1970-01-01", [coverage.today]);
   const [selectedCountryKey, setSelectedCountryKey] = useState("");
-  const [selectedRegionKey, setSelectedRegionKey] = useState("");
-  const [hovered, setHovered] = useState(null);
   const [pinned, setPinned] = useState(null);
   const [activeTypes, setActiveTypes] = useState(tournamentTypes);
   const [datePreset, setDatePreset] = useState("oneMonth");
@@ -333,24 +360,8 @@ export function MapsExplorer({ copy, coverage, locale }) {
         .map((country) => {
           const events = country.events.filter(eventMatchesFilters).sort(sortEvents);
           if (!events.length) return null;
-          const regions = (country.regions || [])
-            .map((region) => {
-              const regionEvents = region.events.filter(eventMatchesFilters).sort(sortEvents);
-              if (!regionEvents.length) return null;
-              const liveCount = countLive(regionEvents);
-              return {
-                ...region,
-                count: regionEvents.length,
-                events: regionEvents,
-                liveCount,
-                plottedCount: regionEvents.filter((event) => event.globeCoordinates).length,
-                upcomingCount: regionEvents.length - liveCount,
-              };
-            })
-            .filter(Boolean)
-            .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
           const liveCount = countLive(events);
-          return { ...country, count: events.length, events, liveCount, regions, upcomingCount: events.length - liveCount };
+          return { ...country, count: events.length, events, liveCount, upcomingCount: events.length - liveCount };
         })
         .filter(Boolean)
         .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label)),
@@ -359,8 +370,6 @@ export function MapsExplorer({ copy, coverage, locale }) {
 
   const filteredCountryByKey = useMemo(() => new Map(filteredCountries.map((country) => [country.countryKey, country])), [filteredCountries]);
   const selectedCountry = filteredCountryByKey.get(selectedCountryKey) || null;
-  const selectedRegion = selectedCountry?.regions.find((region) => region.key === selectedRegionKey) || null;
-  const allEvents = useMemo(() => filteredCountries.flatMap((country) => country.events).sort(sortEvents), [filteredCountries]);
   const filteredWorldEvents = useMemo(
     () =>
       (coverage.worldEvents || [])
@@ -371,12 +380,8 @@ export function MapsExplorer({ copy, coverage, locale }) {
   );
   const scopedWorldEvents = useMemo(() => {
     if (!selectedCountry) return filteredWorldEvents;
-    return filteredWorldEvents.filter(
-      (event) =>
-        event.countryKey === selectedCountry.countryKey &&
-        (!selectedRegion || normalizeSearch(event.region) === normalizeSearch(selectedRegion.label)),
-    );
-  }, [filteredWorldEvents, selectedCountry, selectedRegion]);
+    return filteredWorldEvents.filter((event) => event.countryKey === selectedCountry.countryKey);
+  }, [filteredWorldEvents, selectedCountry]);
   const worldMapItems = useMemo(() => buildWorldMapItems(scopedWorldEvents, zoom), [scopedWorldEvents, zoom]);
   const filteredTotals = useMemo(() => {
     const totalTournaments = filteredCountries.reduce((sum, country) => sum + country.count, 0);
@@ -389,32 +394,28 @@ export function MapsExplorer({ copy, coverage, locale }) {
     };
   }, [filteredCountries]);
 
-  const view = selectedRegion ? "region" : selectedCountry ? "country" : "world";
+  const view = selectedCountry ? "country" : "world";
   const focusCoordinates = useMemo(() => {
-    if (selectedRegion) return selectedRegion.events.map((event) => event.globeCoordinates).filter(Boolean);
     if (selectedCountry) {
       const coordinates = scopedWorldEvents.map((event) => event.globeCoordinates).filter(Boolean);
       return coordinates.length ? coordinates : [selectedCountry.globeCoordinates].filter(Boolean);
     }
     return [];
-  }, [scopedWorldEvents, selectedCountry, selectedRegion]);
-  const mapViewLabel = selectedRegion
-    ? `${copy.coverage.regionView}: ${selectedRegion.label}`
-    : selectedCountry
-      ? `${copy.coverage.countryView}: ${selectedCountry.label}`
-      : copy.coverage.worldView;
+  }, [scopedWorldEvents, selectedCountry]);
+  const mapViewLabel = selectedCountry
+    ? `${copy.coverage.countryView}: ${selectedCountry.label}`
+    : copy.coverage.worldView;
   const focusTarget = useMemo(
     () => ({
-      coordinates: selectedRegion?.globeCoordinates || selectedCountry?.globeCoordinates || null,
+      coordinates: selectedCountry?.globeCoordinates || null,
       countryNames: selectedCountry
         ? [selectedCountry.country, selectedCountry.mapFeatureName, selectedCountry.label].filter(Boolean)
         : [],
       request: focusRequest,
       view,
     }),
-    [focusRequest, selectedCountry, selectedRegion, view],
+    [focusRequest, selectedCountry, view],
   );
-  const activePayload = pinned || hovered;
   const activeFilterCount = Number(datePreset !== "oneMonth") + Number(activeTypes.length !== tournamentTypes.length) + Number(Boolean(normalizedQuery)) + Number(groupByCountry);
 
   const checkGlobeCapability = useCallback(() => {
@@ -452,13 +453,25 @@ export function MapsExplorer({ copy, coverage, locale }) {
     return () => document.body.classList.remove("coverage-fullscreen-lock");
   }, [isFullscreenView]);
 
+  const showInMapMarkerDetails = Boolean(pinned);
+
+  useEffect(() => {
+    if (!showInMapMarkerDetails) return undefined;
+    const frame = window.requestAnimationFrame(() => markerOverlayRef.current?.focus({ preventScroll: true }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [pinned, showInMapMarkerDetails]);
+
   const trackCoverageInteraction = (eventName, metadata = {}) => {
     trackAnalyticsEvent(eventName, { routeType: "coverage", metadata: { surface: "maps", ...metadata } });
   };
 
   const clearMarkerDetails = () => {
-    setHovered(null);
     setPinned(null);
+  };
+
+  const dismissInMapMarkerDetails = () => {
+    clearMarkerDetails();
+    window.requestAnimationFrame(() => mapStageRef.current?.focus({ preventScroll: true }));
   };
 
   const focusView = (nextView, coordinates) => {
@@ -469,7 +482,6 @@ export function MapsExplorer({ copy, coverage, locale }) {
 
   const selectCountry = (country) => {
     setSelectedCountryKey(country.countryKey);
-    setSelectedRegionKey("");
     clearMarkerDetails();
     const coordinates = (coverage.worldEvents || [])
       .filter((event) => event.countryKey === country.countryKey && eventMatchesFilters(event))
@@ -481,32 +493,13 @@ export function MapsExplorer({ copy, coverage, locale }) {
       entityTitle: country.label,
       entityType: "country",
       routeType: "coverage",
-      metadata: { placement: "maps_context_panel" },
-    });
-  };
-
-  const selectRegion = (region) => {
-    setSelectedRegionKey(region.key);
-    clearMarkerDetails();
-    focusView("region", region.events.map((event) => event.globeCoordinates).filter(Boolean));
-    trackAnalyticsEvent("coverage_region_select", {
-      entityId: region.key,
-      entityTitle: region.label,
-      entityType: "coverage_region",
-      routeType: "coverage",
-      metadata: { country: selectedCountry?.countryKey, placement: "maps_context_panel" },
+      metadata: { placement: "maps_marker_overlay" },
     });
   };
 
   const backOneLevel = () => {
     clearMarkerDetails();
-    if (selectedRegion) {
-      setSelectedRegionKey("");
-      focusView("country", scopedWorldEvents.map((event) => event.globeCoordinates).filter(Boolean));
-      return;
-    }
     setSelectedCountryKey("");
-    setSelectedRegionKey("");
     setZoom(1);
     setGlobeAutoRotate(false);
     setFocusRequest((value) => value + 1);
@@ -597,77 +590,6 @@ export function MapsExplorer({ copy, coverage, locale }) {
     trackCoverageInteraction("coverage_map_3d_retry", { reason: globeErrorReason || "manual" });
   };
 
-  const renderContextPanel = () => (
-    <aside className="maps-context-panel" aria-label={copy.coverage.currentSelection} aria-live="polite">
-      <MarkerDetails copy={copy} locale={locale} onOpenCountry={selectCountry} payload={activePayload} />
-
-      <nav className="maps-breadcrumbs" aria-label={copy.coverage.currentView}>
-        <button className={view === "world" ? "is-current" : ""} type="button" onClick={() => {
-          setSelectedCountryKey(""); setSelectedRegionKey(""); setZoom(1); setFocusRequest((value) => value + 1);
-        }}>{copy.coverage.worldView}</button>
-        {selectedCountry ? <button className={view === "country" ? "is-current" : ""} type="button" onClick={() => {
-          setSelectedRegionKey(""); focusView("country", scopedWorldEvents.map((event) => event.globeCoordinates).filter(Boolean));
-        }}>{selectedCountry.label}</button> : null}
-        {selectedRegion ? <span>{selectedRegion.label}</span> : null}
-      </nav>
-
-      {!selectedCountry ? (
-        <>
-          <div className="maps-context-heading">
-            <div><p className="eyebrow">{copy.coverage.countryList}</p><h2>{copy.coverage.chooseCountry}</h2></div>
-            <strong>{filteredCountries.length}</strong>
-          </div>
-          <div className="maps-country-list">
-            {filteredCountries.map((country) => (
-              <button className="maps-country-row" key={country.countryKey} type="button" onClick={() => selectCountry(country)}>
-                <span><CountryFlag country={country} />{country.label}</span>
-                <strong>{country.count}</strong>
-                {!country.globeCoordinates ? <small>{copy.coverage.listOnly}</small> : null}
-              </button>
-            ))}
-          </div>
-          <div className="maps-context-events">
-            <p className="eyebrow">{copy.coverage.nextEvents}</p>
-            <EventLinkList copy={copy} events={allEvents} locale={locale} limit={6} />
-          </div>
-        </>
-      ) : null}
-
-      {selectedCountry && !selectedRegion ? (
-        <>
-          <div className="maps-context-heading">
-            <div className="maps-context-title"><CountryFlag country={selectedCountry} /><div><p className="eyebrow">{copy.coverage.countryView}</p><h2>{selectedCountry.label}</h2></div></div>
-            {selectedCountry.href ? <Link className="button button-small button-ghost" href={selectedCountry.href}>{copy.coverage.exploreCountry}</Link> : null}
-          </div>
-          <CountStats copy={copy} item={selectedCountry} />
-          {!selectedCountry.globeCoordinates ? <p className="maps-coordinate-note">{copy.coverage.countryNeedsCoordinates}</p> : null}
-          <div className="maps-region-list">
-            {selectedCountry.regions.map((region) => (
-              <button className="coverage-region-card" key={region.key} type="button" onClick={() => selectRegion(region)}>
-                <span className="coverage-region-card-main"><strong>{region.label}</strong><span>{region.plottedCount ? copy.coverage.mappedEvents.replace("{count}", region.plottedCount) : copy.coverage.noMappedEvents}</span></span>
-                <span className="coverage-region-card-count">{region.count}</span>
-              </button>
-            ))}
-          </div>
-          <EventLinkList copy={copy} events={selectedCountry.events} locale={locale} limit={8} />
-        </>
-      ) : null}
-
-      {selectedCountry && selectedRegion ? (
-        <>
-          <div className="maps-context-heading"><div><p className="eyebrow">{copy.coverage.regionView}</p><h2>{selectedRegion.label}</h2></div></div>
-          <CountStats copy={copy} item={selectedRegion} />
-          {!selectedRegion.globeCoordinates ? <p className="maps-coordinate-note">{copy.coverage.regionNeedsCoordinates}</p> : null}
-          <EventLinkList copy={copy} events={selectedRegion.events} locale={locale} />
-        </>
-      ) : null}
-
-      {!filteredTotals.totalTournaments ? (
-        <div className="maps-empty-state"><p>{copy.coverage.noResults}</p><button className="button button-small" type="button" onClick={resetFilters}>{copy.coverage.resetFilters}</button></div>
-      ) : null}
-    </aside>
-  );
-
   return (
     <section className="coverage-explorer maps-explorer" aria-label={copy.coverage.mapLabel}>
       <div className="maps-service-bar">
@@ -717,14 +639,14 @@ export function MapsExplorer({ copy, coverage, locale }) {
       <div className="maps-explorer-layout">
         <div className={`coverage-map-shell maps-globe-shell${isFullscreenView ? " is-fullscreen" : ""}`} ref={shellRef}>
           <div className="coverage-map-toolbar" aria-label={copy.coverage.mapControls}>
-            {selectedCountry ? <button className="icon-button" type="button" onClick={backOneLevel} aria-label={selectedRegion ? copy.coverage.backToCountry : copy.coverage.backToWorld} title={selectedRegion ? copy.coverage.backToCountry : copy.coverage.backToWorld}><ArrowLeft size={18} aria-hidden="true" /></button> : null}
+            {selectedCountry ? <button className="icon-button" type="button" onClick={backOneLevel} aria-label={copy.coverage.backToWorld} title={copy.coverage.backToWorld}><ArrowLeft size={18} aria-hidden="true" /></button> : null}
             <button className="icon-button" type="button" onClick={() => applyZoom(zoom + zoomControlStep(zoom, mapZoom.step))} aria-label={copy.coverage.zoomIn} title={copy.coverage.zoomIn}><Plus size={18} aria-hidden="true" /></button>
             <button className="icon-button" type="button" onClick={() => applyZoom(zoom - zoomControlStep(zoom, mapZoom.step))} aria-label={copy.coverage.zoomOut} title={copy.coverage.zoomOut}><Minus size={18} aria-hidden="true" /></button>
             <button className="icon-button" type="button" onClick={resetViewport} aria-label={copy.coverage.resetMap} title={copy.coverage.resetMap}><RotateCcw size={18} aria-hidden="true" /></button>
             <button className="icon-button" type="button" onClick={toggleFullscreen} aria-label={isFullscreenView ? copy.coverage.exitFullscreen : copy.coverage.enterFullscreen} aria-pressed={isFullscreenView} title={isFullscreenView ? copy.coverage.exitFullscreen : copy.coverage.enterFullscreen}>{isFullscreenView ? <Minimize2 size={18} aria-hidden="true" /> : <Maximize2 size={18} aria-hidden="true" />}</button>
           </div>
 
-          <div className="coverage-map-stage maps-globe-stage" data-coverage-map-renderer={globeStatus === "error" ? "unavailable" : "3d"} data-coverage-map-quality={globeQuality} role="region" tabIndex={0} aria-describedby="maps-keyboard-help" aria-label={copy.coverage.mapLabel} onKeyDown={handleMapKeyDown}>
+          <div className={`coverage-map-stage maps-globe-stage${showInMapMarkerDetails ? " has-marker-overlay" : ""}`} data-coverage-map-renderer={globeStatus === "error" ? "unavailable" : "3d"} data-coverage-map-quality={globeQuality} role="region" tabIndex={0} aria-describedby="maps-keyboard-help" aria-label={copy.coverage.mapLabel} onKeyDown={handleMapKeyDown} ref={mapStageRef}>
             <p className="sr-only" id="maps-keyboard-help">{copy.coverage.keyboardHelp}</p>
             <button className="coverage-view-badge" type="button" onClick={resetViewport} aria-label={`${copy.coverage.currentView}: ${mapViewLabel}`}><Globe2 size={15} aria-hidden="true" />{mapViewLabel}</button>
             {globeStatus === "checking" || globeStatus === "loading" ? <div className="coverage-globe-loading" data-coverage-globe="loading" aria-label={copy.coverage.loadingGlobe} /> : null}
@@ -750,8 +672,6 @@ export function MapsExplorer({ copy, coverage, locale }) {
                 quality={globeQuality}
                 showCountryMarkers={view === "world" && groupByCountry}
                 zoom={zoom}
-                onHover={setHovered}
-                onLeave={() => setHovered(null)}
                 onPin={setPinned}
                 onPerformanceIssue={handlePerformanceIssue}
                 onReady={() => setGlobeStatus(globeQuality === "reduced" ? "degraded" : "ready")}
@@ -761,10 +681,38 @@ export function MapsExplorer({ copy, coverage, locale }) {
               />
             ) : null}
             {globeStatus === "degraded" ? <div className="maps-quality-badge" role="status">{copy.coverage.reducedQuality}</div> : null}
+            {!worldMapItems.length ? (
+              <div className="maps-map-empty-state" role="status">
+                <p>{filteredTotals.totalTournaments ? copy.coverage.unmappedResults : copy.coverage.noResults}</p>
+                {filteredTotals.totalTournaments ? (
+                  <Link className="button button-small button-ghost" href={`/${locale}/events`}>{copy.coverage.browseTournaments}</Link>
+                ) : (
+                  <button className="button button-small" type="button" onClick={resetFilters}>{copy.coverage.resetFilters}</button>
+                )}
+              </div>
+            ) : null}
+            {showInMapMarkerDetails ? (
+              <div
+                aria-label={copy.coverage.currentSelection}
+                aria-live="polite"
+                className="maps-marker-overlay"
+                ref={markerOverlayRef}
+                role="dialog"
+                tabIndex={-1}
+              >
+                <MarkerDetails
+                  copy={copy}
+                  locale={locale}
+                  onClose={dismissInMapMarkerDetails}
+                  onOpenCountry={selectCountry}
+                  payload={pinned}
+                  variant="overlay"
+                />
+              </div>
+            ) : null}
             <div className="coverage-zoom-badge" aria-live="polite">{copy.coverage.zoomLevel.replace("{zoom}", zoom.toFixed(2))}</div>
           </div>
         </div>
-        {renderContextPanel()}
       </div>
     </section>
   );

@@ -12,15 +12,16 @@ import {
 
 test("regional boundaries remain hidden at minimum zoom and fade in progressively", () => {
   assert.equal(coverageAdminBoundaryOpacity(1), 0);
-  assert.equal(coverageAdminBoundaryOpacity(3), 0);
-  assert.equal(coverageAdminBoundaryOpacity(4), 0);
-  assert.ok(coverageAdminBoundaryOpacity(5.5) > 0);
-  assert.equal(coverageAdminBoundaryOpacity(7), 1);
-  assert.equal(coverageAdminBoundaryOpacity(1, true), 0);
-  assert.ok(coverageAdminBoundaryOpacity(2, true) > 0);
-  assert.equal(coverageAdminBoundaryOpacity(2.5, true), 1);
-  assert.equal(shouldLoadCoverageAdminBoundaries(4), false);
-  assert.equal(shouldLoadCoverageAdminBoundaries(4.01), true);
+  assert.equal(coverageAdminBoundaryOpacity(10), 0);
+  assert.ok(coverageAdminBoundaryOpacity(11.5) > 0);
+  assert.equal(coverageAdminBoundaryOpacity(13), 1);
+  assert.equal(coverageAdminBoundaryOpacity(8, true), 0);
+  assert.ok(coverageAdminBoundaryOpacity(10, true) > 0);
+  assert.equal(coverageAdminBoundaryOpacity(12, true), 1);
+  assert.equal(shouldLoadCoverageAdminBoundaries(10), false);
+  assert.equal(shouldLoadCoverageAdminBoundaries(10.01), true);
+  assert.equal(shouldLoadCoverageAdminBoundaries(8, true), false);
+  assert.equal(shouldLoadCoverageAdminBoundaries(8.01, true), true);
 });
 
 test("generated boundaries use restrained first subdivisions instead of lower-level Italian provinces", () => {
@@ -45,6 +46,12 @@ test("generated boundaries use restrained first subdivisions instead of lower-le
   assert.equal(data.countries.malta.regionNames.length, 3);
   assert.equal(data.countries.russia.regionNames.length, 6);
   assert.equal(data.countries.thailand.regionNames.length, 6);
+  assert.equal(data.countries.spain.regionNames.length, 19);
+  assert.equal(data.countries.brazil.regionNames.length, 27);
+  assert.equal(data.countries.india.regionNames.length, 36);
+  assert.equal(data.countries.australia.regionNames.length, 11);
+  assert.equal(data.countries.southafrica.regionNames.length, 9);
+  assert.ok(Object.keys(data.countries).length >= 190);
   assert.ok(Object.values(data.countries).every((country) => country.regionNames.length >= 2 && country.lines.length >= 1));
 });
 
