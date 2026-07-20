@@ -1,5 +1,5 @@
 export const coverageAdminBoundaries = Object.freeze({
-  assetUrl: "/maps/admin1-boundaries.json",
+  assetUrl: "/maps/admin1-boundaries.json?v=3",
   countryFadeEnd: 12,
   countryFadeStart: 8,
   globeOpacity: 0.52,
@@ -59,9 +59,19 @@ export const coverageBoundaryCountry = (data, countryNames = []) => {
 
 export const decodedCoverageBoundaryLines = (data, countryNames) => {
   const countries = countryNames?.length ? [coverageBoundaryCountry(data, countryNames)].filter(Boolean) : Object.values(data?.countries || {});
-  const precision = data?.coordinatePrecision;
-  return countries.flatMap((country) => (country.lines || []).map((line) => decodeCoverageBoundaryLine(line, precision)).filter((line) => line.length >= 2));
+  return countries.flatMap((country) =>
+    (country.lines || [])
+      .map((line) => decodeCoverageBoundaryLine(line, country.coordinatePrecision || data?.coordinatePrecision))
+      .filter((line) => line.length >= 2),
+  );
 };
+
+export const decodedCoverageEuropeOutlineLines = (data) =>
+  Object.values(data?.europeOutlines || {}).flatMap((country) =>
+    (country.lines || [])
+      .map((line) => decodeCoverageBoundaryLine(line, country.coordinatePrecision || data?.europeCoordinatePrecision || data?.coordinatePrecision))
+      .filter((line) => line.length >= 2),
+  );
 
 export const loadCoverageAdminBoundaries = async () => {
   if (!boundaryDataPromise) {

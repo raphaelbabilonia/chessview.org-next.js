@@ -6,6 +6,7 @@ import {
   coverageBoundaryCountry,
   decodeCoverageBoundaryLine,
   decodedCoverageBoundaryLines,
+  decodedCoverageEuropeOutlineLines,
   normalizeCoverageCountryName,
   shouldLoadCoverageAdminBoundaries,
 } from "../../src/lib/coverageAdminBoundaries.js";
@@ -28,8 +29,10 @@ test("generated boundaries use restrained first subdivisions instead of lower-le
   const data = JSON.parse(readFileSync(new URL("../../public/maps/admin1-boundaries.json", import.meta.url), "utf8"));
   const italy = data.countries.italy;
 
-  assert.equal(data.version, 2);
+  assert.equal(data.version, 3);
   assert.equal(italy.sourceGrouping, "parent-region");
+  assert.equal(italy.coordinatePrecision, 10000);
+  assert.equal(italy.simplificationTolerance, 0.003);
   assert.equal(italy.regionNames.length, 20);
   assert.ok(italy.regionNames.includes("Piemonte"));
   assert.ok(italy.regionNames.includes("Lombardia"));
@@ -53,6 +56,35 @@ test("generated boundaries use restrained first subdivisions instead of lower-le
   assert.equal(data.countries.southafrica.regionNames.length, 9);
   assert.ok(Object.keys(data.countries).length >= 190);
   assert.ok(Object.values(data.countries).every((country) => country.regionNames.length >= 2 && country.lines.length >= 1));
+});
+
+test("European regional networks and country outlines share every junction", () => {
+  const data = JSON.parse(readFileSync(new URL("../../public/maps/admin1-boundaries.json", import.meta.url), "utf8"));
+  assert.ok(Object.keys(data.europeOutlines).length >= 45);
+  assert.ok(data.europeAtlasCountryNames.includes("Italy"));
+  assert.ok(decodedCoverageEuropeOutlineLines(data).length >= 700);
+
+  for (const [countryKey, outline] of Object.entries(data.europeOutlines)) {
+    const country = data.countries[countryKey];
+    if (!country) continue;
+    const internalLines = country.lines.map((line) => decodeCoverageBoundaryLine(line, country.coordinatePrecision));
+    const outlineLines = outline.lines.map((line) => decodeCoverageBoundaryLine(line, outline.coordinatePrecision));
+    const pointOccurrences = new Map();
+
+    for (const line of [...internalLines, ...outlineLines]) {
+      for (const point of line) {
+        const key = point.join(",");
+        pointOccurrences.set(key, (pointOccurrences.get(key) || 0) + 1);
+      }
+    }
+
+    for (const line of internalLines) {
+      for (const endpoint of [line[0], line[line.length - 1]]) {
+        const key = endpoint.join(",");
+        assert.ok(pointOccurrences.get(key) >= 2, `${countryKey} has a regional boundary disconnected from its topology at ${key}`);
+      }
+    }
+  }
 });
 
 test("delta encoded boundary lines decode to longitude and latitude", () => {
@@ -79,6 +111,22 @@ test("country lookup accepts display and atlas-style names", () => {
     [
       [1, 2],
       [1.005, 2.005],
+    ],
+  ]);
+});
+
+test("country-specific precision preserves detailed European coordinates", () => {
+  const data = {
+    coordinatePrecision: 1000,
+    countries: {
+      italy: { coordinatePrecision: 10000, lines: [[120001, 410002, 3, -4]] },
+    },
+  };
+
+  assert.deepEqual(decodedCoverageBoundaryLines(data, ["Italy"]), [
+    [
+      [12.0001, 41.0002],
+      [12.0004, 40.9998],
     ],
   ]);
 });
