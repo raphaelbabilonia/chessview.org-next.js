@@ -6,7 +6,7 @@ import {
   coverageBoundaryCountry,
   decodeCoverageBoundaryLine,
   decodedCoverageBoundaryLines,
-  decodedCoverageEuropeOutlineLines,
+  decodedCoverageWorldOutlineLines,
   normalizeCoverageCountryName,
   shouldLoadCoverageAdminBoundaries,
 } from "../../src/lib/coverageAdminBoundaries.js";
@@ -29,7 +29,7 @@ test("generated boundaries use restrained first subdivisions instead of lower-le
   const data = JSON.parse(readFileSync(new URL("../../public/maps/admin1-boundaries.json", import.meta.url), "utf8"));
   const italy = data.countries.italy;
 
-  assert.equal(data.version, 3);
+  assert.equal(data.version, 4);
   assert.equal(italy.sourceGrouping, "parent-region");
   assert.equal(italy.coordinatePrecision, 10000);
   assert.equal(italy.simplificationTolerance, 0.003);
@@ -56,15 +56,23 @@ test("generated boundaries use restrained first subdivisions instead of lower-le
   assert.equal(data.countries.southafrica.regionNames.length, 9);
   assert.ok(Object.keys(data.countries).length >= 190);
   assert.ok(Object.values(data.countries).every((country) => country.regionNames.length >= 2 && country.lines.length >= 1));
+  assert.ok(Object.values(data.countries).every((country) => country.coordinatePrecision === 10000));
+  assert.ok(Object.values(data.countries).every((country) => country.simplificationTolerance === 0.003));
 });
 
-test("European regional networks and country outlines share every junction", () => {
+test("regional networks and country outlines share every junction worldwide", () => {
   const data = JSON.parse(readFileSync(new URL("../../public/maps/admin1-boundaries.json", import.meta.url), "utf8"));
-  assert.ok(Object.keys(data.europeOutlines).length >= 45);
-  assert.ok(data.europeAtlasCountryNames.includes("Italy"));
-  assert.ok(decodedCoverageEuropeOutlineLines(data).length >= 700);
+  assert.ok(Object.keys(data.worldOutlines).length >= 200);
+  assert.ok(data.worldOutlines.italy);
+  assert.ok(data.worldOutlines.unitedstatesofamerica);
+  assert.ok(data.worldOutlines.brazil);
+  assert.ok(data.worldOutlines.southafrica);
+  assert.ok(data.worldOutlines.india);
+  assert.ok(data.worldOutlines.australia);
+  assert.ok(decodedCoverageWorldOutlineLines(data).length >= 3000);
+  assert.ok(Object.keys(data.countries).every((countryKey) => data.worldOutlines[countryKey]));
 
-  for (const [countryKey, outline] of Object.entries(data.europeOutlines)) {
+  for (const [countryKey, outline] of Object.entries(data.worldOutlines)) {
     const country = data.countries[countryKey];
     if (!country) continue;
     const internalLines = country.lines.map((line) => decodeCoverageBoundaryLine(line, country.coordinatePrecision));
@@ -115,7 +123,7 @@ test("country lookup accepts display and atlas-style names", () => {
   ]);
 });
 
-test("country-specific precision preserves detailed European coordinates", () => {
+test("country-specific precision preserves detailed worldwide coordinates", () => {
   const data = {
     coordinatePrecision: 1000,
     countries: {

@@ -22,7 +22,7 @@ import {
   coverageAdminBoundaryOpacity,
   coverageBoundaryCountry,
   decodedCoverageBoundaryLines,
-  decodedCoverageEuropeOutlineLines,
+  decodedCoverageWorldOutlineLines,
   loadCoverageAdminBoundaries,
   normalizeCoverageCountryName,
   shouldLoadCoverageAdminBoundaries,
@@ -690,15 +690,12 @@ export function CoverageThreeGlobe({
       const currentState = sceneRef.current;
       if (!currentState) return;
       const fade = coverageAdminBoundaryOpacity(interaction.zoomTarget, currentState.adminBoundaryCountryMode);
-      const coarseEuropeBoundaryLine = currentState.coarseEuropeBoundaryLine;
-      const europeOutlineLine = currentState.europeOutlineLine;
-      if (coarseEuropeBoundaryLine) {
-        coarseEuropeBoundaryLine.visible = fade < 1;
-        coarseEuropeBoundaryLine.material.opacity = LAND_BOUNDARY_OPACITY * (1 - fade);
-      }
-      if (europeOutlineLine) {
-        europeOutlineLine.visible = fade > 0;
-        europeOutlineLine.material.opacity = LAND_BOUNDARY_OPACITY * fade;
+      const worldOutlineLine = currentState.worldOutlineLine;
+      if (worldOutlineLine) {
+        currentState.landBoundaries.visible = fade < 1;
+        currentState.landBoundaries.material.opacity = LAND_BOUNDARY_OPACITY * (1 - fade);
+        worldOutlineLine.visible = fade > 0;
+        worldOutlineLine.material.opacity = LAND_BOUNDARY_OPACITY * fade;
       }
 
       const boundaryLine = currentState?.adminBoundaryLine;
@@ -1154,8 +1151,6 @@ export function CoverageThreeGlobe({
       adminBoundaryLoadScope: "",
       adminBoundaryScope: "",
       camera,
-      coarseEuropeBoundaryLine: null,
-      europeOutlineLine: null,
       frame: 0,
       globeGroup,
       initialQuaternion: globeGroup.quaternion.clone(),
@@ -1168,6 +1163,7 @@ export function CoverageThreeGlobe({
       renderer,
       reducedMotion,
       scene,
+      worldOutlineLine: null,
     };
     setGestureMode("idle");
     resetMomentum();
@@ -1197,8 +1193,8 @@ export function CoverageThreeGlobe({
       delete container.dataset.coverageAdminBoundaries;
       delete container.dataset.coverageAdminBoundaryRegions;
       delete container.dataset.coverageAdminBoundaryScope;
-      delete container.dataset.coverageEuropeBoundaries;
-      delete container.dataset.coverageEuropeOutlineCountries;
+      delete container.dataset.coverageWorldBoundaries;
+      delete container.dataset.coverageWorldOutlineCountries;
       delete container.dataset.coverageMomentum;
       delete container.dataset.coverageOrientationStep;
       delete container.dataset.coverageRotationSensitivity;
@@ -1309,29 +1305,11 @@ export function CoverageThreeGlobe({
       .then((data) => {
         if (!active || sceneRef.current !== state || state.adminBoundaryLoadScope !== boundaryScopeKey) return;
 
-        if (!state.europeOutlineLine) {
-          const europeAtlasCountryNames = data.europeAtlasCountryNames || [];
-          const detailedEuropePositions = buildAdminBoundaryPositions(decodedCoverageEuropeOutlineLines(data));
-          if (europeAtlasCountryNames.length && detailedEuropePositions.length) {
-            const remainingLandPositions = buildLandBoundaryPositions({ excludeCountryNames: europeAtlasCountryNames });
-            const coarseEuropePositions = buildLandBoundaryPositions({ includeCountryNames: europeAtlasCountryNames });
-            const previousLandGeometry = state.landBoundaries.geometry;
-            state.landBoundaries.geometry = new THREE.BufferGeometry().setAttribute(
-              "position",
-              new THREE.BufferAttribute(remainingLandPositions, 3),
-            );
-            previousLandGeometry.dispose();
-
-            const coarseEuropeBoundaryLine = new THREE.LineSegments(
-              new THREE.BufferGeometry().setAttribute("position", new THREE.BufferAttribute(coarseEuropePositions, 3)),
-              new THREE.LineBasicMaterial({ color: 0xfdfcfd, opacity: LAND_BOUNDARY_OPACITY, transparent: true }),
-            );
-            coarseEuropeBoundaryLine.renderOrder = 1;
-            state.globeGroup.add(coarseEuropeBoundaryLine);
-            state.coarseEuropeBoundaryLine = coarseEuropeBoundaryLine;
-
-            const europeOutlineLine = new THREE.LineSegments(
-              new THREE.BufferGeometry().setAttribute("position", new THREE.BufferAttribute(detailedEuropePositions, 3)),
+        if (!state.worldOutlineLine) {
+          const detailedWorldPositions = buildAdminBoundaryPositions(decodedCoverageWorldOutlineLines(data));
+          if (detailedWorldPositions.length) {
+            const worldOutlineLine = new THREE.LineSegments(
+              new THREE.BufferGeometry().setAttribute("position", new THREE.BufferAttribute(detailedWorldPositions, 3)),
               new THREE.LineBasicMaterial({
                 color: 0xfdfcfd,
                 depthWrite: false,
@@ -1340,12 +1318,12 @@ export function CoverageThreeGlobe({
                 transparent: true,
               }),
             );
-            europeOutlineLine.renderOrder = 2;
-            europeOutlineLine.visible = false;
-            state.globeGroup.add(europeOutlineLine);
-            state.europeOutlineLine = europeOutlineLine;
-            container.dataset.coverageEuropeBoundaries = "aligned";
-            container.dataset.coverageEuropeOutlineCountries = String(Object.keys(data.europeOutlines || {}).length);
+            worldOutlineLine.renderOrder = 2;
+            worldOutlineLine.visible = false;
+            state.globeGroup.add(worldOutlineLine);
+            state.worldOutlineLine = worldOutlineLine;
+            container.dataset.coverageWorldBoundaries = "aligned";
+            container.dataset.coverageWorldOutlineCountries = String(Object.keys(data.worldOutlines || {}).length);
           }
         }
 

@@ -1,5 +1,5 @@
 export const coverageAdminBoundaries = Object.freeze({
-  assetUrl: "/maps/admin1-boundaries.json?v=3",
+  assetUrl: "/maps/admin1-boundaries.json?v=4",
   countryFadeEnd: 12,
   countryFadeStart: 8,
   globeOpacity: 0.52,
@@ -66,10 +66,10 @@ export const decodedCoverageBoundaryLines = (data, countryNames) => {
   );
 };
 
-export const decodedCoverageEuropeOutlineLines = (data) =>
-  Object.values(data?.europeOutlines || {}).flatMap((country) =>
+export const decodedCoverageWorldOutlineLines = (data) =>
+  Object.values(data?.worldOutlines || {}).flatMap((country) =>
     (country.lines || [])
-      .map((line) => decodeCoverageBoundaryLine(line, country.coordinatePrecision || data?.europeCoordinatePrecision || data?.coordinatePrecision))
+      .map((line) => decodeCoverageBoundaryLine(line, country.coordinatePrecision || data?.coordinatePrecision))
       .filter((line) => line.length >= 2),
   );
 

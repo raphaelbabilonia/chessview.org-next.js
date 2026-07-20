@@ -4,6 +4,6 @@
 
 Natural Earth data is public domain. The generator retains only internal first-subdivision borders and their names. Where Natural Earth contains lower-level units, such as Italian provinces or French departments, or more than 60 units would overload a country view, it dissolves them into useful named parent regions. True top-level units, such as US states and Canadian provinces, remain unchanged.
 
-European subdivisions and country outlines are generated from the same 10m topology with shared junctions, 0.003-degree simplification, and four-decimal coordinate precision. At deep zoom the globe cross-fades from its lightweight world outline to these aligned European outlines, preventing regional lines from stopping beside or crossing a coarser country shape. Other continents retain the smaller general-purpose dataset until they receive the same continent-level review.
+Subdivisions and country outlines worldwide are generated from the same 10m topology with shared junctions, 0.003-degree simplification, and four-decimal coordinate precision. At deep zoom the globe cross-fades from its lightweight world outline to these aligned detailed outlines, preventing regional lines from stopping beside or crossing a coarser country shape in Europe, the Americas, Africa, Asia, or Oceania.
 
 Source: https://www.naturalearthdata.com/downloads/10m-cultural-vectors/10m-admin-1-states-provinces/

@@ -5,66 +5,10 @@ import { topology } from "topojson-server";
 
 const sourceCommit = "ca96624a56bd078437bca8184e78163e5039ad19";
 const sourceUrl = `https://raw.githubusercontent.com/nvkelso/natural-earth-vector/${sourceCommit}/geojson/ne_10m_admin_1_states_provinces.geojson`;
-const coordinatePrecision = 1000;
-const europeCoordinatePrecision = 10000;
-const simplificationTolerance = 0.015;
-const europeSimplificationTolerance = 0.003;
+const coordinatePrecision = 10000;
+const simplificationTolerance = 0.003;
 const topologyQuantization = 100000;
 const outputPath = path.resolve("public/maps/admin1-boundaries.json");
-
-const europeanAtlasNameByIsoA2 = new Map([
-  ["AL", "Albania"],
-  ["AM", "Armenia"],
-  ["AT", "Austria"],
-  ["AZ", "Azerbaijan"],
-  ["BA", "Bosnia and Herz."],
-  ["BE", "Belgium"],
-  ["BG", "Bulgaria"],
-  ["BY", "Belarus"],
-  ["CH", "Switzerland"],
-  ["CY", "Cyprus"],
-  ["CZ", "Czechia"],
-  ["DE", "Germany"],
-  ["DK", "Denmark"],
-  ["EE", "Estonia"],
-  ["ES", "Spain"],
-  ["FI", "Finland"],
-  ["FR", "France"],
-  ["GB", "United Kingdom"],
-  ["GE", "Georgia"],
-  ["GR", "Greece"],
-  ["HR", "Croatia"],
-  ["HU", "Hungary"],
-  ["IE", "Ireland"],
-  ["IS", "Iceland"],
-  ["IT", "Italy"],
-  ["LI", null],
-  ["LT", "Lithuania"],
-  ["LU", "Luxembourg"],
-  ["LV", "Latvia"],
-  ["MC", null],
-  ["MD", "Moldova"],
-  ["ME", "Montenegro"],
-  ["MK", "Macedonia"],
-  ["MT", null],
-  ["NL", "Netherlands"],
-  ["NO", "Norway"],
-  ["PL", "Poland"],
-  ["PT", "Portugal"],
-  ["RO", "Romania"],
-  ["RS", "Serbia"],
-  ["RU", "Russia"],
-  ["SE", "Sweden"],
-  ["SI", "Slovenia"],
-  ["SK", "Slovakia"],
-  ["SM", null],
-  ["TR", "Turkey"],
-  ["UA", "Ukraine"],
-  ["VA", null],
-  ["XK", "Kosovo"],
-]);
-
-const europeanAtlasNameByAdmin = new Map([["Northern Cyprus", "N. Cyprus"]]);
 
 const normalizedName = (value) =>
   String(value || "")
@@ -256,46 +200,34 @@ for (const feature of source.features || []) {
   const countryKey = normalizedName(countryName);
   if (!countryKey) continue;
   if (!featuresByCountry.has(countryKey)) {
-    featuresByCountry.set(countryKey, { atlasName: "", european: false, features: [], name: countryName });
+    featuresByCountry.set(countryKey, { features: [], name: countryName });
   }
   const country = featuresByCountry.get(countryKey);
-  const isoA2 = cleanName(feature.properties?.iso_a2).toUpperCase();
-  const atlasName = europeanAtlasNameByIsoA2.get(isoA2) || europeanAtlasNameByAdmin.get(countryName) || "";
-  country.european ||= europeanAtlasNameByIsoA2.has(isoA2) || europeanAtlasNameByAdmin.has(countryName);
-  if (atlasName) country.atlasName = atlasName;
   country.features.push(feature);
 }
 
 const countries = {};
-const europeAtlasCountryNames = new Set();
-const europeOutlines = {};
+const worldOutlines = {};
 for (const [countryKey, country] of [...featuresByCountry].sort(([first], [second]) => first.localeCompare(second))) {
   const useParentRegions = shouldUseParentRegions(country.features);
-  const encodingOptions = country.european
-    ? { precision: europeCoordinatePrecision, tolerance: europeSimplificationTolerance }
-    : { precision: coordinatePrecision, tolerance: simplificationTolerance };
+  const encodingOptions = { precision: coordinatePrecision, tolerance: simplificationTolerance };
   const { lines, outlineLines, regionNames } = countryBoundaryGeometry(country.features, useParentRegions, encodingOptions);
 
-  if (country.european && outlineLines.length) {
-    europeOutlines[countryKey] = {
-      coordinatePrecision: europeCoordinatePrecision,
+  if (outlineLines.length) {
+    worldOutlines[countryKey] = {
+      coordinatePrecision,
       lines: outlineLines,
       name: country.name,
-      simplificationTolerance: europeSimplificationTolerance,
+      simplificationTolerance,
     };
-    if (country.atlasName) europeAtlasCountryNames.add(country.atlasName);
   }
   if (!lines.length || regionNames.length < 2) continue;
   countries[countryKey] = {
-    ...(country.european
-      ? {
-          coordinatePrecision: europeCoordinatePrecision,
-          simplificationTolerance: europeSimplificationTolerance,
-        }
-      : {}),
+    coordinatePrecision,
     lines,
     name: country.name,
     regionNames,
+    simplificationTolerance,
     sourceGrouping: useParentRegions ? "parent-region" : "admin-unit",
   };
 }
@@ -303,16 +235,13 @@ for (const [countryKey, country] of [...featuresByCountry].sort(([first], [secon
 const payload = {
   coordinatePrecision,
   countries,
-  europeAtlasCountryNames: [...europeAtlasCountryNames].sort((first, second) => first.localeCompare(second, "en")),
-  europeCoordinatePrecision,
-  europeOutlines,
-  europeSimplificationTolerance,
   generatedFrom: sourceUrl,
   simplificationTolerance,
   source: "Natural Earth Admin-1 states/provinces polygons, dissolved to the first useful country subdivision",
   sourceCommit,
   topologyQuantization,
-  version: 3,
+  version: 4,
+  worldOutlines,
 };
 
 await mkdir(path.dirname(outputPath), { recursive: true });
@@ -320,7 +249,7 @@ await writeFile(outputPath, JSON.stringify(payload));
 
 const totalLines = Object.values(countries).reduce((sum, country) => sum + country.lines.length, 0);
 const totalRegions = Object.values(countries).reduce((sum, country) => sum + country.regionNames.length, 0);
-const totalEuropeOutlineLines = Object.values(europeOutlines).reduce((sum, country) => sum + country.lines.length, 0);
+const totalWorldOutlineLines = Object.values(worldOutlines).reduce((sum, country) => sum + country.lines.length, 0);
 console.log(
-  `Wrote ${Object.keys(countries).length} countries, ${totalRegions} subdivisions, ${totalLines} internal lines, and ${totalEuropeOutlineLines} aligned European outline lines to ${outputPath}`,
+  `Wrote ${Object.keys(countries).length} countries, ${totalRegions} subdivisions, ${totalLines} internal lines, and ${totalWorldOutlineLines} aligned worldwide outline lines to ${outputPath}`,
 );
