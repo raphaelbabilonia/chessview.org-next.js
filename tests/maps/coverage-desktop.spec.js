@@ -3,9 +3,14 @@ import { openCoverage, stableVisibleGlobeMarker } from "./helpers.mjs";
 
 test("the canonical maps page is a three-dimensional explorer with no renderer switch", async ({ page }) => {
   const stage = await openCoverage(page);
+  const globe = page.locator("[data-coverage-globe=ready]");
 
   await expect(page).toHaveURL(/\/en\/maps$/);
   await expect(stage).toHaveAttribute("data-coverage-map-renderer", "3d");
+  await expect(globe).toHaveAttribute("data-coverage-surface-style", "cartographic-slate");
+  await expect(globe).toHaveAttribute("data-coverage-surface-texture", "4096x2048");
+  await expect(globe).toHaveAttribute("data-coverage-surface-countries", /^[1-9]\d{2,}$/);
+  await expect(globe).toHaveAttribute("data-coverage-surface-detail", "coarse");
   await expect(page.locator("[data-map-renderer-option]")).toHaveCount(0);
   await expect(page.locator("svg.coverage-map")).toHaveCount(0);
   await expect(page.locator(".maps-context-panel")).toHaveCount(0);
@@ -40,6 +45,18 @@ test("desktop marker details open only after selection and stay inside the map",
   await overlay.getByRole("button", { name: "Close tournament details" }).click();
   await expect(overlay).toHaveCount(0);
   await expect(stage).toBeFocused();
+});
+
+test("reduced-quality devices use the smaller cartographic surface", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "deviceMemory", { configurable: true, value: 2 });
+  });
+  const stage = await openCoverage(page);
+  const globe = page.locator("[data-coverage-globe=ready]");
+
+  await expect(stage).toHaveAttribute("data-coverage-map-quality", "reduced");
+  await expect(globe).toHaveAttribute("data-coverage-surface-style", "cartographic-slate");
+  await expect(globe).toHaveAttribute("data-coverage-surface-texture", "2048x1024");
 });
 
 test("fullscreen selections open and close inside the fullscreen map", async ({ page }) => {
@@ -143,6 +160,8 @@ test("rapid wheel input reaches deep zoom and reveals regional boundaries", asyn
   await expect(globe).toHaveAttribute("data-coverage-admin-boundaries", "visible", { timeout: 15000 });
   await expect(globe).toHaveAttribute("data-coverage-admin-boundary-scope", "world");
   await expect(globe).toHaveAttribute("data-coverage-admin-boundary-regions", "2937");
+  await expect(globe).toHaveAttribute("data-coverage-surface-detail", "aligned");
+  await expect(globe).toHaveAttribute("data-coverage-surface-detail-countries", /^[1-9]\d{2,}$/);
   expect(Number(await globe.getAttribute("data-coverage-rotation-sensitivity"))).toBeLessThan(initialSensitivity * 0.6);
 });
 

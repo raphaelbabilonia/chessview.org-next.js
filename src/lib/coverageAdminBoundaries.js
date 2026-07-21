@@ -3,7 +3,7 @@ export const coverageAdminBoundaries = Object.freeze({
   countryFadeEnd: 12,
   countryFadeStart: 8,
   globeOpacity: 0.52,
-  worldFadeEnd: 13,
+  worldFadeEnd: 10.75,
   worldFadeStart: 10,
 });
 

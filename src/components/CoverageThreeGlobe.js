@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-import { feature } from "topojson-client";
+import { geoEquirectangular, geoPath } from "d3-geo";
+import { feature, mesh } from "topojson-client";
 import worldAtlas from "world-atlas/countries-110m.json";
 import {
   coverageGlobeGesture,
@@ -22,7 +23,6 @@ import {
   coverageAdminBoundaryOpacity,
   coverageBoundaryCountry,
   decodedCoverageBoundaryLines,
-  decodedCoverageWorldOutlineLines,
   loadCoverageAdminBoundaries,
   normalizeCoverageCountryName,
   shouldLoadCoverageAdminBoundaries,
@@ -36,12 +36,18 @@ import {
   surfaceBeadCenterRadius,
   worldUnitsPerPixel,
 } from "@/lib/coverageMarkerSizing";
+import {
+  coverageCountryShadeIndex,
+  coverageGlobeSurface,
+  coverageGlobeTextureSize,
+  normalizeCoverageAtlasFeature,
+} from "@/lib/coverageGlobeSurface";
 import { trackAnalyticsEvent } from "@/lib/tracking";
 
 const GLOBE_RADIUS = 2.36;
-const SURFACE_RADIUS = GLOBE_RADIUS + 0.018;
-const ADMIN_BOUNDARY_RADIUS = SURFACE_RADIUS + 0.012;
-const LAND_BOUNDARY_OPACITY = 0.34;
+const SURFACE_RADIUS = GLOBE_RADIUS + coverageGlobeSurface.lineLifts.boundary;
+const ADMIN_BOUNDARY_RADIUS = GLOBE_RADIUS + coverageGlobeSurface.lineLifts.adminBoundary;
+const LAND_BOUNDARY_OPACITY = 0.52;
 const COARSE_MARKER_HIT_RADIUS_PX = 22;
 const FINE_MARKER_HIT_RADIUS_PX = 8;
 const HIT_TARGET_UPDATE_INTERVAL_MS = 1000 / 15;
@@ -53,6 +59,20 @@ const typeColors = {
   classical: "#2f80ed",
   other: "#d977d8",
   rapid: "#20b26b",
+};
+
+let detailedWorldAtlasPromise;
+
+const loadDetailedWorldAtlas = () => {
+  if (!detailedWorldAtlasPromise) {
+    detailedWorldAtlasPromise = import("world-atlas/countries-10m.json")
+      .then((module) => module.default || module)
+      .catch((error) => {
+        detailedWorldAtlasPromise = undefined;
+        throw error;
+      });
+  }
+  return detailedWorldAtlasPromise;
 };
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -142,23 +162,14 @@ const pushLineSegment = (positions, first, second, radius = SURFACE_RADIUS) => {
   positions.push(start.x, start.y, start.z, end.x, end.y, end.z);
 };
 
-const buildLandBoundaryPositions = ({ excludeCountryNames = [], includeCountryNames = [] } = {}) => {
-  const countryFeatures = feature(worldAtlas, worldAtlas.objects.countries).features;
-  const excluded = new Set(excludeCountryNames.map(normalizeCoverageCountryName));
-  const included = new Set(includeCountryNames.map(normalizeCoverageCountryName));
+const atlasCountries = (atlas) => feature(atlas, atlas.objects.countries).features;
+
+const buildLandBoundaryPositions = (atlas = worldAtlas) => {
   const positions = [];
 
-  for (const country of countryFeatures) {
-    const countryName = normalizeCoverageCountryName(country.properties?.name);
-    if (excluded.has(countryName) || (included.size && !included.has(countryName))) continue;
-    const polygons = country.geometry?.type === "MultiPolygon" ? country.geometry.coordinates : [country.geometry?.coordinates || []];
-
-    for (const polygon of polygons) {
-      for (const ring of polygon) {
-        for (let index = 1; index < ring.length; index += 1) {
-          pushLineSegment(positions, ring[index - 1], ring[index]);
-        }
-      }
+  for (const line of mesh(atlas, atlas.objects.countries).coordinates || []) {
+    for (let index = 1; index < line.length; index += 1) {
+      pushLineSegment(positions, line[index - 1], line[index]);
     }
   }
 
@@ -170,18 +181,76 @@ const buildGraticulePositions = () => {
 
   for (let latitude = -60; latitude <= 60; latitude += 30) {
     for (let longitude = -180; longitude < 180; longitude += 5) {
-      pushLineSegment(positions, [longitude, latitude], [longitude + 5, latitude], GLOBE_RADIUS + 0.008);
+      pushLineSegment(
+        positions,
+        [longitude, latitude],
+        [longitude + 5, latitude],
+        GLOBE_RADIUS + coverageGlobeSurface.lineLifts.graticule,
+      );
     }
   }
 
   for (let longitude = -150; longitude <= 180; longitude += 30) {
     for (let latitude = -85; latitude < 85; latitude += 5) {
-      pushLineSegment(positions, [longitude, latitude], [longitude, latitude + 5], GLOBE_RADIUS + 0.008);
+      pushLineSegment(
+        positions,
+        [longitude, latitude],
+        [longitude, latitude + 5],
+        GLOBE_RADIUS + coverageGlobeSurface.lineLifts.graticule,
+      );
     }
   }
 
   return new Float32Array(positions);
 };
+
+const buildGlobeSurfaceTexture = (renderer, quality, atlas = worldAtlas) => {
+  const { height, width } = coverageGlobeTextureSize(quality);
+  const canvas = document.createElement("canvas");
+  canvas.height = height;
+  canvas.width = width;
+
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("The globe surface canvas is unavailable");
+
+  context.fillStyle = coverageGlobeSurface.oceanColor;
+  context.fillRect(0, 0, width, height);
+
+  const projection = geoEquirectangular()
+    .translate([width / 2, height / 2])
+    .scale(width / (2 * Math.PI))
+    .precision(0.1);
+  const drawPath = geoPath(projection, context);
+  const countries = atlasCountries(atlas);
+
+  for (const country of countries) {
+    const identity = country.id ?? country.properties?.name ?? "";
+    const shade = coverageCountryShadeIndex(identity);
+    context.beginPath();
+    drawPath(normalizeCoverageAtlasFeature(country));
+    context.fillStyle = coverageGlobeSurface.landPalette[shade];
+    context.fill("evenodd");
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.generateMipmaps = true;
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.name = "coverage-cartographic-surface";
+  texture.needsUpdate = true;
+
+  return { countryCount: countries.length, height, texture, width };
+};
+
+const createGlobeSurfaceMaterial = (texture, overrides = {}) =>
+  new THREE.MeshLambertMaterial({
+    color: 0xffffff,
+    emissive: 0x010814,
+    map: texture,
+    ...overrides,
+  });
 
 const buildAdminBoundaryPositions = (lines) => {
   const positions = [];
@@ -403,6 +472,22 @@ export function CoverageThreeGlobe({
     renderer.setPixelRatio(quality === "reduced" ? 1 : Math.min(window.devicePixelRatio || 1, coarsePointer ? 1.5 : 2));
     container.appendChild(renderer.domElement);
 
+    let globeSurface;
+    try {
+      globeSurface = buildGlobeSurfaceTexture(renderer, quality);
+    } catch {
+      renderer.dispose();
+      renderer.forceContextLoss?.();
+      renderer.domElement.remove();
+      callbacksRef.current.onUnavailable?.("surface-error");
+      return undefined;
+    }
+
+    container.dataset.coverageSurfaceCountries = String(globeSurface.countryCount);
+    container.dataset.coverageSurfaceDetail = "coarse";
+    container.dataset.coverageSurfaceStyle = coverageGlobeSurface.style;
+    container.dataset.coverageSurfaceTexture = `${globeSurface.width}x${globeSurface.height}`;
+
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 60);
     camera.position.set(0, 0, 7.2);
@@ -413,21 +498,17 @@ export function CoverageThreeGlobe({
 
     const ocean = new THREE.Mesh(
       new THREE.SphereGeometry(GLOBE_RADIUS, quality === "reduced" ? 64 : 96, quality === "reduced" ? 40 : 64),
-      new THREE.MeshPhongMaterial({
-        color: 0x061833,
-        emissive: 0x031225,
-        shininess: 18,
-        specular: 0x34506f,
-      }),
+      createGlobeSurfaceMaterial(globeSurface.texture),
     );
+    ocean.renderOrder = 0;
     globeGroup.add(ocean);
 
     if (quality !== "reduced") {
       const atmosphere = new THREE.Mesh(
         new THREE.SphereGeometry(GLOBE_RADIUS + 0.055, 96, 64),
         new THREE.MeshBasicMaterial({
-          color: 0xba9b4a,
-          opacity: 0.07,
+          color: 0x78a4c4,
+          opacity: 0.075,
           side: THREE.BackSide,
           transparent: true,
         }),
@@ -437,13 +518,13 @@ export function CoverageThreeGlobe({
 
     const graticule = new THREE.LineSegments(
       new THREE.BufferGeometry().setAttribute("position", new THREE.BufferAttribute(buildGraticulePositions(), 3)),
-      new THREE.LineBasicMaterial({ color: 0xfdfcfd, opacity: 0.14, transparent: true }),
+      new THREE.LineBasicMaterial({ color: 0xb9ccdc, depthWrite: false, opacity: 0.1, transparent: true }),
     );
     globeGroup.add(graticule);
 
     const landBoundaries = new THREE.LineSegments(
       new THREE.BufferGeometry().setAttribute("position", new THREE.BufferAttribute(buildLandBoundaryPositions(), 3)),
-      new THREE.LineBasicMaterial({ color: 0xfdfcfd, opacity: LAND_BOUNDARY_OPACITY, transparent: true }),
+      new THREE.LineBasicMaterial({ color: 0xd9e6f0, depthWrite: false, opacity: LAND_BOUNDARY_OPACITY, transparent: true }),
     );
     globeGroup.add(landBoundaries);
 
@@ -453,11 +534,11 @@ export function CoverageThreeGlobe({
     const markerGroup = new THREE.Group();
     globeGroup.add(markerGroup);
 
-    scene.add(new THREE.AmbientLight(0xfdfcfd, 0.82));
-    const keyLight = new THREE.DirectionalLight(0xfdfcfd, 1.45);
+    scene.add(new THREE.AmbientLight(0xeaf3fa, 0.78));
+    const keyLight = new THREE.DirectionalLight(0xf4f8fb, 0.48);
     keyLight.position.set(2.4, 3, 5.5);
     scene.add(keyLight);
-    const rimLight = new THREE.DirectionalLight(0xba9b4a, 0.82);
+    const rimLight = new THREE.DirectionalLight(0x6f96b4, 0.28);
     rimLight.position.set(-4.5, -1.8, 2.4);
     scene.add(rimLight);
 
@@ -696,6 +777,11 @@ export function CoverageThreeGlobe({
         currentState.landBoundaries.material.opacity = LAND_BOUNDARY_OPACITY * (1 - fade);
         worldOutlineLine.visible = fade > 0;
         worldOutlineLine.material.opacity = LAND_BOUNDARY_OPACITY * fade;
+      }
+      const detailedSurface = currentState.detailedSurface;
+      if (detailedSurface) {
+        detailedSurface.visible = fade > 0;
+        detailedSurface.material.opacity = fade;
       }
 
       const boundaryLine = currentState?.adminBoundaryLine;
@@ -1151,6 +1237,8 @@ export function CoverageThreeGlobe({
       adminBoundaryLoadScope: "",
       adminBoundaryScope: "",
       camera,
+      detailedSurface: null,
+      detailedSurfaceTexture: null,
       frame: 0,
       globeGroup,
       initialQuaternion: globeGroup.quaternion.clone(),
@@ -1186,6 +1274,8 @@ export function CoverageThreeGlobe({
       renderer.domElement.removeEventListener("wheel", onWheel);
       renderer.domElement.removeEventListener("webglcontextlost", onContextLost);
       disposeObject(scene);
+      state?.detailedSurfaceTexture?.dispose();
+      globeSurface.texture.dispose();
       renderer.dispose();
       renderer.forceContextLoss?.();
       renderer.domElement.remove();
@@ -1198,6 +1288,11 @@ export function CoverageThreeGlobe({
       delete container.dataset.coverageMomentum;
       delete container.dataset.coverageOrientationStep;
       delete container.dataset.coverageRotationSensitivity;
+      delete container.dataset.coverageSurfaceCountries;
+      delete container.dataset.coverageSurfaceDetail;
+      delete container.dataset.coverageSurfaceDetailCountries;
+      delete container.dataset.coverageSurfaceStyle;
+      delete container.dataset.coverageSurfaceTexture;
       delete container.dataset.coverageZoomTarget;
       sceneRef.current = null;
     };
@@ -1300,18 +1395,42 @@ export function CoverageThreeGlobe({
     let active = true;
     container.dataset.coverageAdminBoundaries = "loading";
     container.dataset.coverageAdminBoundaryScope = boundaryScopeKey;
+    if (!state.detailedSurface) container.dataset.coverageSurfaceDetail = "loading";
     delete container.dataset.coverageAdminBoundaryRegions;
-    loadCoverageAdminBoundaries()
-      .then((data) => {
+    Promise.all([loadCoverageAdminBoundaries(), loadDetailedWorldAtlas()])
+      .then(([data, detailedAtlas]) => {
         if (!active || sceneRef.current !== state || state.adminBoundaryLoadScope !== boundaryScopeKey) return;
 
+        if (!state.detailedSurface) {
+          const detailedSurfaceData = buildGlobeSurfaceTexture(state.renderer, quality, detailedAtlas);
+          const detailedSurface = new THREE.Mesh(
+            new THREE.SphereGeometry(
+              GLOBE_RADIUS + coverageGlobeSurface.lineLifts.detailedSurface,
+              quality === "reduced" ? 64 : 96,
+              quality === "reduced" ? 40 : 64,
+            ),
+            createGlobeSurfaceMaterial(detailedSurfaceData.texture, {
+              depthWrite: false,
+              opacity: 0,
+              transparent: true,
+            }),
+          );
+          detailedSurface.renderOrder = 1;
+          detailedSurface.visible = false;
+          state.globeGroup.add(detailedSurface);
+          state.detailedSurface = detailedSurface;
+          state.detailedSurfaceTexture = detailedSurfaceData.texture;
+          container.dataset.coverageSurfaceDetail = "aligned";
+          container.dataset.coverageSurfaceDetailCountries = String(detailedSurfaceData.countryCount);
+        }
+
         if (!state.worldOutlineLine) {
-          const detailedWorldPositions = buildAdminBoundaryPositions(decodedCoverageWorldOutlineLines(data));
+          const detailedWorldPositions = buildLandBoundaryPositions(detailedAtlas);
           if (detailedWorldPositions.length) {
             const worldOutlineLine = new THREE.LineSegments(
               new THREE.BufferGeometry().setAttribute("position", new THREE.BufferAttribute(detailedWorldPositions, 3)),
               new THREE.LineBasicMaterial({
-                color: 0xfdfcfd,
+                color: 0xd9e6f0,
                 depthWrite: false,
                 opacity: 0,
                 toneMapped: false,
@@ -1323,7 +1442,7 @@ export function CoverageThreeGlobe({
             state.globeGroup.add(worldOutlineLine);
             state.worldOutlineLine = worldOutlineLine;
             container.dataset.coverageWorldBoundaries = "aligned";
-            container.dataset.coverageWorldOutlineCountries = String(Object.keys(data.worldOutlines || {}).length);
+            container.dataset.coverageWorldOutlineCountries = String(atlasCountries(detailedAtlas).length);
           }
         }
 
@@ -1341,7 +1460,7 @@ export function CoverageThreeGlobe({
         const boundaryLine = new THREE.LineSegments(
           new THREE.BufferGeometry().setAttribute("position", new THREE.BufferAttribute(positions, 3)),
           new THREE.LineBasicMaterial({
-            color: 0xe8d695,
+            color: 0xb9d1e2,
             depthWrite: false,
             opacity: 0,
             toneMapped: false,
@@ -1367,6 +1486,7 @@ export function CoverageThreeGlobe({
         if (active && containerRef.current === container) {
           state.adminBoundaryLoadScope = "";
           container.dataset.coverageAdminBoundaries = "error";
+          if (!state.detailedSurface) container.dataset.coverageSurfaceDetail = "error";
         }
       });
 

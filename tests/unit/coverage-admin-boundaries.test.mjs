@@ -14,7 +14,8 @@ import {
 test("regional boundaries remain hidden at minimum zoom and fade in progressively", () => {
   assert.equal(coverageAdminBoundaryOpacity(1), 0);
   assert.equal(coverageAdminBoundaryOpacity(10), 0);
-  assert.ok(coverageAdminBoundaryOpacity(11.5) > 0);
+  assert.ok(coverageAdminBoundaryOpacity(10.375) > 0);
+  assert.equal(coverageAdminBoundaryOpacity(10.75), 1);
   assert.equal(coverageAdminBoundaryOpacity(13), 1);
   assert.equal(coverageAdminBoundaryOpacity(8, true), 0);
   assert.ok(coverageAdminBoundaryOpacity(10, true) > 0);

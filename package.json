@@ -17,7 +17,7 @@
     "smoke": "node scripts/smoke.mjs",
     "test:maps": "npm run test:maps:unit && npm run test:maps:e2e",
     "test:maps:e2e": "playwright test",
-    "test:maps:unit": "node --experimental-default-type=module --test tests/unit/coverage-globe-gesture.test.mjs tests/unit/coverage-coordinate-safety.test.mjs tests/unit/coverage-marker-sizing.test.mjs tests/unit/coverage-admin-boundaries.test.mjs",
+    "test:maps:unit": "node --experimental-default-type=module --test tests/unit/coverage-globe-gesture.test.mjs tests/unit/coverage-globe-surface.test.mjs tests/unit/coverage-coordinate-safety.test.mjs tests/unit/coverage-marker-sizing.test.mjs tests/unit/coverage-admin-boundaries.test.mjs",
     "seo:submit-indexnow": "node scripts/submit-indexnow.mjs",
     "verify": "npm run lint && npm run build && npm run smoke && npm audit --audit-level=moderate"
   },
