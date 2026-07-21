@@ -80,12 +80,12 @@ export const getUpcomingEvents = (filters = {}) =>
     ...filters,
   });
 
-export async function getAllEvents(filters = {}, { maxPages = 25, pageSize = 100 } = {}) {
+export async function getAllEvents(filters = {}, { pageSize = 100 } = {}) {
   const events = [];
   let page = 1;
   let lastMeta = null;
 
-  while (page <= maxPages) {
+  while (true) {
     const result = await getEvents({
       ...filters,
       limit: pageSize,
@@ -100,9 +100,10 @@ export async function getAllEvents(filters = {}, { maxPages = 25, pageSize = 100
       };
     }
 
-    if (Array.isArray(result.data)) events.push(...result.data);
+    const pageEvents = Array.isArray(result.data) ? result.data : [];
+    events.push(...pageEvents);
     lastMeta = result.meta;
-    if (!result.meta?.hasNext) break;
+    if (!result.meta?.hasNext || pageEvents.length === 0) break;
     page += 1;
   }
 
@@ -113,7 +114,7 @@ export async function getAllEvents(filters = {}, { maxPages = 25, pageSize = 100
       ...(lastMeta || {}),
       count: events.length,
       fetched: events.length,
-      truncated: Boolean(lastMeta?.hasNext && page > maxPages),
+      truncated: Boolean(lastMeta?.hasNext),
     },
     notFound: false,
     status: 200,
