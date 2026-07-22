@@ -11,11 +11,11 @@ import {
   allowedAnalyticsEvents,
   analyticsConfigIsValid,
   normalizeAnalyticsPayload,
-  parseAnalyticsConsent,
   pathWithoutQuery,
   sanitizeAnalyticsUrl,
   sanitizePostHogProperties,
   sanitizeReplayNetworkRequest,
+  resolveAnalyticsConsent,
   serializeAnalyticsConsent,
   trackingRouteTypeFor,
 } from "@/lib/tracking-core";
@@ -43,9 +43,9 @@ export const readAnalyticsConsent = () => {
   const currentWindow = browserWindow();
   if (!currentWindow) return "unknown";
   try {
-    return parseAnalyticsConsent(currentWindow.localStorage.getItem(ANALYTICS_CONSENT_STORAGE_KEY));
+    return resolveAnalyticsConsent(currentWindow.localStorage.getItem(ANALYTICS_CONSENT_STORAGE_KEY));
   } catch {
-    return "unknown";
+    return "granted";
   }
 };
 
@@ -135,8 +135,8 @@ export const initAnalytics = () => {
       respect_dnt: true,
       cross_subdomain_cookie: false,
       persistence: "localStorage+cookie",
-      opt_out_capturing_by_default: true,
-      opt_out_persistence_by_default: true,
+      opt_out_capturing_by_default: false,
+      opt_out_persistence_by_default: false,
       disable_surveys: true,
       enable_recording_console_log: false,
       session_recording: {
@@ -156,8 +156,11 @@ export const initAnalytics = () => {
       },
       loaded(client) {
         initialized = true;
-        if (readAnalyticsConsent() === "granted") client.opt_in_capturing({ captureEventName: false });
-        else client.opt_out_capturing();
+        if (readAnalyticsConsent() === "denied") client.opt_out_capturing();
+        else {
+          client.opt_in_capturing({ captureEventName: false });
+          client.startSessionRecording();
+        }
         dispatchReady();
       },
     });

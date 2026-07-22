@@ -125,9 +125,9 @@ To notify IndexNow-compatible search engines after the key file is live:
 npm run seo:submit-indexnow
 ```
 
-## Consent-First Analytics
+## Privacy-Protected Analytics
 
-The public site uses PostHog Cloud EU only when `NEXT_PUBLIC_ANALYTICS_ENABLED=true`, a project token is configured, and the visitor explicitly accepts analytics. PostHog starts opted out, respects Do Not Track, and receives data through the first-party `/ingest` reverse proxy.
+The public site uses PostHog Cloud EU when `NEXT_PUBLIC_ANALYTICS_ENABLED=true` and a project token is configured. Analytics is active by default, respects Do Not Track and stored visitor opt-outs, and receives data through the first-party `/ingest` reverse proxy. Visitors can disable or re-enable it from the Analytics controls on the Terms page.
 
 Captured signals are limited to query-free page paths, safe UTM values, curated tournament/news/map/collaboration events, strongly masked session replay, performance signals, and optional anonymous multiple-choice survey responses. Search text, names, email addresses, form values, page text, full outbound URLs, request bodies, request headers, and console logs are excluded.
 

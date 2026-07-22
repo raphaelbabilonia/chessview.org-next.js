@@ -45,18 +45,12 @@ const installPostHogStub = async (page, eventBodies, { doNotTrack = false } = {}
 
 const pageviewCount = (bodies) => bodies.filter((body) => body.includes("%24pageview") || body.includes("$pageview")).length;
 
-test("requires consent, persists the choice, and stops after withdrawal", async ({ page }) => {
+test("captures by default, exposes Terms controls, and stops after opt-out", async ({ page }) => {
   const eventBodies = [];
   await installPostHogStub(page, eventBodies);
   await page.goto("/en?email=private@example.com&utm_source=analytics-test");
 
-  const consent = page.getByRole("dialog", { name: "Help us improve ChessView" });
-  await expect(consent).toBeVisible();
-  await page.waitForTimeout(300);
-  expect(pageviewCount(eventBodies)).toBe(0);
-
-  await consent.getByRole("button", { name: "Accept analytics" }).click();
-  await expect(consent).toBeHidden();
+  await expect(page.getByRole("dialog", { name: "Help us improve ChessView" })).toHaveCount(0);
   await expect.poll(() => pageviewCount(eventBodies)).toBe(1);
   expect(eventBodies.join(" ")).not.toContain("private@example.com");
 
@@ -70,7 +64,9 @@ test("requires consent, persists the choice, and stops after withdrawal", async 
   await expect.poll(() => pageviewCount(eventBodies)).toBe(3);
   expect(eventBodies.slice(beforeBusinessEvent).join(" ")).not.toContain("Southern Classical Open");
 
-  const settingsTrigger = page.getByRole("button", { name: "Cookie settings" });
+  await page.goto("/en/terms");
+  await expect.poll(() => pageviewCount(eventBodies)).toBe(4);
+  const settingsTrigger = page.getByRole("button", { name: "Open analytics settings" });
   await settingsTrigger.focus();
   await settingsTrigger.press("Enter");
   const settings = page.getByRole("dialog", { name: "Analytics settings" });
@@ -93,39 +89,45 @@ test("requires consent, persists the choice, and stops after withdrawal", async 
 
   await page.goto("/en/news");
   await page.waitForTimeout(300);
-  expect(pageviewCount(eventBodies)).toBe(3);
+  expect(pageviewCount(eventBodies)).toBe(4);
 });
 
-test("rejects analytics without sending a pageview", async ({ page }) => {
-  const eventBodies = [];
-  await installPostHogStub(page, eventBodies);
-  await page.goto("/it");
-
-  const consent = page.getByRole("dialog", { name: "Aiutaci a migliorare ChessView" });
-  await consent.getByRole("button", { name: "Rifiuta statistiche" }).click();
-  await page.waitForTimeout(300);
-  expect(pageviewCount(eventBodies)).toBe(0);
-});
-
-test("respects Do Not Track even if analytics is accepted", async ({ page }) => {
-  const eventBodies = [];
-  await installPostHogStub(page, eventBodies, { doNotTrack: true });
-  await page.goto("/en");
-
-  const consent = page.getByRole("dialog", { name: "Help us improve ChessView" });
-  await consent.getByRole("button", { name: "Accept analytics" }).click();
-  await page.waitForTimeout(300);
-  expect(pageviewCount(eventBodies)).toBe(0);
-});
-
-test("localizes consent and shows the anonymous survey only when eligible", async ({ page }) => {
+test("preserves a stored rejection and allows re-enabling from Terms", async ({ page }) => {
   const eventBodies = [];
   await installPostHogStub(page, eventBodies);
   await page.addInitScript(() => {
     localStorage.setItem(
       "chessview_analytics_consent",
-      JSON.stringify({ version: 1, status: "granted", updatedAt: new Date().toISOString() })
+      JSON.stringify({ version: 1, status: "denied", updatedAt: new Date().toISOString() })
     );
+  });
+  await page.goto("/it/terms");
+
+  await page.waitForTimeout(300);
+  expect(pageviewCount(eventBodies)).toBe(0);
+  await expect(page.getByRole("dialog", { name: "Aiutaci a migliorare ChessView" })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Apri impostazioni statistiche" }).click();
+  const settings = page.getByRole("dialog", { name: "Impostazioni statistiche" });
+  await expect(settings).toContainText("Statistiche rifiutate");
+  await settings.getByRole("button", { name: "Accetta statistiche" }).click();
+  await expect.poll(() => pageviewCount(eventBodies)).toBe(1);
+});
+
+test("respects Do Not Track with default-on analytics", async ({ page }) => {
+  const eventBodies = [];
+  await installPostHogStub(page, eventBodies, { doNotTrack: true });
+  await page.goto("/en");
+
+  await page.waitForTimeout(300);
+  await expect(page.getByRole("dialog", { name: "Help us improve ChessView" })).toHaveCount(0);
+  expect(pageviewCount(eventBodies)).toBe(0);
+});
+
+test("localizes and shows the anonymous survey only when eligible", async ({ page }) => {
+  const eventBodies = [];
+  await installPostHogStub(page, eventBodies);
+  await page.addInitScript(() => {
     sessionStorage.setItem("chessview_analytics_pageviews", "2");
     sessionStorage.setItem("chessview_analytics_session_started", new Date(Date.now() - 31_000).toISOString());
   });

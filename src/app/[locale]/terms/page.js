@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
+import { AnalyticsSettingsButton } from "@/components/AnalyticsConsentManager";
 import { isLocale } from "@/i18n/config";
+import { getAnalyticsCopy } from "@/i18n/analytics";
 import { pageSeoMetadata } from "@/lib/seo";
 
-const updatedAt = "2026-07-05";
+const updatedAt = "2026-07-22";
 
 const sections = [
   {
@@ -62,6 +64,7 @@ export async function generateMetadata({ params }) {
 export default async function TermsPage({ params }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
+  const analyticsCopy = getAnalyticsCopy(locale);
 
   return (
     <main className="page policy-page">
@@ -76,6 +79,11 @@ export default async function TermsPage({ params }) {
           These terms are a baseline for the official ChessView hosted service and should be reviewed by a
           qualified lawyer before public commercial launch.
         </p>
+        <article className="ph-no-capture" data-analytics-private>
+          <h2>{analyticsCopy.terms.title}</h2>
+          <p>{analyticsCopy.terms.body}</p>
+          <AnalyticsSettingsButton>{analyticsCopy.terms.open}</AnalyticsSettingsButton>
+        </article>
         {sections.map((section) => (
           <article key={section.title}>
             <h2>{section.title}</h2>

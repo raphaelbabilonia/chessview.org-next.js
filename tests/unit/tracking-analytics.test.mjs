@@ -4,6 +4,7 @@ import {
   analyticsConfigIsValid,
   normalizeAnalyticsPayload,
   parseAnalyticsConsent,
+  resolveAnalyticsConsent,
   sanitizeAnalyticsUrl,
   sanitizePostHogProperties,
   sanitizeReplayNetworkRequest,
@@ -18,6 +19,13 @@ describe("analytics consent", () => {
     assert.equal(parseAnalyticsConsent(serializeAnalyticsConsent("denied")), "denied");
     assert.equal(parseAnalyticsConsent('{"version":0,"status":"granted"}'), "unknown");
     assert.equal(parseAnalyticsConsent("invalid"), "unknown");
+  });
+
+  it("defaults to analytics while preserving an explicit rejection", () => {
+    assert.equal(resolveAnalyticsConsent(null), "granted");
+    assert.equal(resolveAnalyticsConsent("invalid"), "granted");
+    assert.equal(resolveAnalyticsConsent(serializeAnalyticsConsent("granted")), "granted");
+    assert.equal(resolveAnalyticsConsent(serializeAnalyticsConsent("denied")), "denied");
   });
 
   it("requires both the feature flag and a project token", () => {

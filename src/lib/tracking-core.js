@@ -271,6 +271,9 @@ export const parseAnalyticsConsent = (raw) => {
   }
 };
 
+export const resolveAnalyticsConsent = (raw) =>
+  parseAnalyticsConsent(raw) === "denied" ? "denied" : "granted";
+
 export const serializeAnalyticsConsent = (status, updatedAt = new Date().toISOString()) =>
   JSON.stringify({ version: ANALYTICS_CONSENT_VERSION, status, updatedAt });
 

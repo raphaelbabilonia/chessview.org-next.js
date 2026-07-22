@@ -69,7 +69,7 @@ export default async function RootLayout({ children }) {
         <Suspense fallback={null}>
           <TrackingProvider />
         </Suspense>
-        <AnalyticsConsentManager copy={analyticsCopy} locale={locale} />
+        <AnalyticsConsentManager copy={analyticsCopy} />
         {children}
       </body>
     </html>

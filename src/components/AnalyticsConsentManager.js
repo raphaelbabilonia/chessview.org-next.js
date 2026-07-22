@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   analyticsIsConfigured,
@@ -151,7 +150,7 @@ function ResearchSurvey({ consent, copy }) {
   );
 }
 
-export function AnalyticsConsentManager({ copy, locale }) {
+export function AnalyticsConsentManager({ copy }) {
   const [status, setStatus] = useState("loading");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsDialogRef = useRef(null);
@@ -213,25 +212,6 @@ export function AnalyticsConsentManager({ copy, locale }) {
 
   return (
     <>
-      {status === "unknown" && (
-        <section className="analytics-consent ph-no-capture" role="dialog" aria-labelledby="analytics-consent-title">
-          <div>
-            <p className="eyebrow">{copy.consent.eyebrow}</p>
-            <h2 id="analytics-consent-title">{copy.consent.title}</h2>
-            <p>{copy.consent.body}</p>
-            <Link href={`/${locale}/privacy`}>{copy.consent.privacy}</Link>
-          </div>
-          <div className="analytics-actions">
-            <button className="button analytics-choice" type="button" onClick={() => choose("granted")}>
-              {copy.consent.accept}
-            </button>
-            <button className="button analytics-choice" type="button" onClick={() => choose("denied")}>
-              {copy.consent.reject}
-            </button>
-          </div>
-        </section>
-      )}
-
       {settingsOpen && (
         <div className="analytics-settings-backdrop ph-no-capture" role="presentation">
           <section
@@ -263,11 +243,11 @@ export function AnalyticsConsentManager({ copy, locale }) {
   );
 }
 
-export function CookieSettingsButton({ children }) {
+export function AnalyticsSettingsButton({ children, className = "button" }) {
   if (!analyticsIsConfigured()) return null;
   return (
     <button
-      className="footer-link-button"
+      className={className}
       type="button"
       onClick={(event) => window.dispatchEvent(new CustomEvent(ANALYTICS_SETTINGS_EVENT, { detail: { trigger: event.currentTarget } }))}
     >

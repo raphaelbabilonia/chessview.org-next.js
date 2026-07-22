@@ -14,7 +14,7 @@ Do not place production analytics exports, PostHog personal API keys, account cr
 - Session replay: total privacy masking, console capture off, canvas capture off, network capture off, headers and bodies off
 - Replay retention: 30 days
 - Ingestion: first-party `/ingest` proxy to PostHog EU
-- Capture: opt-out by default and enabled only after explicit consent
+- Capture: active by default, disabled for Do Not Track or a stored visitor opt-out
 
 The private, aggregate-only legacy snapshot is stored outside the repositories. Raw legacy events, visitor hashes, and session hashes were not migrated.
 
@@ -61,10 +61,10 @@ Populate dashboard insights after production events establish the event schema.
 
 ## First 14 days
 
-- Confirm no events before consent or after rejection/withdrawal.
+- Confirm first visits capture one pageview by default and no events occur after opt-out.
 - Confirm exactly one `$pageview` per navigation and no legacy tracking API requests.
 - Check that Live Events and replay contain no names, emails, search terms, full outbound URLs, arbitrary query parameters, form content, console logs, or network payloads.
-- Review consent rate, bot rate, event volume, replay volume, duplicate rate, and survey frequency.
+- Review opt-out rate, bot rate, event volume, replay volume, duplicate rate, and survey frequency.
 - Keep billing disabled until real usage is understood.
 
 Legal review of the published EN/IT/ES disclosures remains an organizational responsibility and should be documented outside this repository.

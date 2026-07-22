@@ -8,11 +8,11 @@ This policy is an implementation baseline for the official ChessView hosted serv
 
 ChessView may process account, organizer, tournament, registration, public contribution, support, security, and service-operation information when those features are used. Some tournament, player, pairing, standings, and result information may be displayed publicly when submitted by organizers or collected from public sources. Organizers are responsible for the rights and legal basis required to submit personal data, especially information about minors.
 
-## Optional Website Analytics
+## Website Analytics
 
-ChessView does not activate website analytics until a visitor explicitly accepts it. Rejecting or withdrawing analytics consent does not limit access to the site.
+ChessView activates website analytics by default unless a visitor has enabled Do Not Track or previously disabled analytics. Disabling analytics does not limit access to the site.
 
-After consent, ChessView uses PostHog Cloud EU to process:
+While analytics is active, ChessView uses PostHog Cloud EU to process:
 
 - Query-free page paths and safe UTM campaign values.
 - Coarse device, browser, referrer, and location information.
@@ -24,9 +24,9 @@ ChessView configures its client not to send names, email addresses, form values,
 
 All text and inputs are masked in session replay. Forms, elements marked private, and any future authenticated surfaces are excluded from recording.
 
-## Purpose and Legal Basis
+## Purpose and Choice
 
-Analytics is used to improve tournament discovery, understand organizer and contributor interest, diagnose usability and performance problems, and evaluate content. The legal basis for this analytics processing is consent.
+Analytics is used to improve tournament discovery, understand organizer and contributor interest, diagnose usability and performance problems, and evaluate content. Visitors can disable it at any time.
 
 ## Provider, Region, and Retention
 
@@ -34,13 +34,13 @@ PostHog acts as an analytics service provider. ChessView uses PostHog's EU cloud
 
 ## Cookies and Local Storage
 
-A technical local-storage record remembers whether analytics was accepted or rejected. If analytics is accepted, PostHog may use first-party cookies or local storage to maintain an anonymous visitor and session identifier. Rejecting or withdrawing consent stops capture and clears PostHog browser persistence.
+A technical local-storage record remembers when analytics is disabled. While analytics is active, PostHog may use first-party cookies or local storage to maintain an anonymous visitor and session identifier. Disabling analytics stops capture and clears PostHog browser persistence.
 
-Visitors can reopen **Cookie settings** from the footer at any time.
+Visitors can open **Analytics controls** on the Terms page at any time to disable or re-enable analytics. ChessView also respects Do Not Track.
 
 ## Anonymous Research Survey
 
-Consenting visitors may see an optional survey asking only about their chess role and visit purpose. It requests no name, contact details, or free text and appears at most once every 90 days.
+Visitors with analytics active may see an optional survey asking only about their chess role and visit purpose. It requests no name, contact details, or free text and appears at most once every 90 days.
 
 ## Rights and Contact
 
