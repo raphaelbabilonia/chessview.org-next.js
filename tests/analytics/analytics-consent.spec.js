@@ -77,6 +77,7 @@ test("captures by default, exposes Terms controls, and stops after opt-out", asy
   await expect(settingsTrigger).toBeFocused();
   await settingsTrigger.press("Enter");
   await settings.getByRole("button", { name: "Reject analytics" }).click();
+  await page.waitForTimeout(300);
 
   const persistence = await page.evaluate(() => ({
     cookies: document.cookie,

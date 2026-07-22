@@ -136,7 +136,7 @@ export const initAnalytics = () => {
       cross_subdomain_cookie: false,
       persistence: "localStorage+cookie",
       opt_out_capturing_by_default: false,
-      opt_out_persistence_by_default: false,
+      opt_out_persistence_by_default: true,
       disable_surveys: true,
       enable_recording_console_log: false,
       session_recording: {
@@ -186,8 +186,8 @@ export const setAnalyticsConsent = (status) => {
       posthog.startSessionRecording();
     } else {
       posthog.stopSessionRecording();
-      posthog.opt_out_capturing();
       posthog.reset(true);
+      posthog.opt_out_capturing();
       clearPostHogPersistence();
       lastTrackedPath = "";
     }
