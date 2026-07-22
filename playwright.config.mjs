@@ -35,7 +35,7 @@ export default defineConfig({
         API_BASE_URL: apiUrl,
         NEXT_PUBLIC_COVERAGE_MAP_PERFORMANCE_PROBE: "false",
         NEXT_PUBLIC_SITE_URL: siteUrl,
-        NEXT_PUBLIC_TRACKING_ENABLED: "false",
+        NEXT_PUBLIC_ANALYTICS_ENABLED: "false",
       },
       reuseExistingServer: !process.env.CI,
       timeout: 120000,

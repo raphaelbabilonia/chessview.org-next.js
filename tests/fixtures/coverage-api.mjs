@@ -4,7 +4,7 @@ const port = Number(process.env.TEST_API_PORT || 5017);
 const futureDate = (days) => new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
 const events = [
   {
-    _id: "fixture-south-primary",
+    _id: "id-fixture-south-primary",
     city: "Puerto Madryn",
     coordinates: [-65.0385, -42.7692],
     country: "Argentina",
@@ -18,7 +18,7 @@ const events = [
     title: "Southern Classical Open",
   },
   {
-    _id: "fixture-south-rapid",
+    _id: "id-fixture-south-rapid",
     city: "Puerto Madryn",
     coordinates: [-65.0385, -42.7692],
     country: "Argentina",
@@ -32,7 +32,7 @@ const events = [
     title: "Southern Rapid Cup",
   },
   {
-    _id: "fixture-europe",
+    _id: "id-fixture-europe",
     city: "Lisbon",
     coordinates: [-9.1393, 38.7223],
     country: "Portugal",
@@ -46,7 +46,7 @@ const events = [
     title: "Lisbon Fixture Masters",
   },
   {
-    _id: "fixture-asia",
+    _id: "id-fixture-asia",
     city: "Tokyo",
     coordinates: [139.6917, 35.6895],
     country: "Japan",
@@ -60,7 +60,7 @@ const events = [
     title: "Tokyo Fixture Blitz",
   },
   {
-    _id: "fixture-alias",
+    _id: "id-fixture-alias",
     city: "Sarajevo",
     coordinates: [18.4131, 43.8563],
     country: "Bosnia and Herzegovina",
@@ -74,7 +74,7 @@ const events = [
     title: "Sarajevo Fixture Open",
   },
   {
-    _id: "fixture-unmapped-spain",
+    _id: "id-fixture-unmapped-spain",
     city: "Venue to be confirmed",
     country: "Spain",
     endDate: futureDate(25),
@@ -85,6 +85,39 @@ const events = [
     status: "published",
     timeControl: "classical",
     title: "Unmapped Spain Safety Fixture",
+  },
+];
+
+const newsItems = [
+  {
+    id: "fixture-news-chessbase",
+    category: "Tournament news",
+    imageUrl: "https://images.example.org/chessbase-fixture.jpg",
+    publishedAt: futureDate(-1),
+    sourceName: "ChessBase",
+    summary: "A source-first fixture article used by local smoke tests.",
+    title: "International tournament calendar update",
+    url: "https://www.chessbase.com/newsroom/fixture-calendar-update",
+  },
+  {
+    id: "fixture-news-chesscom",
+    category: "Chess news",
+    imageUrl: "https://images.example.org/chesscom-fixture.jpg",
+    publishedAt: futureDate(-2),
+    sourceName: "Chess.com",
+    summary: "A second source-first fixture article.",
+    title: "Upcoming chess events around the world",
+    url: "https://www.chess.com/news/view/fixture-events",
+  },
+  {
+    id: "fixture-news-fide",
+    category: "Federation news",
+    imageUrl: "https://images.example.org/fide-fixture.jpg",
+    publishedAt: futureDate(-3),
+    sourceName: "FIDE",
+    summary: "A third source-first fixture article.",
+    title: "Federation calendar highlights",
+    url: "https://www.fide.com/news/fixture-highlights",
   },
 ];
 
@@ -113,6 +146,34 @@ const server = http.createServer((request, response) => {
         page: 1,
         pages: 1,
       },
+    });
+    return;
+  }
+
+  if (url.pathname === "/api/news") {
+    const limit = Math.max(1, Math.min(Number(url.searchParams.get("limit")) || newsItems.length, newsItems.length));
+    json(response, 200, {
+      data: newsItems.slice(0, limit),
+      meta: {
+        count: limit,
+        total: newsItems.length,
+        sources: [
+          { count: 1, name: "ChessBase" },
+          { count: 1, name: "Chess.com" },
+          { count: 1, name: "FIDE" },
+        ],
+      },
+    });
+    return;
+  }
+
+  if (url.pathname === "/api/news/sources") {
+    json(response, 200, {
+      data: [
+        { count: 1, name: "ChessBase" },
+        { count: 1, name: "Chess.com" },
+        { count: 1, name: "FIDE" },
+      ],
     });
     return;
   }

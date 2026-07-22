@@ -1,6 +1,8 @@
 import { ThemeScript } from "@/components/ThemeScript";
+import { AnalyticsConsentManager } from "@/components/AnalyticsConsentManager";
 import { TrackingProvider } from "@/components/TrackingProvider";
 import { defaultLocale, isLocale } from "@/i18n/config";
+import { getAnalyticsCopy } from "@/i18n/analytics";
 import { crawlerRobots, defaultOpenGraphImage, searchEngineVerification } from "@/lib/seo";
 import { siteConfig } from "@/lib/site";
 import { headers } from "next/headers";
@@ -58,6 +60,7 @@ export default async function RootLayout({ children }) {
   const requestHeaders = await headers();
   const requestLocale = requestHeaders.get("x-chessview-locale");
   const locale = isLocale(requestLocale) ? requestLocale : defaultLocale;
+  const analyticsCopy = getAnalyticsCopy(locale);
 
   return (
     <html lang={locale} suppressHydrationWarning>
@@ -66,6 +69,7 @@ export default async function RootLayout({ children }) {
         <Suspense fallback={null}>
           <TrackingProvider />
         </Suspense>
+        <AnalyticsConsentManager copy={analyticsCopy} locale={locale} />
         {children}
       </body>
     </html>

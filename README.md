@@ -86,8 +86,9 @@ In development, API fetches use `cache: "no-store"` so scraper imports appear im
 API_BASE_URL=http://127.0.0.1:5000/api
 NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:5000/api
 NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3001
-NEXT_PUBLIC_TRACKING_ENABLED=false
-NEXT_PUBLIC_TRACKING_API_URL=http://127.0.0.1:5000/api/tracking/events
+NEXT_PUBLIC_ANALYTICS_ENABLED=false
+NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN=
+NEXT_PUBLIC_POSTHOG_HOST=/ingest
 GOOGLE_SITE_VERIFICATION=
 BING_SITE_VERIFICATION=
 YANDEX_SITE_VERIFICATION=
@@ -98,7 +99,7 @@ INDEXNOW_KEY=6f4e66a3c77b46a1aa2f508ef4bb191f
 
 `API_BASE_URL` is server-only. Do not put secrets in variables prefixed with `NEXT_PUBLIC_`; those are exposed to browsers.
 
-`NEXT_PUBLIC_TRACKING_ENABLED` and `NEXT_PUBLIC_TRACKING_API_URL` are public browser settings. Keep tracking disabled locally unless you intentionally want to send development events to your local API.
+`NEXT_PUBLIC_ANALYTICS_ENABLED`, `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN`, and `NEXT_PUBLIC_POSTHOG_HOST` are public browser settings. Keep analytics disabled locally. The project token is designed to be public, but PostHog account credentials and personal API keys must never be committed.
 
 `GOOGLE_SITE_VERIFICATION`, `BING_SITE_VERIFICATION`, `YANDEX_SITE_VERIFICATION`, `YAHOO_SITE_VERIFICATION`, and `PINTEREST_SITE_VERIFICATION` are optional public verification tokens rendered as metadata for webmaster/search tools. `INDEXNOW_KEY` is a public IndexNow ownership key and is served at `/indexnow-key.txt`.
 
@@ -124,19 +125,13 @@ To notify IndexNow-compatible search engines after the key file is live:
 npm run seo:submit-indexnow
 ```
 
-## First-Party Tracking
+## Consent-First Analytics
 
-The public site sends first-party analytics events directly to the ChessView API when `NEXT_PUBLIC_TRACKING_ENABLED=true`.
+The public site uses PostHog Cloud EU only when `NEXT_PUBLIC_ANALYTICS_ENABLED=true`, a project token is configured, and the visitor explicitly accepts analytics. PostHog starts opted out, respects Do Not Track, and receives data through the first-party `/ingest` reverse proxy.
 
-Captured signals include pageviews, event detail views, country/source page views, event and news outbound clicks, filter submissions, language changes, theme changes, referrer domain, UTM tags, browser/device class, and coarse country headers when the API host provides them. Raw search text is reduced to `search=used`, and visitor/session ids are generated in browser storage then hashed by the backend.
+Captured signals are limited to query-free page paths, safe UTM values, curated tournament/news/map/collaboration events, strongly masked session replay, performance signals, and optional anonymous multiple-choice survey responses. Search text, names, email addresses, form values, page text, full outbound URLs, request bodies, request headers, and console logs are excluded.
 
-Hidden dashboard:
-
-```text
-/tracking/cv-tracking-4f7e9d2b-2026
-```
-
-The dashboard code should be changed with `TRACKING_DASHBOARD_CODE` before this becomes sensitive operational data.
+Use the PostHog project settings to select the EU region, discard IP data, keep person profiles anonymous, and cap billing. See [`docs/POSTHOG_ANALYTICS.md`](docs/POSTHOG_ANALYTICS.md) for the production configuration, dashboards, and launch checklist.
 
 ## Production Deployment
 
@@ -151,8 +146,9 @@ The workflow builds with:
 ```env
 API_BASE_URL=https://api.chessview.org/api
 NEXT_PUBLIC_SITE_URL=https://chessview.org
-NEXT_PUBLIC_TRACKING_ENABLED=true
-NEXT_PUBLIC_TRACKING_API_URL=https://api.chessview.org/api/tracking/events
+NEXT_PUBLIC_ANALYTICS_ENABLED=true
+NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN=phc_your_eu_project_token
+NEXT_PUBLIC_POSTHOG_HOST=/ingest
 ```
 
 It assumes CloudPanel has a Node.js site for `chessview.org` using site user `chessview`, with nginx proxying to port `3001`. If CloudPanel creates a different site user or path, update `SITE_USER` and `TARGET_DIR` in `.github/workflows/deploy-website.yml`.

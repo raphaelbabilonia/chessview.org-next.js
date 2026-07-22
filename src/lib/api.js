@@ -136,13 +136,6 @@ export const getEvent = (id) =>
     fallback: null,
   });
 
-export const getTrackingDashboard = (code, days = 30) =>
-  apiFetch(`/tracking/dashboard/${encodeURIComponent(code)}`, {
-    searchParams: { days, rollup: "true" },
-    revalidate: 0,
-    fallback: null,
-  });
-
 export const backendAssetUrl = (value = "") => {
   if (!value) return "";
   if (/^https?:\/\//i.test(value)) return value;

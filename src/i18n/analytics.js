@@ -1,0 +1,216 @@
+const analyticsCopy = {
+  en: {
+    cookieSettings: "Cookie settings",
+    consent: {
+      eyebrow: "Your privacy",
+      title: "Help us improve ChessView",
+      body:
+        "With your permission, ChessView uses privacy-protected analytics and fully masked session replays to understand which pages are useful and where visitors get stuck. We do not use advertising trackers or collect names, emails, form values, or page text.",
+      accept: "Accept analytics",
+      reject: "Reject analytics",
+      privacy: "Read the privacy policy",
+    },
+    settings: {
+      title: "Analytics settings",
+      body: "Analytics is optional. You can change your choice at any time.",
+      current: "Current choice",
+      granted: "Analytics accepted",
+      denied: "Analytics rejected",
+      unknown: "No choice saved",
+      close: "Close settings",
+    },
+    survey: {
+      eyebrow: "Two quick questions",
+      title: "What brings you to ChessView?",
+      body: "Anonymous answers help us decide what to improve. Please do not provide personal information.",
+      role: "Which best describes you?",
+      purpose: "What are you here to do?",
+      submit: "Send anonymous answers",
+      dismiss: "Not now",
+      close: "Close survey",
+      thankYou: "Thank you — your anonymous feedback will guide the next improvements.",
+      roles: {
+        player: "Player",
+        parent: "Parent",
+        organizer: "Organizer",
+        arbiter: "Arbiter",
+        club_federation: "Club or federation",
+        chess_fan: "Chess fan",
+        other: "Other",
+      },
+      purposes: {
+        find_tournament: "Find a tournament",
+        follow_news: "Follow chess news",
+        explore_coverage: "Explore tournament coverage",
+        organize_event: "Organize or list an event",
+        contribute_data: "Contribute data",
+        explore: "Just explore",
+      },
+    },
+  },
+  es: {
+    cookieSettings: "Configuración de cookies",
+    consent: {
+      eyebrow: "Tu privacidad",
+      title: "Ayúdanos a mejorar ChessView",
+      body:
+        "Con tu permiso, ChessView usa analítica protegida y repeticiones de sesión totalmente ocultas para entender qué páginas son útiles y dónde encuentran dificultades los visitantes. No usamos rastreadores publicitarios ni recopilamos nombres, correos, valores de formularios o texto de las páginas.",
+      accept: "Aceptar analítica",
+      reject: "Rechazar analítica",
+      privacy: "Leer la política de privacidad",
+    },
+    settings: {
+      title: "Configuración de analítica",
+      body: "La analítica es opcional. Puedes cambiar tu elección en cualquier momento.",
+      current: "Elección actual",
+      granted: "Analítica aceptada",
+      denied: "Analítica rechazada",
+      unknown: "No hay una elección guardada",
+      close: "Cerrar configuración",
+    },
+    survey: {
+      eyebrow: "Dos preguntas rápidas",
+      title: "¿Qué te trae a ChessView?",
+      body: "Las respuestas anónimas nos ayudan a decidir qué mejorar. No incluyas información personal.",
+      role: "¿Qué opción te describe mejor?",
+      purpose: "¿Qué quieres hacer hoy?",
+      submit: "Enviar respuestas anónimas",
+      dismiss: "Ahora no",
+      close: "Cerrar encuesta",
+      thankYou: "Gracias. Tus comentarios anónimos orientarán las próximas mejoras.",
+      roles: {
+        player: "Jugador/a",
+        parent: "Madre, padre o tutor",
+        organizer: "Organizador/a",
+        arbiter: "Árbitro/a",
+        club_federation: "Club o federación",
+        chess_fan: "Aficionado/a al ajedrez",
+        other: "Otro",
+      },
+      purposes: {
+        find_tournament: "Encontrar un torneo",
+        follow_news: "Seguir noticias de ajedrez",
+        explore_coverage: "Explorar la cobertura de torneos",
+        organize_event: "Organizar o publicar un evento",
+        contribute_data: "Contribuir datos",
+        explore: "Solo explorar",
+      },
+    },
+  },
+  it: {
+    cookieSettings: "Impostazioni cookie",
+    consent: {
+      eyebrow: "La tua privacy",
+      title: "Aiutaci a migliorare ChessView",
+      body:
+        "Con il tuo consenso, ChessView usa statistiche protette e registrazioni di sessione completamente oscurate per capire quali pagine sono utili e dove i visitatori incontrano difficoltà. Non usiamo tracker pubblicitari e non raccogliamo nomi, email, valori dei moduli o testi delle pagine.",
+      accept: "Accetta statistiche",
+      reject: "Rifiuta statistiche",
+      privacy: "Leggi l’informativa privacy",
+    },
+    settings: {
+      title: "Impostazioni statistiche",
+      body: "Le statistiche sono facoltative. Puoi cambiare la tua scelta in qualsiasi momento.",
+      current: "Scelta attuale",
+      granted: "Statistiche accettate",
+      denied: "Statistiche rifiutate",
+      unknown: "Nessuna scelta salvata",
+      close: "Chiudi impostazioni",
+    },
+    survey: {
+      eyebrow: "Due domande veloci",
+      title: "Cosa ti porta su ChessView?",
+      body: "Le risposte anonime ci aiutano a decidere cosa migliorare. Non inserire informazioni personali.",
+      role: "Quale ruolo ti descrive meglio?",
+      purpose: "Cosa vuoi fare oggi?",
+      submit: "Invia risposte anonime",
+      dismiss: "Non ora",
+      close: "Chiudi sondaggio",
+      thankYou: "Grazie: il tuo feedback anonimo guiderà i prossimi miglioramenti.",
+      roles: {
+        player: "Giocatore o giocatrice",
+        parent: "Genitore o tutore",
+        organizer: "Organizzatore o organizzatrice",
+        arbiter: "Arbitro",
+        club_federation: "Circolo o federazione",
+        chess_fan: "Appassionato o appassionata",
+        other: "Altro",
+      },
+      purposes: {
+        find_tournament: "Trovare un torneo",
+        follow_news: "Seguire notizie di scacchi",
+        explore_coverage: "Esplorare la copertura dei tornei",
+        organize_event: "Organizzare o pubblicare un evento",
+        contribute_data: "Contribuire con dati",
+        explore: "Esplorare il sito",
+      },
+    },
+  },
+};
+
+export const getAnalyticsCopy = (locale) => analyticsCopy[locale] || analyticsCopy.en;
+
+const sharedContact = {
+  en: "Contact the ChessView project owner to exercise these rights or ask a privacy question.",
+  es: "Contacta con la persona responsable del proyecto ChessView para ejercer estos derechos o plantear una consulta de privacidad.",
+  it: "Contatta il responsabile del progetto ChessView per esercitare questi diritti o per domande sulla privacy.",
+};
+
+const privacyCopy = {
+  en: {
+    eyebrow: "Legal",
+    title: "Privacy and analytics policy",
+    updated: "Last updated",
+    intro:
+      "This policy describes the official ChessView hosted service. It is an implementation baseline and must be reviewed by a qualified lawyer before commercial launch, especially where EU/EEA data or information about minors is processed.",
+    sections: [
+      ["Information ChessView may collect", "ChessView may process account, organizer, tournament, registration, public contribution, support, security, and service-operation information when those features are used."],
+      ["Optional website analytics", "Only after explicit consent, ChessView uses PostHog Cloud EU to measure query-free page paths, safe campaign tags, coarse device and location information, curated interaction events, and anonymous survey choices. ChessView does not send names, email addresses, form values, search text, page text, or full outbound URLs."],
+      ["Masked session replay", "After analytics consent, ChessView may collect a technical reconstruction of a browsing session to find usability problems. All page text and inputs are masked, forms and private surfaces are blocked, and console logs, request bodies, request headers, fonts, and cross-origin frames are not recorded."],
+      ["Purpose and legal basis", "Analytics is used to improve tournament discovery, understand organizer and contributor interest, diagnose usability problems, and evaluate content. The analytics legal basis is consent. Rejecting or withdrawing consent does not limit access to ChessView."],
+      ["Storage, processor, and transfers", "PostHog acts as an analytics service provider. The ChessView project uses PostHog’s EU cloud region in Frankfurt and configures IP data to be discarded. Analytics retention is limited to the configured PostHog project retention period, initially one year or less."],
+      ["Cookies and local storage", "A technical local-storage record remembers the analytics choice. If analytics is accepted, PostHog may use first-party cookies or local storage to maintain an anonymous visitor and session identifier. Rejecting or withdrawing analytics stops capture and clears PostHog browser persistence."],
+      ["Anonymous research survey", "Consenting visitors may see a short optional survey about their chess role and visit purpose. It requests no names, contact details, or free text and is shown at most once every 90 days."],
+      ["Public tournament information", "Some tournament, player, pairing, standings, and result data may be displayed publicly when submitted by organizers or collected from public sources. Organizers are responsible for the rights and legal basis required to submit personal data, especially data about minors."],
+      ["Your choices and rights", `Use “Cookie settings” in the site footer to accept, reject, or withdraw analytics consent. Depending on your location, you may also have rights to access, correct, delete, export, restrict, or object to processing. ${sharedContact.en}`],
+    ],
+  },
+  es: {
+    eyebrow: "Legal",
+    title: "Política de privacidad y analítica",
+    updated: "Última actualización",
+    intro:
+      "Esta política describe el servicio oficial alojado de ChessView. Es una base de implementación y debe ser revisada por un profesional jurídico cualificado antes del lanzamiento comercial, especialmente cuando se traten datos de la UE/EEE o información de menores.",
+    sections: [
+      ["Información que ChessView puede tratar", "ChessView puede tratar información de cuentas, organizadores, torneos, inscripciones, contribuciones públicas, soporte, seguridad y funcionamiento del servicio cuando se utilizan esas funciones."],
+      ["Analítica web opcional", "Solo tras el consentimiento explícito, ChessView usa PostHog Cloud EU para medir rutas sin consultas, etiquetas de campaña seguras, datos generales de dispositivo y ubicación, eventos de interacción seleccionados y respuestas anónimas a encuestas. ChessView no envía nombres, correos, valores de formularios, textos de búsqueda o de páginas ni URL externas completas."],
+      ["Repetición de sesión oculta", "Tras el consentimiento, ChessView puede recopilar una reconstrucción técnica de una sesión para detectar problemas de uso. Todo el texto y las entradas se ocultan; se bloquean formularios y superficies privadas; no se graban registros de consola, cuerpos o cabeceras de solicitudes, fuentes ni marcos externos."],
+      ["Finalidad y base jurídica", "La analítica se usa para mejorar el descubrimiento de torneos, comprender el interés de organizadores y colaboradores, diagnosticar problemas de uso y evaluar contenidos. La base jurídica es el consentimiento. Rechazarlo o retirarlo no limita el acceso a ChessView."],
+      ["Almacenamiento, encargado y transferencias", "PostHog actúa como proveedor de analítica. ChessView usa la región europea de PostHog en Fráncfort y configura el descarte de direcciones IP. La conservación se limita al periodo configurado en PostHog, inicialmente un año o menos."],
+      ["Cookies y almacenamiento local", "Un registro técnico en el almacenamiento local recuerda la elección. Si se acepta la analítica, PostHog puede usar cookies propias o almacenamiento local para mantener identificadores anónimos de visitante y sesión. Rechazar o retirar el consentimiento detiene la captura y elimina la persistencia de PostHog."],
+      ["Encuesta anónima", "Los visitantes que acepten la analítica pueden ver una breve encuesta opcional sobre su rol ajedrecístico y el objetivo de la visita. No solicita nombres, contactos ni texto libre y se muestra como máximo una vez cada 90 días."],
+      ["Información pública de torneos", "Algunos datos de torneos, jugadores, emparejamientos, clasificaciones y resultados pueden mostrarse públicamente cuando los aportan organizadores o proceden de fuentes públicas. Los organizadores son responsables de contar con los derechos y la base jurídica necesarios, especialmente para datos de menores."],
+      ["Tus elecciones y derechos", `Usa “Configuración de cookies” en el pie para aceptar, rechazar o retirar el consentimiento. Según tu ubicación, también puedes tener derechos de acceso, rectificación, supresión, exportación, limitación u oposición. ${sharedContact.es}`],
+    ],
+  },
+  it: {
+    eyebrow: "Note legali",
+    title: "Informativa privacy e statistiche",
+    updated: "Ultimo aggiornamento",
+    intro:
+      "Questa informativa descrive il servizio ChessView ufficiale. È una base di implementazione e deve essere revisionata da un professionista legale qualificato prima del lancio commerciale, in particolare per dati UE/SEE o informazioni relative a minori.",
+    sections: [
+      ["Informazioni che ChessView può trattare", "ChessView può trattare informazioni su account, organizzatori, tornei, iscrizioni, contributi pubblici, assistenza, sicurezza e funzionamento del servizio quando vengono utilizzate queste funzioni."],
+      ["Statistiche web facoltative", "Solo dopo un consenso esplicito, ChessView usa PostHog Cloud EU per misurare percorsi di pagina senza query, parametri di campagna sicuri, dati generali su dispositivo e posizione, eventi di interazione selezionati e risposte anonime ai sondaggi. ChessView non invia nomi, email, valori dei moduli, testo di ricerca o delle pagine, né URL esterni completi."],
+      ["Registrazione di sessione oscurata", "Dopo il consenso, ChessView può raccogliere una ricostruzione tecnica della sessione per individuare problemi di usabilità. Tutti i testi e i campi sono oscurati; moduli e aree private sono bloccati; log della console, corpi e intestazioni delle richieste, font e frame esterni non vengono registrati."],
+      ["Finalità e base giuridica", "Le statistiche servono a migliorare la ricerca dei tornei, comprendere l’interesse di organizzatori e collaboratori, diagnosticare problemi di usabilità e valutare i contenuti. La base giuridica è il consenso. Rifiutare o revocare il consenso non limita l’accesso a ChessView."],
+      ["Conservazione, fornitore e trasferimenti", "PostHog opera come fornitore del servizio di statistiche. ChessView usa la regione cloud UE di PostHog a Francoforte e configura l’eliminazione degli indirizzi IP. La conservazione è limitata al periodo configurato nel progetto PostHog, inizialmente un anno o meno."],
+      ["Cookie e memoria locale", "Un dato tecnico nella memoria locale ricorda la scelta. Se le statistiche sono accettate, PostHog può usare cookie di prima parte o memoria locale per mantenere identificatori anonimi di visitatore e sessione. Il rifiuto o la revoca interrompe la raccolta e cancella la persistenza PostHog dal browser."],
+      ["Sondaggio anonimo", "Ai visitatori consenzienti può essere mostrato un breve sondaggio facoltativo sul ruolo nel mondo degli scacchi e sullo scopo della visita. Non richiede nomi, contatti o testo libero e appare al massimo una volta ogni 90 giorni."],
+      ["Informazioni pubbliche sui tornei", "Alcuni dati su tornei, giocatori, abbinamenti, classifiche e risultati possono essere mostrati pubblicamente quando inviati dagli organizzatori o raccolti da fonti pubbliche. Gli organizzatori sono responsabili dei diritti e della base giuridica necessari, soprattutto per dati relativi a minori."],
+      ["Le tue scelte e i tuoi diritti", `Usa “Impostazioni cookie” nel piè di pagina per accettare, rifiutare o revocare il consenso. In base al luogo in cui ti trovi, puoi avere anche diritti di accesso, rettifica, cancellazione, esportazione, limitazione od opposizione. ${sharedContact.it}`],
+    ],
+  },
+};
+
+export const getPrivacyCopy = (locale) => privacyCopy[locale] || privacyCopy.en;

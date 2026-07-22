@@ -1,183 +1,237 @@
 "use client";
 
-const visitorStorageKey = "chessview_tracking_visitor";
-const sessionStorageKey = "chessview_tracking_session";
-const supportedLocales = new Set(["en", "es", "it"]);
+import posthog from "posthog-js";
+import {
+  ANALYTICS_CONSENT_EVENT,
+  ANALYTICS_CONSENT_STORAGE_KEY,
+  ANALYTICS_PAGEVIEW_COUNT_KEY,
+  ANALYTICS_PAGEVIEW_EVENT,
+  ANALYTICS_READY_EVENT,
+  ANALYTICS_SESSION_STARTED_KEY,
+  allowedAnalyticsEvents,
+  analyticsConfigIsValid,
+  normalizeAnalyticsPayload,
+  parseAnalyticsConsent,
+  pathWithoutQuery,
+  sanitizeAnalyticsUrl,
+  sanitizePostHogProperties,
+  sanitizeReplayNetworkRequest,
+  serializeAnalyticsConsent,
+  trackingRouteTypeFor,
+} from "@/lib/tracking-core";
 
-const enabled = process.env.NEXT_PUBLIC_TRACKING_ENABLED === "true";
-const endpoint = process.env.NEXT_PUBLIC_TRACKING_API_URL || "";
+const analyticsEnabled = process.env.NEXT_PUBLIC_ANALYTICS_ENABLED;
+const projectToken = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
+const apiHost = process.env.NEXT_PUBLIC_POSTHOG_HOST || "/ingest";
+const uiHost = "https://eu.posthog.com";
 
-const cleanText = (value, max = 220) =>
-  String(value || "")
-    .trim()
-    .replace(/\s+/g, " ")
-    .slice(0, max);
+let initialized = false;
+let lastTrackedPath = "";
 
-const safeLocation = () => {
-  if (typeof window === "undefined") return null;
-  return window.location;
+const browserWindow = () => (typeof window === "undefined" ? null : window);
+
+const emit = (name, detail) => {
+  const currentWindow = browserWindow();
+  if (!currentWindow) return;
+  currentWindow.dispatchEvent(new CustomEvent(name, { detail }));
 };
 
-const newId = () => {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `cv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-};
+export const analyticsIsConfigured = () =>
+  analyticsConfigIsValid({ enabled: analyticsEnabled, token: projectToken });
 
-const getStoredId = (storage, key) => {
+export const readAnalyticsConsent = () => {
+  const currentWindow = browserWindow();
+  if (!currentWindow) return "unknown";
   try {
-    const current = storage.getItem(key);
-    if (current) return current;
-    const next = newId();
-    storage.setItem(key, next);
-    return next;
+    return parseAnalyticsConsent(currentWindow.localStorage.getItem(ANALYTICS_CONSENT_STORAGE_KEY));
   } catch {
-    return newId();
+    return "unknown";
   }
 };
 
-const getVisitorId = () => {
-  if (typeof window === "undefined") return "";
-  return getStoredId(window.localStorage, visitorStorageKey);
-};
-
-const getSessionId = () => {
-  if (typeof window === "undefined") return "";
-  return getStoredId(window.sessionStorage, sessionStorageKey);
-};
-
-const pathWithoutQuery = (path) => {
-  const value = cleanText(path || safeLocation()?.pathname || "/", 500);
-  return value.split("?")[0].split("#")[0] || "/";
-};
-
-const localeFromPath = (path) => {
-  const [, first] = pathWithoutQuery(path).split("/");
-  return supportedLocales.has(first) ? first : undefined;
-};
-
-export const trackingRouteTypeFor = (path) => {
-  const cleanPath = pathWithoutQuery(path);
-  const segments = cleanPath.split("/").filter(Boolean);
-  const offset = supportedLocales.has(segments[0]) ? 1 : 0;
-  const section = segments[offset] || "";
-  const id = segments[offset + 1] || "";
-
-  if (!section) return "home";
-  if (section === "tracking") return "tracking";
-  if (section === "events" && id) return "event_detail";
-  if (section === "events") return "events";
-  if (section === "news") return "news";
-  if (section === "coverage") return "coverage";
-  if (section === "countries") return "country";
-  if (section === "sources") return "source";
-  if (section === "collaborate") return "collaboration";
-  return "unknown";
-};
-
-const pageViewEventNameFor = (routeType) =>
-  ({
-    country: "country_page_view",
-    event_detail: "event_detail_view",
-    source: "source_page_view",
-  })[routeType] || "page_view";
-
-const deviceType = () => {
-  if (typeof navigator === "undefined") return "unknown";
-  const ua = navigator.userAgent.toLowerCase();
-  if (/bot|crawler|spider|preview|facebookexternalhit|slurp|bingpreview/.test(ua)) return "bot";
-  if (/ipad|tablet|android(?!.*mobile)/.test(ua)) return "tablet";
-  if (/mobile|iphone|ipod|android.*mobile/.test(ua)) return "mobile";
-  return "desktop";
-};
-
-const domainFromUrl = (value) => {
+const storeAnalyticsConsent = (status) => {
+  const currentWindow = browserWindow();
+  if (!currentWindow) return;
   try {
-    return new URL(value).hostname.replace(/^www\./, "");
+    currentWindow.localStorage.setItem(ANALYTICS_CONSENT_STORAGE_KEY, serializeAnalyticsConsent(status));
   } catch {
-    return "";
+    // A storage failure must not block the visitor from using the site.
   }
 };
 
-const currentUtm = () => {
-  const location = safeLocation();
-  if (!location) return {};
-  const params = new URLSearchParams(location.search);
-  return {
-    utmSource: cleanText(params.get("utm_source"), 120),
-    utmMedium: cleanText(params.get("utm_medium"), 120),
-    utmCampaign: cleanText(params.get("utm_campaign"), 180),
-  };
-};
+const clearPostHogPersistence = () => {
+  const currentWindow = browserWindow();
+  if (!currentWindow) return;
 
-const compactRecord = (record = {}) =>
-  Object.fromEntries(
-    Object.entries(record || {})
-      .slice(0, 20)
-      .map(([key, value]) => [cleanText(key, 60), cleanText(value, 220)])
-      .filter(([key, value]) => key && value)
-  );
-
-const enrichedEvent = (eventName, data = {}) => {
-  const location = safeLocation();
-  const path = pathWithoutQuery(data.path || location?.pathname || "/");
-  const routeType = data.routeType || trackingRouteTypeFor(path);
-  const referrer = typeof document !== "undefined" ? document.referrer : "";
-
-  return {
-    eventName,
-    occurredAt: new Date().toISOString(),
-    visitorId: getVisitorId(),
-    sessionId: getSessionId(),
-    path,
-    routeType,
-    locale: data.locale || localeFromPath(path),
-    pageTitle: cleanText(data.pageTitle || (typeof document !== "undefined" ? document.title : ""), 220),
-    entityType: cleanText(data.entityType, 40),
-    entityId: cleanText(data.entityId, 120),
-    entitySlug: cleanText(data.entitySlug, 160),
-    entityTitle: cleanText(data.entityTitle, 220),
-    outboundUrl: cleanText(data.outboundUrl, 600),
-    referrer,
-    referrerDomain: domainFromUrl(referrer),
-    deviceType: data.deviceType || deviceType(),
-    filters: compactRecord(data.filters),
-    metadata: compactRecord(data.metadata),
-    ...currentUtm(),
-  };
-};
-
-const sendBatch = (events) => {
-  if (!enabled || !endpoint || typeof window === "undefined" || !events.length) return;
-  const body = JSON.stringify({ events });
-  const blob = new Blob([body], { type: "application/json" });
-
-  if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
-    if (navigator.sendBeacon(endpoint, blob)) return;
+  try {
+    for (let index = currentWindow.localStorage.length - 1; index >= 0; index -= 1) {
+      const key = currentWindow.localStorage.key(index);
+      if (key?.startsWith("ph_")) currentWindow.localStorage.removeItem(key);
+    }
+    for (let index = currentWindow.sessionStorage.length - 1; index >= 0; index -= 1) {
+      const key = currentWindow.sessionStorage.key(index);
+      if (key?.startsWith("ph_")) currentWindow.sessionStorage.removeItem(key);
+    }
+  } catch {
+    // Storage can be unavailable in hardened browser modes.
   }
 
-  fetch(endpoint, {
-    method: "POST",
-    body,
-    headers: { "Content-Type": "application/json" },
-    keepalive: true,
-  }).catch(() => {});
+  const hostname = currentWindow.location.hostname;
+  for (const cookie of document.cookie.split(";")) {
+    const name = cookie.split("=")[0]?.trim();
+    if (!name?.startsWith("ph_")) continue;
+    document.cookie = `${name}=; Max-Age=0; path=/; SameSite=Lax`;
+    document.cookie = `${name}=; Max-Age=0; path=/; domain=${hostname}; SameSite=Lax`;
+  }
+};
+
+const dispatchReady = () => emit(ANALYTICS_READY_EVENT, { enabled: trackingIsEnabled() });
+
+export const initAnalytics = () => {
+  if (!analyticsIsConfigured() || initialized || !browserWindow()) return false;
+
+  try {
+    posthog.init(projectToken, {
+      api_host: apiHost,
+      ui_host: uiHost,
+      defaults: "2026-05-30",
+      capture_pageview: false,
+      capture_pageleave: true,
+      capture_dead_clicks: true,
+      capture_heatmaps: true,
+      capture_performance: true,
+      capture_exceptions: false,
+      autocapture: {
+        dom_event_allowlist: ["click"],
+        element_allowlist: ["a", "button"],
+        css_selector_ignorelist: [
+          "form",
+          "input",
+          "textarea",
+          "select",
+          "[contenteditable='true']",
+          ".ph-no-autocapture",
+          "[data-ph-no-autocapture]",
+          "[data-analytics-private]",
+        ],
+        element_attribute_ignorelist: [
+          "action",
+          "formaction",
+          "href",
+          "src",
+          "value",
+          "data-tracking-entity-title",
+          "data-tracking-outbound-url",
+        ],
+        capture_copied_text: false,
+      },
+      mask_all_text: true,
+      mask_all_element_attributes: true,
+      mask_personal_data_properties: true,
+      custom_personal_data_properties: ["email", "name", "search", "query", "token", "auth", "password"],
+      // The public website never identifies people in v1. The PostHog project
+      // remains configured as identified_only for any future authenticated app.
+      person_profiles: "never",
+      respect_dnt: true,
+      cross_subdomain_cookie: false,
+      persistence: "localStorage+cookie",
+      opt_out_capturing_by_default: true,
+      opt_out_persistence_by_default: true,
+      disable_surveys: true,
+      enable_recording_console_log: false,
+      session_recording: {
+        blockSelector: "form, [data-analytics-private], .ph-no-capture, [data-ph-no-capture]",
+        maskAllInputs: true,
+        maskTextSelector: "*",
+        collectFonts: false,
+        recordCrossOriginIframes: false,
+        recordHeaders: false,
+        recordBody: false,
+        streamNetworkBody: false,
+        maskCapturedNetworkRequestFn: sanitizeReplayNetworkRequest,
+      },
+      before_send(event) {
+        if (!event) return null;
+        return { ...event, properties: sanitizePostHogProperties(event.properties) };
+      },
+      loaded(client) {
+        initialized = true;
+        if (readAnalyticsConsent() === "granted") client.opt_in_capturing({ captureEventName: false });
+        else client.opt_out_capturing();
+        dispatchReady();
+      },
+    });
+    return true;
+  } catch {
+    initialized = false;
+    return false;
+  }
+};
+
+export const trackingIsEnabled = () => {
+  if (!analyticsIsConfigured() || !initialized || readAnalyticsConsent() !== "granted") return false;
+  return !posthog.has_opted_out_capturing();
+};
+
+export const setAnalyticsConsent = (status) => {
+  if (status !== "granted" && status !== "denied") return;
+  storeAnalyticsConsent(status);
+
+  if (initialized) {
+    if (status === "granted") {
+      posthog.opt_in_capturing({ captureEventName: false });
+      posthog.startSessionRecording();
+    } else {
+      posthog.stopSessionRecording();
+      posthog.opt_out_capturing();
+      posthog.reset(true);
+      clearPostHogPersistence();
+      lastTrackedPath = "";
+    }
+  }
+
+  emit(ANALYTICS_CONSENT_EVENT, { status });
+  dispatchReady();
 };
 
 export const trackAnalyticsEvent = (eventName, data = {}) => {
-  const name = cleanText(eventName, 80);
-  if (!name) return;
-  sendBatch([enrichedEvent(name, data)]);
+  const name = String(eventName || "").trim();
+  if (!allowedAnalyticsEvents.has(name) || !trackingIsEnabled()) return false;
+
+  const currentWindow = browserWindow();
+  posthog.capture(name, normalizeAnalyticsPayload(data, currentWindow?.location));
+  return true;
+};
+
+const recordSessionPageView = (path) => {
+  const currentWindow = browserWindow();
+  if (!currentWindow) return;
+  try {
+    const current = Number(currentWindow.sessionStorage.getItem(ANALYTICS_PAGEVIEW_COUNT_KEY) || 0);
+    const next = current + 1;
+    currentWindow.sessionStorage.setItem(ANALYTICS_PAGEVIEW_COUNT_KEY, String(next));
+    if (!currentWindow.sessionStorage.getItem(ANALYTICS_SESSION_STARTED_KEY)) {
+      currentWindow.sessionStorage.setItem(ANALYTICS_SESSION_STARTED_KEY, new Date().toISOString());
+    }
+    emit(ANALYTICS_PAGEVIEW_EVENT, { pageviews: next, path });
+  } catch {
+    emit(ANALYTICS_PAGEVIEW_EVENT, { pageviews: 1, path });
+  }
 };
 
 export const trackPageView = (path) => {
-  const cleanPath = pathWithoutQuery(path);
-  const routeType = trackingRouteTypeFor(cleanPath);
-  trackAnalyticsEvent(pageViewEventNameFor(routeType), {
-    path: cleanPath,
-    routeType,
-  });
-};
+  if (!trackingIsEnabled()) return false;
+  const currentWindow = browserWindow();
+  const cleanPath = pathWithoutQuery(path || currentWindow?.location.pathname || "/");
+  if (cleanPath === lastTrackedPath) return false;
 
-export const trackingIsEnabled = () => enabled && Boolean(endpoint);
+  lastTrackedPath = cleanPath;
+  posthog.capture("$pageview", {
+    $current_url: sanitizeAnalyticsUrl(currentWindow?.location.href || cleanPath, { keepUtm: true }),
+    $pathname: cleanPath,
+    route_type: trackingRouteTypeFor(cleanPath),
+    locale: normalizeAnalyticsPayload({ path: cleanPath }, currentWindow?.location).locale,
+  });
+  recordSessionPageView(cleanPath);
+  return true;
+};

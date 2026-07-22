@@ -194,7 +194,7 @@ await check("maps pages render the three-dimensional service", async () => {
     assert(response.status === 200, `/${locale}/maps returned ${response.status}`);
     assert(htmlIncludesText(text, title), `/${locale}/maps did not include title`);
     assert(text.includes(`/${locale}/events/${firstEvent.slug}`), `/${locale}/maps did not include first event link`);
-    assert(text.includes("maps-country-row"), `/${locale}/maps did not include country controls`);
+    assert(!text.includes("maps-country-row"), `/${locale}/maps rendered the retired country list`);
     assert(text.includes("coverage-filter-toggle"), `/${locale}/maps did not include map filter controls`);
     assert(text.includes("coverage-globe-loading"), `/${locale}/maps did not include the 3D globe loader`);
     assert(text.includes("coverage-filter-stats"), `/${locale}/maps did not include visible filter stats`);

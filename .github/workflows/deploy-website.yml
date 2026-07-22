@@ -39,6 +39,9 @@ jobs:
       - name: Run deterministic map tests
         run: npm run test:maps
 
+      - name: Run consent-first analytics tests
+        run: npm run test:analytics
+
   deploy:
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     needs: map-tests
@@ -66,8 +69,9 @@ jobs:
         env:
           API_BASE_URL: https://api.chessview.org/api
           NEXT_PUBLIC_SITE_URL: https://chessview.org
-          NEXT_PUBLIC_TRACKING_ENABLED: "true"
-          NEXT_PUBLIC_TRACKING_API_URL: https://api.chessview.org/api/tracking/events
+          NEXT_PUBLIC_ANALYTICS_ENABLED: ${{ vars.NEXT_PUBLIC_ANALYTICS_ENABLED || 'false' }}
+          NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN: ${{ vars.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN }}
+          NEXT_PUBLIC_POSTHOG_HOST: /ingest
           DEPLOYMENT_VERSION: ${{ github.sha }}
         run: npm run build
 
@@ -187,8 +191,9 @@ jobs:
                     HOSTNAME: "127.0.0.1",
                     API_BASE_URL: "https://api.chessview.org/api",
                     NEXT_PUBLIC_SITE_URL: "https://chessview.org",
-                    NEXT_PUBLIC_TRACKING_ENABLED: "true",
-                    NEXT_PUBLIC_TRACKING_API_URL: "https://api.chessview.org/api/tracking/events"
+                    NEXT_PUBLIC_ANALYTICS_ENABLED: "${{ vars.NEXT_PUBLIC_ANALYTICS_ENABLED || 'false' }}",
+                    NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN: "${{ vars.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN }}",
+                    NEXT_PUBLIC_POSTHOG_HOST: "/ingest"
                   }
                 }
               ]

@@ -1,15 +1,16 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { trackAnalyticsEvent, trackPageView, trackingIsEnabled } from "@/lib/tracking";
+import { ANALYTICS_CONSENT_EVENT, ANALYTICS_READY_EVENT } from "@/lib/tracking-core";
 
 const datasetPayloadFor = (element) => ({
   entityType: element.dataset.trackingEntityType,
   entityId: element.dataset.trackingEntityId,
   entitySlug: element.dataset.trackingEntitySlug,
   entityTitle: element.dataset.trackingEntityTitle,
-  outboundUrl: element.dataset.trackingOutboundUrl || (element.tagName === "A" ? element.href : ""),
+  outboundUrl: element.dataset.trackingOutboundUrl,
   routeType: element.dataset.trackingRouteType,
   metadata: {
     placement: element.dataset.trackingPlacement,
@@ -19,16 +20,21 @@ const datasetPayloadFor = (element) => ({
 
 export function TrackingProvider() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
-    if (!trackingIsEnabled()) return;
-    trackPageView(pathname || "/");
-  }, [pathname, searchParams]);
+    const captureCurrentPage = () => {
+      if (trackingIsEnabled()) trackPageView(pathname || "/");
+    };
+    captureCurrentPage();
+    window.addEventListener(ANALYTICS_CONSENT_EVENT, captureCurrentPage);
+    window.addEventListener(ANALYTICS_READY_EVENT, captureCurrentPage);
+    return () => {
+      window.removeEventListener(ANALYTICS_CONSENT_EVENT, captureCurrentPage);
+      window.removeEventListener(ANALYTICS_READY_EVENT, captureCurrentPage);
+    };
+  }, [pathname]);
 
   useEffect(() => {
-    if (!trackingIsEnabled()) return undefined;
-
     const onClick = (event) => {
       const element = event.target?.closest?.("[data-tracking-event]");
       if (!element) return;

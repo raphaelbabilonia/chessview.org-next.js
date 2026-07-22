@@ -1,80 +1,49 @@
-# ChessView Privacy Policy
+# ChessView Privacy and Analytics Policy
 
-Last updated: 2026-07-05
+Last updated: 2026-07-22
 
-This policy is a project baseline for the official ChessView hosted service. It should be reviewed by a qualified lawyer before public commercial launch, especially before processing EU/EEA personal data or data about minors.
+This policy is an implementation baseline for the official ChessView hosted service. It must be reviewed by a qualified lawyer before commercial launch, especially where EU/EEA personal data or information about minors is processed.
 
-## Information ChessView May Collect
+## Service Information
 
-ChessView may collect:
+ChessView may process account, organizer, tournament, registration, public contribution, support, security, and service-operation information when those features are used. Some tournament, player, pairing, standings, and result information may be displayed publicly when submitted by organizers or collected from public sources. Organizers are responsible for the rights and legal basis required to submit personal data, especially information about minors.
 
-- Account information such as name, email, password hash, role, and preferences.
-- Organizer and event information such as event details, sections, rounds, pairings, results, standings, links, and uploaded files.
-- Registration and player information such as names, ratings, federation IDs, clubs, sections, contact details, and participation status.
-- Technical information such as IP address, browser, device, logs, cookies, security events, and API usage.
-- Public agent collaboration submissions, agent self-identification, source URLs, evidence snippets, decision status, and hashed request metadata.
-- Support and communication data.
-- Search, analytics, AI query, recommendation, and interaction data.
+## Optional Website Analytics
 
-## How ChessView Uses Information
+ChessView does not activate website analytics until a visitor explicitly accepts it. Rejecting or withdrawing analytics consent does not limit access to the site.
 
-ChessView may use information to:
+After consent, ChessView uses PostHog Cloud EU to process:
 
-- Provide accounts, event management, registrations, public pages, search, and discovery.
-- Display public tournament and news metadata.
-- Maintain safety, security, fraud prevention, abuse prevention, and audit logs.
-- Review, deduplicate, quarantine, reject, or publish public agent collaboration submissions.
-- Improve product quality, analytics, ranking, recommendations, and AI-assisted features.
-- Communicate service updates, support responses, and administrative notices.
-- Comply with legal obligations.
+- Query-free page paths and safe UTM campaign values.
+- Coarse device, browser, referrer, and location information.
+- Curated interactions with tournament, news, map, language, theme, and collaboration features.
+- Anonymous multiple-choice research survey responses.
+- A strongly masked technical reconstruction of selected browsing sessions.
 
-## Public Event Information
+ChessView configures its client not to send names, email addresses, form values, search text, page text, full outbound URLs, arbitrary query parameters, console logs, request bodies, request headers, fonts, or cross-origin frames. IP data must be configured for discard in the PostHog project.
 
-Chess tournaments often involve public event information. Some event, player, pairing, standings, and result data may be displayed publicly when submitted by organizers or collected from public sources.
+All text and inputs are masked in session replay. Forms, elements marked private, and any future authenticated surfaces are excluded from recording.
 
-Organizers are responsible for having the rights and legal basis to submit personal data, especially data about minors.
+## Purpose and Legal Basis
 
-## AI And Analytics
+Analytics is used to improve tournament discovery, understand organizer and contributor interest, diagnose usability and performance problems, and evaluate content. The legal basis for this analytics processing is consent.
 
-ChessView may use service data to build search indexes, analytics, recommendations, and AI-assisted features. Private personal data should be minimized, protected, and excluded from public or commercial datasets unless a lawful basis and proper notices exist.
+## Provider, Region, and Retention
 
-## First-Party Website Tracking
+PostHog acts as an analytics service provider. ChessView uses PostHog's EU cloud region in Frankfurt. Analytics retention is limited to the configured PostHog project retention period, initially one year or less.
 
-ChessView may collect first-party website analytics such as visited pages, event detail views, filter usage, outbound source clicks, referrer domain, UTM campaign tags, device/browser class, language/theme changes, and coarse country headers provided by the hosting layer. Browser visitor and session identifiers are generated for analytics continuity and hashed before storage by the ChessView API. Raw search text is minimized before storage.
+## Cookies and Local Storage
 
-## Sharing
+A technical local-storage record remembers whether analytics was accepted or rejected. If analytics is accepted, PostHog may use first-party cookies or local storage to maintain an anonymous visitor and session identifier. Rejecting or withdrawing consent stops capture and clears PostHog browser persistence.
 
-ChessView may share information with:
+Visitors can reopen **Cookie settings** from the footer at any time.
 
-- Service providers that host, secure, monitor, or operate the service.
-- Public website visitors, when information is part of a public event, news item, result, standing, or profile.
-- Tournament organizers, when needed for registrations or event administration.
-- Legal authorities or other parties when required by law or needed to protect rights, safety, or security.
+## Anonymous Research Survey
 
-ChessView does not sell personal data as a standalone data product.
+Consenting visitors may see an optional survey asking only about their chess role and visit purpose. It requests no name, contact details, or free text and appears at most once every 90 days.
 
-## Cookies And Local Storage
+## Rights and Contact
 
-ChessView may use cookies or local storage for language preference, theme preference, first-party analytics, authentication, security, and service operation.
+Depending on location, visitors may have rights to access, correct, delete, export, restrict, or object to processing of personal data. Contact the ChessView project owner to exercise these rights or ask a privacy question.
 
-## Retention
-
-ChessView keeps information as long as needed for service operation, legal obligations, dispute resolution, security, backups, and legitimate business purposes. Public tournament records may be retained as historical chess records unless removed or corrected under applicable law.
-
-## Your Rights
-
-Depending on your location, you may have rights to access, correct, delete, export, restrict, or object to processing of personal data.
-
-Contact the ChessView project owner to exercise privacy rights.
-
-## Security
-
-ChessView uses reasonable technical and organizational safeguards, but no service can guarantee perfect security.
-
-## International Processing
-
-ChessView may process information in countries other than where you live. Appropriate legal safeguards should be added before international production launch.
-
-## Contact
-
-For privacy questions or requests, contact the ChessView project owner.
+No online service can guarantee perfect security. ChessView applies data minimization, masking, access controls, and reasonable technical and organizational safeguards.
