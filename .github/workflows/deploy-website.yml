@@ -24,7 +24,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20.19.0"
+          node-version: "24.19.0"
           cache: npm
 
       - name: Install dependencies
@@ -56,7 +56,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20.19.0"
+          node-version: "24.19.0"
           cache: npm
 
       - name: Install dependencies
@@ -72,7 +72,7 @@ jobs:
           NEXT_PUBLIC_ANALYTICS_ENABLED: ${{ vars.NEXT_PUBLIC_ANALYTICS_ENABLED || 'false' }}
           NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN: ${{ vars.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN }}
           NEXT_PUBLIC_POSTHOG_HOST: /ingest
-          DEPLOYMENT_VERSION: ${{ github.sha }}
+          CHESSVIEW_DEPLOY_SHA: ${{ github.sha }}
         run: npm run build
 
       - name: Create deployment package
@@ -82,6 +82,8 @@ jobs:
           cp -R .next/standalone/. deploy/
           cp -R .next/static deploy/.next/static
           cp -R public deploy/public
+          cp ecosystem.config.cjs deploy/ecosystem.config.cjs
+          printf '%s\n' '${{ github.sha }}' > deploy/.deployment-sha
 
       - name: Setup SSH key
         run: |
@@ -154,6 +156,7 @@ jobs:
             BACKUP_ROOT="/home/chessview/backups"
             BACKUP_DIR="$BACKUP_ROOT/web-$(date +%Y%m%d-%H%M%S)"
             LOCAL_HEALTH_URL="http://127.0.0.1:3011/en"
+            NODE_BIN="/opt/chessview/runtimes/node/24/bin/node"
 
             if [ ! -d "$TEMP_DIR" ]; then
               echo "Temporary deploy directory not found: $TEMP_DIR"
@@ -162,6 +165,11 @@ jobs:
 
             if [ ! -f "$TEMP_DIR/server.js" ]; then
               echo "Uploaded website package is missing server.js"
+              exit 1
+            fi
+
+            if [ ! -x "$NODE_BIN" ]; then
+              echo "Managed Node.js 24 runtime is missing: $NODE_BIN"
               exit 1
             fi
 
@@ -176,31 +184,6 @@ jobs:
             run_privileged rm -rf "$TEMP_DIR"
             run_privileged mkdir -p "$TARGET_DIR/.well-known"
 
-            cat > /tmp/chessview-web-ecosystem.config.cjs << 'EOF'
-            module.exports = {
-              apps: [
-                {
-                  name: "chessview-web",
-                  script: "server.js",
-                  cwd: "/home/chessview/htdocs/chessview.org",
-                  instances: 1,
-                  exec_mode: "fork",
-                  env: {
-                    NODE_ENV: "production",
-                    PORT: "3011",
-                    HOSTNAME: "127.0.0.1",
-                    API_BASE_URL: "https://api.chessview.org/api",
-                    NEXT_PUBLIC_SITE_URL: "https://chessview.org",
-                    NEXT_PUBLIC_ANALYTICS_ENABLED: "${{ vars.NEXT_PUBLIC_ANALYTICS_ENABLED || 'false' }}",
-                    NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN: "${{ vars.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN }}",
-                    NEXT_PUBLIC_POSTHOG_HOST: "/ingest"
-                  }
-                }
-              ]
-            };
-            EOF
-            run_privileged mv /tmp/chessview-web-ecosystem.config.cjs "$TARGET_DIR/ecosystem.config.cjs"
-
             if id "$SITE_USER" >/dev/null 2>&1; then
               run_privileged chown -R "$SITE_USER:$SITE_USER" "$TARGET_DIR" "$BACKUP_ROOT"
             fi
@@ -209,7 +192,7 @@ jobs:
               run_privileged npm install -g pm2
             fi
 
-            run_as_site_user "cd '$TARGET_DIR' && pm2 startOrReload ecosystem.config.cjs --update-env"
+            run_as_site_user "pm2 delete '$APP_NAME' >/dev/null 2>&1 || true; cd '$TARGET_DIR' && pm2 start ecosystem.config.cjs --update-env"
             run_as_site_user "pm2 save || true"
 
             if [ "$(id -u)" -eq 0 ] && command -v pm2 >/dev/null 2>&1; then
@@ -229,8 +212,8 @@ jobs:
               echo "Local website health check failed: $LOCAL_STATUS"
               if [ -d "$BACKUP_DIR" ] && [ "$(find "$BACKUP_DIR" -mindepth 1 -maxdepth 1 2>/dev/null | head -n 1)" ]; then
                 echo "Restoring previous website release from $BACKUP_DIR"
-                run_privileged rsync -av --delete --exclude '.well-known' "$BACKUP_DIR"/ "$TARGET_DIR"/
-                run_as_site_user "cd '$TARGET_DIR' && pm2 startOrReload ecosystem.config.cjs --update-env"
+                run_privileged rsync -av --delete --exclude '.well-known' --exclude 'ecosystem.config.cjs' "$BACKUP_DIR"/ "$TARGET_DIR"/
+                run_as_site_user "pm2 delete '$APP_NAME' >/dev/null 2>&1 || true; cd '$TARGET_DIR' && pm2 start ecosystem.config.cjs --update-env"
                 run_as_site_user "pm2 save || true"
               fi
               exit 1

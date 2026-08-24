@@ -15,6 +15,12 @@ import { getDictionary } from "@/i18n/dictionaries";
 
 export const revalidate = 120;
 
+const sampleMarkers = (markers, limit = 300) => {
+  if (!Array.isArray(markers) || markers.length <= limit) return markers || [];
+  const step = markers.length / limit;
+  return Array.from({ length: limit }, (_, index) => markers[Math.floor(index * step)]);
+};
+
 function CompactNewsCard({ copy, item, locale }) {
   if (!hasRequiredNewsImage(item)) return null;
 
@@ -98,6 +104,10 @@ export default async function HomePage({ params }) {
   const { data: news, error: newsError } = newsResult;
   const publicEvents = Array.isArray(events) ? events : [];
   const countryCoverage = buildCountryCoverage(publicEvents, locale);
+  const homeCoverage = {
+    ...countryCoverage,
+    worldEvents: sampleMarkers(countryCoverage.worldEvents),
+  };
   const featuredEvents = publicEvents.slice(0, 3);
   const featuredNews = Array.isArray(news) ? news.filter(hasRequiredNewsImage) : [];
   const websiteJsonLd = siteJsonLd(locale, copy.site.description);
@@ -121,7 +131,7 @@ export default async function HomePage({ params }) {
             </Link>
           </div>
         </div>
-        <CountryCoverageSummary copy={copy} coverage={countryCoverage} locale={locale} />
+        <CountryCoverageSummary copy={copy} coverage={homeCoverage} locale={locale} />
       </section>
 
       <section className="page-section landing-updates">

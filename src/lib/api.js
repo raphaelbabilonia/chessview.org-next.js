@@ -24,6 +24,7 @@ export async function apiFetch(path, { searchParams, revalidate = 120, fallback 
       headers: {
         Accept: "application/json",
       },
+      signal: AbortSignal.timeout(15_000),
     };
 
     if (isProduction) {
@@ -85,7 +86,7 @@ export async function getAllEvents(filters = {}, { pageSize = 100 } = {}) {
   let page = 1;
   let lastMeta = null;
 
-  while (true) {
+  while (page <= 100) {
     const result = await getEvents({
       ...filters,
       limit: pageSize,
@@ -114,7 +115,7 @@ export async function getAllEvents(filters = {}, { pageSize = 100 } = {}) {
       ...(lastMeta || {}),
       count: events.length,
       fetched: events.length,
-      truncated: Boolean(lastMeta?.hasNext),
+      truncated: Boolean(lastMeta?.hasNext && page > 100),
     },
     notFound: false,
     status: 200,

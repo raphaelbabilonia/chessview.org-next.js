@@ -4,6 +4,10 @@
   "description": "Server-rendered public website for ChessView.org.",
   "license": "AGPL-3.0-only",
   "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^22.12.0 || >=24.0.0"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/raphaelbabilonia/chessview.org-next.js.git"
@@ -13,37 +17,39 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "npm run test:maps:unit && npm run test:analytics:unit",
+    "audit:prod": "npm audit --omit=dev --audit-level=moderate",
     "maps:build-admin1": "node scripts/build-coverage-admin1.mjs",
     "smoke": "node scripts/smoke.mjs",
     "smoke:local": "node scripts/smoke-local.mjs",
     "test:maps": "npm run test:maps:unit && npm run test:maps:e2e",
     "test:maps:e2e": "playwright test",
-    "test:maps:unit": "node --experimental-default-type=module --test tests/unit/coverage-globe-gesture.test.mjs tests/unit/coverage-globe-surface.test.mjs tests/unit/coverage-coordinate-safety.test.mjs tests/unit/coverage-marker-sizing.test.mjs tests/unit/coverage-admin-boundaries.test.mjs",
+    "test:maps:unit": "node --test tests/unit/coverage-globe-gesture.test.mjs tests/unit/coverage-globe-surface.test.mjs tests/unit/coverage-coordinate-safety.test.mjs tests/unit/coverage-marker-sizing.test.mjs tests/unit/coverage-admin-boundaries.test.mjs",
     "test:analytics": "npm run test:analytics:unit && npm run test:analytics:e2e",
     "test:analytics:e2e": "playwright test --config=playwright.analytics.config.mjs",
-    "test:analytics:unit": "node --experimental-default-type=module --test tests/unit/tracking-analytics.test.mjs",
+    "test:analytics:unit": "node --test tests/unit/tracking-analytics.test.mjs",
     "seo:submit-indexnow": "node scripts/submit-indexnow.mjs",
-    "verify": "npm run lint && npm run test:analytics:unit && npm run build && npm run smoke && npm audit --audit-level=moderate"
+    "verify": "npm run lint && npm test && npm run smoke:local && npm run audit:prod"
   },
   "dependencies": {
     "d3-geo": "^3.1.1",
     "flag-icons": "^7.5.0",
-    "lucide-react": "^1.21.0",
-    "next": "^16.2.11",
-    "posthog-js": "^1.406.2",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
+    "lucide-react": "^1.34.0",
+    "next": "^16.3.2",
+    "posthog-js": "^1.418.13",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
     "three": "^0.185.1",
     "topojson-client": "^3.1.0",
     "world-atlas": "^2.0.2"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.1",
+    "@playwright/test": "^1.62.1",
     "eslint": "^9",
-    "eslint-config-next": "16.2.9",
+    "eslint-config-next": "16.3.2",
     "topojson-server": "^3.0.1"
   },
   "overrides": {
-    "postcss": "8.5.10"
+    "postcss": "8.5.26"
   }
 }

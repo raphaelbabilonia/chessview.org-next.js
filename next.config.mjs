@@ -1,6 +1,24 @@
 /** @type {import('next').NextConfig} */
 const securityHeaders = [
   {
+    key: "Content-Security-Policy",
+    value: [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+      "object-src 'none'",
+      "script-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline'",
+      "font-src 'self' data:",
+      "img-src 'self' data: blob: https:",
+      "connect-src 'self' https://api.chessview.org",
+      "worker-src 'self' blob:",
+      "manifest-src 'self'",
+      "upgrade-insecure-requests",
+    ].join("; "),
+  },
+  {
     key: "X-Content-Type-Options",
     value: "nosniff",
   },
@@ -16,12 +34,21 @@ const securityHeaders = [
     key: "Permissions-Policy",
     value: "camera=(), microphone=(), geolocation=()",
   },
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=31536000; includeSubDomains",
+  },
+  {
+    key: "Cross-Origin-Opener-Policy",
+    value: "same-origin",
+  },
 ];
 
 const nextConfig = {
   output: "standalone",
   poweredByHeader: false,
   reactStrictMode: true,
+  deploymentId: process.env.CHESSVIEW_DEPLOY_SHA || undefined,
   async rewrites() {
     return [
       {
