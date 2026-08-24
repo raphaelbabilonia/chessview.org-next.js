@@ -314,6 +314,7 @@ await check("security headers are present", async () => {
   assert(hasHeaderValue(response, "x-content-type-options", "nosniff"), "missing nosniff header");
   assert(hasHeaderValue(response, "x-frame-options", "DENY"), "missing frame options header");
   assert(hasHeaderValue(response, "referrer-policy", "strict-origin-when-cross-origin"), "missing referrer policy");
+  assert(!String(response.headers.get("content-security-policy") || "").includes("'unsafe-eval'"), "production CSP permits unsafe-eval");
   assert(!response.headers.has("x-powered-by"), "x-powered-by should be disabled");
 });
 

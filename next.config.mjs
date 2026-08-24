@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+const isDevelopment = process.env.NODE_ENV !== "production";
+
 const securityHeaders = [
   {
     key: "Content-Security-Policy",
@@ -8,14 +10,14 @@ const securityHeaders = [
       "form-action 'self'",
       "frame-ancestors 'none'",
       "object-src 'none'",
-      "script-src 'self' 'unsafe-inline'",
+      `script-src 'self' 'unsafe-inline'${isDevelopment ? " 'unsafe-eval'" : ""}`,
       "style-src 'self' 'unsafe-inline'",
       "font-src 'self' data:",
       "img-src 'self' data: blob: https:",
       "connect-src 'self' https://api.chessview.org",
       "worker-src 'self' blob:",
       "manifest-src 'self'",
-      "upgrade-insecure-requests",
+      ...(isDevelopment ? [] : ["upgrade-insecure-requests"]),
     ].join("; "),
   },
   {
