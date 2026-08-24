@@ -71,6 +71,13 @@ export const getEvents = (filters = {}) =>
     fallback: [],
   });
 
+export const getEventCatalog = (filters = {}) =>
+  apiFetch("/events/catalog", {
+    searchParams: filters,
+    revalidate: 300,
+    fallback: [],
+  });
+
 export const todayIsoDate = (date = new Date()) =>
   new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).toISOString().slice(0, 10);
 
@@ -80,6 +87,8 @@ export const getUpcomingEvents = (filters = {}) =>
     limit: 100,
     ...filters,
   });
+
+export const getUpcomingEventCatalog = () => getEventCatalog();
 
 export async function getAllEvents(filters = {}, { pageSize = 100 } = {}) {
   const events = [];

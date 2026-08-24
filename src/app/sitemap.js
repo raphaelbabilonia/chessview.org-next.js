@@ -1,4 +1,4 @@
-import { getAllEvents } from "@/lib/api";
+import { getEventCatalog } from "@/lib/api";
 import { absoluteUrl } from "@/lib/site";
 import { absoluteLanguageAlternates } from "@/lib/seo";
 import { countryHref, eventHref, sourceHref } from "@/lib/tournament";
@@ -29,7 +29,7 @@ const localizedEntry = (locale, path, options = {}) => ({
 
 export default async function sitemap() {
   const now = new Date();
-  const { data: events } = await getAllEvents({}, { pageSize: 100 });
+  const { data: events } = await getEventCatalog({ includePast: true });
   const countries = [...new Set(events.map((event) => event.country).filter(Boolean))];
   const sources = [...new Set(events.map((event) => event.source?.name).filter(Boolean))];
 

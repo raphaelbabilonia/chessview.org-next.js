@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { MapsExplorer } from "@/components/MapsExplorer";
-import { getAllUpcomingEvents } from "@/lib/api";
+import { getUpcomingEventCatalog } from "@/lib/api";
 import { buildMapCoverage } from "@/lib/coverage";
 import { pageSeoMetadata } from "@/lib/seo";
 import { isLocale } from "@/i18n/config";
@@ -26,7 +26,7 @@ export default async function MapsPage({ params }) {
   if (!isLocale(locale)) notFound();
 
   const copy = getDictionary(locale);
-  const { data: events, error } = await getAllUpcomingEvents();
+  const { data: events, error } = await getUpcomingEventCatalog();
   const coverage = buildMapCoverage(Array.isArray(events) ? events : [], locale);
   const mapCopy = { coverage: copy.coverage };
 

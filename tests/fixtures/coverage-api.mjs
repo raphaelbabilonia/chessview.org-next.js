@@ -137,7 +137,7 @@ const server = http.createServer((request, response) => {
     return;
   }
 
-  if (url.pathname === "/api/events") {
+  if (url.pathname === "/api/events" || url.pathname === "/api/events/catalog") {
     json(response, 200, {
       data: events,
       meta: {

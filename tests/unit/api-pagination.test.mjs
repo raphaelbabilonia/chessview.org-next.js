@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getAllEvents } from "../../src/lib/api.js";
+import { getAllEvents, getEventCatalog } from "../../src/lib/api.js";
 
 test("getAllEvents follows pagination beyond 25 pages", async (t) => {
   const originalFetch = globalThis.fetch;
@@ -37,4 +37,29 @@ test("getAllEvents follows pagination beyond 25 pages", async (t) => {
   assert.equal(result.meta.fetched, totalPages);
   assert.equal(result.meta.truncated, false);
   assert.deepEqual(requestedPages, Array.from({ length: totalPages }, (_, index) => index + 1));
+});
+
+test("getEventCatalog uses one cacheable catalog request", async (t) => {
+  const originalFetch = globalThis.fetch;
+  const requests = [];
+
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  globalThis.fetch = async (input, options) => {
+    requests.push({ url: new URL(input), options });
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ data: [{ _id: "event-1" }], meta: { count: 1 } }),
+    };
+  };
+
+  const result = await getEventCatalog({ includePast: true });
+
+  assert.equal(result.data.length, 1);
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].url.pathname, "/api/events/catalog");
+  assert.equal(requests[0].url.searchParams.get("includePast"), "true");
 });

@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { CountryCoverageSummary } from "@/components/CountryCoverageSummary";
 import { EventCard } from "@/components/EventCard";
 import { JsonLd } from "@/components/JsonLd";
-import { getAllUpcomingEvents } from "@/lib/api";
+import { getUpcomingEventCatalog, getUpcomingEvents } from "@/lib/api";
 import { buildCountryCoverage } from "@/lib/coverage";
 import { getFeaturedNews, hasRequiredNewsImage } from "@/lib/news";
 import { formatDate } from "@/lib/format";
@@ -99,8 +99,13 @@ export default async function HomePage({ params }) {
   if (!isLocale(locale)) notFound();
 
   const copy = getDictionary(locale);
-  const [eventsResult, newsResult] = await Promise.all([getAllUpcomingEvents(), getFeaturedNews(3)]);
-  const { data: events, error } = eventsResult;
+  const [catalogResult, featuredResult, newsResult] = await Promise.all([
+    getUpcomingEventCatalog(),
+    getUpcomingEvents({ limit: 3 }),
+    getFeaturedNews(3),
+  ]);
+  const { data: events, error } = catalogResult;
+  const featuredEvents = Array.isArray(featuredResult.data) ? featuredResult.data : [];
   const { data: news, error: newsError } = newsResult;
   const publicEvents = Array.isArray(events) ? events : [];
   const countryCoverage = buildCountryCoverage(publicEvents, locale);
@@ -108,7 +113,6 @@ export default async function HomePage({ params }) {
     ...countryCoverage,
     worldEvents: sampleMarkers(countryCoverage.worldEvents),
   };
-  const featuredEvents = publicEvents.slice(0, 3);
   const featuredNews = Array.isArray(news) ? news.filter(hasRequiredNewsImage) : [];
   const websiteJsonLd = siteJsonLd(locale, copy.site.description);
 
