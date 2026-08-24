@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { MapsExplorer } from "@/components/MapsExplorer";
 import { getAllUpcomingEvents } from "@/lib/api";
-import { buildCountryCoverage } from "@/lib/coverage";
+import { buildMapCoverage } from "@/lib/coverage";
 import { pageSeoMetadata } from "@/lib/seo";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
@@ -27,7 +27,8 @@ export default async function MapsPage({ params }) {
 
   const copy = getDictionary(locale);
   const { data: events, error } = await getAllUpcomingEvents();
-  const coverage = buildCountryCoverage(Array.isArray(events) ? events : [], locale);
+  const coverage = buildMapCoverage(Array.isArray(events) ? events : [], locale);
+  const mapCopy = { coverage: copy.coverage };
 
   return (
     <main className="page maps-page">
@@ -39,7 +40,7 @@ export default async function MapsPage({ params }) {
 
       {error ? <div className="state state-warning">{copy.coverage.apiError}</div> : null}
       {!error && coverage.totalTournaments === 0 ? <div className="state">{copy.coverage.empty}</div> : null}
-      {coverage.totalTournaments ? <MapsExplorer copy={copy} coverage={coverage} locale={locale} /> : null}
+      {coverage.totalTournaments ? <MapsExplorer copy={mapCopy} coverage={coverage} locale={locale} /> : null}
     </main>
   );
 }

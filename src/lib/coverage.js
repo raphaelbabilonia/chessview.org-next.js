@@ -726,3 +726,59 @@ export function buildCountryCoverage(events = [], locale = "en") {
     worldEvents,
   };
 }
+
+const compactMapEvent = (event) => ({
+  _id: event._id,
+  city: event.city,
+  country: event.country,
+  endDate: event.endDate,
+  href: event.href,
+  liveNow: event.liveNow,
+  region: event.region,
+  sourceName: event.sourceName,
+  startDate: event.startDate,
+  timeControl: event.timeControl,
+  title: event.title,
+  tournamentType: event.tournamentType,
+});
+
+/**
+ * Removes the server-only coverage projections and duplicate nested collections
+ * before the map payload crosses the React Server Component boundary.
+ */
+export function buildMapCoverage(events = [], locale = "en") {
+  const coverage = buildCountryCoverage(events, locale);
+  const mappedEventById = new Map(coverage.worldEvents.map((event) => [event._id, event]));
+
+  return {
+    allCountries: coverage.allCountries.map((country) => ({
+      count: country.count,
+      country: country.country,
+      countryKey: country.countryKey,
+      flagCode: country.flagCode,
+      globeCoordinates: country.globeCoordinates,
+      href: country.href,
+      label: country.label,
+      liveCount: country.liveCount,
+      mapFeatureName: country.mapFeatureName,
+      upcomingCount: country.upcomingCount,
+    })),
+    events: coverage.allCountries.flatMap((country) =>
+      country.events.map((event) => {
+        const mappedEvent = mappedEventById.get(event._id);
+        return {
+          ...compactMapEvent(event),
+          anchor: mappedEvent?.anchor,
+          countryFlagCode: country.flagCode,
+          countryKey: country.countryKey,
+          countryLabel: country.label,
+          globeCoordinates: mappedEvent?.globeCoordinates,
+          marker: mappedEvent?.marker,
+        };
+      }),
+    ),
+    mapSize: coverage.mapSize,
+    today: coverage.today,
+    totalTournaments: coverage.totalTournaments,
+  };
+}

@@ -362,9 +362,21 @@ export function MapsExplorer({ copy, coverage, locale }) {
     [activeTypeSet, dateRange, normalizedQuery],
   );
 
+  const coverageCountries = useMemo(() => {
+    const eventsByCountry = new Map();
+    for (const event of coverage.events || []) {
+      if (!eventsByCountry.has(event.countryKey)) eventsByCountry.set(event.countryKey, []);
+      eventsByCountry.get(event.countryKey).push(event);
+    }
+    return (coverage.allCountries || []).map((country) => ({
+      ...country,
+      events: eventsByCountry.get(country.countryKey) || [],
+    }));
+  }, [coverage.allCountries, coverage.events]);
+
   const filteredCountries = useMemo(
     () =>
-      (coverage.allCountries || [])
+      coverageCountries
         .map((country) => {
           const events = country.events.filter(eventMatchesFilters).sort(sortEvents);
           if (!events.length) return null;
@@ -373,18 +385,18 @@ export function MapsExplorer({ copy, coverage, locale }) {
         })
         .filter(Boolean)
         .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label)),
-    [coverage.allCountries, eventMatchesFilters],
+    [coverageCountries, eventMatchesFilters],
   );
 
   const filteredCountryByKey = useMemo(() => new Map(filteredCountries.map((country) => [country.countryKey, country])), [filteredCountries]);
   const selectedCountry = filteredCountryByKey.get(selectedCountryKey) || null;
   const filteredWorldEvents = useMemo(
     () =>
-      (coverage.worldEvents || [])
+      (coverage.events || [])
         .filter(eventMatchesFilters)
         .map((event) => ({ ...event, country: filteredCountryByKey.get(event.countryKey) }))
         .filter((event) => event.country && event.globeCoordinates),
-    [coverage.worldEvents, eventMatchesFilters, filteredCountryByKey],
+    [coverage.events, eventMatchesFilters, filteredCountryByKey],
   );
   const scopedWorldEvents = useMemo(() => {
     if (!selectedCountry) return filteredWorldEvents;
@@ -512,7 +524,7 @@ export function MapsExplorer({ copy, coverage, locale }) {
   const selectCountry = (country) => {
     setSelectedCountryKey(country.countryKey);
     clearMarkerDetails();
-    const coordinates = (coverage.worldEvents || [])
+    const coordinates = (coverage.events || [])
       .filter((event) => event.countryKey === country.countryKey && eventMatchesFilters(event))
       .map((event) => event.globeCoordinates)
       .filter(Boolean);
