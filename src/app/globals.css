@@ -1766,16 +1766,6 @@ body.coverage-fullscreen-lock {
   white-space: nowrap;
 }
 
-.source-favicon {
-  flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: contain;
-}
-
 .badge {
   width: max-content;
   max-width: 100%;

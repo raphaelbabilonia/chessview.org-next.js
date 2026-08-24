@@ -18,12 +18,6 @@ const sameHost = (first, second) => {
   return Boolean(firstHost && secondHost && firstHost === secondHost);
 };
 
-const faviconUrlFor = (href) => {
-  const host = hostnameFor(href);
-  if (!host) return "";
-  return `https://www.google.com/s2/favicons?domain_url=${encodeURIComponent(`https://${host}`)}&sz=32`;
-};
-
 const originalSiteInfo = (event) => {
   const links = event.externalLinks || [];
   const website = links.find((link) => link.url && link.type === "website");
@@ -37,7 +31,6 @@ const originalSiteInfo = (event) => {
 
   return {
     href,
-    iconUrl: faviconUrlFor(href),
     label,
   };
 };
@@ -114,15 +107,7 @@ export function EventCard({ copy, event, locale }) {
             rel="noreferrer"
             target="_blank"
           >
-            {sourceInfo.iconUrl ? (
-              <span
-                aria-hidden="true"
-                className="source-favicon"
-                style={{ backgroundImage: `url(${sourceInfo.iconUrl})` }}
-              />
-            ) : (
-              <ExternalLink size={16} aria-hidden="true" />
-            )}
+            <ExternalLink size={16} aria-hidden="true" />
             <span>{sourceInfo.label || copy.card.originalSite}</span>
           </a>
         ) : null}
