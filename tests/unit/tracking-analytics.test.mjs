@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   analyticsConfigIsValid,
+  allowedAnalyticsEvents,
   normalizeAnalyticsPayload,
   parseAnalyticsConsent,
   resolveAnalyticsConsent,
@@ -10,6 +11,8 @@ import {
   sanitizeReplayNetworkRequest,
   serializeAnalyticsConsent,
   shouldShowResearchSurvey,
+  suppressAnalyticsForTrafficClass,
+  trafficClassFor,
   trackingRouteTypeFor,
 } from "../../src/lib/tracking-core.js";
 
@@ -68,6 +71,7 @@ describe("analytics data minimization", () => {
     );
 
     assert.deepEqual(payload, {
+      traffic_class: "production",
       route_type: "events",
       locale: "en",
       entity_type: "event",
@@ -80,6 +84,62 @@ describe("analytics data minimization", () => {
       meta_visit_purpose: "organize_event",
       utm_medium: "email",
     });
+  });
+
+  it("allows only privacy-safe useful-action events used by qualified visitor measurement", () => {
+    for (const eventName of [
+      "event_calendar_download",
+      "event_share",
+      "events_quick_filter_apply",
+      "related_event_open",
+    ]) {
+      assert.equal(allowedAnalyticsEvents.has(eventName), true, `${eventName} is not allowlisted`);
+    }
+  });
+
+  it("classifies and suppresses automated and test traffic without hiding internal traffic", () => {
+    const values = new Map();
+    const storage = {
+      getItem: (key) => values.get(key) || null,
+      setItem: (key, value) => values.set(key, value),
+    };
+
+    assert.equal(
+      trafficClassFor({
+        locationLike: { hostname: "chessview.org", search: "?traffic_class=internal" },
+        navigatorLike: { userAgent: "Firefox", webdriver: false },
+        sessionStorageLike: storage,
+      }),
+      "internal"
+    );
+    assert.equal(
+      trafficClassFor({
+        locationLike: { hostname: "chessview.org", search: "" },
+        navigatorLike: { userAgent: "Firefox", webdriver: false },
+        sessionStorageLike: storage,
+      }),
+      "internal",
+      "internal classification persists for the browser session"
+    );
+    assert.equal(
+      trafficClassFor({
+        locationLike: { hostname: "chessview.org", search: "?traffic_class=production" },
+        navigatorLike: { userAgent: "HeadlessChrome", webdriver: true },
+        sessionStorageLike: storage,
+      }),
+      "automation"
+    );
+    assert.equal(
+      trafficClassFor({
+        locationLike: { hostname: "127.0.0.1", search: "" },
+        navigatorLike: { userAgent: "Firefox", webdriver: false },
+      }),
+      "test"
+    );
+    assert.equal(suppressAnalyticsForTrafficClass("automation"), true);
+    assert.equal(suppressAnalyticsForTrafficClass("test"), true);
+    assert.equal(suppressAnalyticsForTrafficClass("internal"), false);
+    assert.equal(suppressAnalyticsForTrafficClass("production"), false);
   });
 
   it("sanitizes automatic PostHog URL properties and removes person properties", () => {

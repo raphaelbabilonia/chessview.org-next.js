@@ -5,6 +5,7 @@ const installPostHogStub = async (page, eventBodies, { doNotTrack = false } = {}
   // exercises the visitor capture path, so emulate a non-automated navigator.
   await page.addInitScript(({ shouldEnableDnt }) => {
     Object.defineProperty(navigator, "webdriver", { configurable: true, get: () => false });
+    sessionStorage.setItem("chessview_traffic_class", "production");
     if (shouldEnableDnt) {
       Object.defineProperty(navigator, "doNotTrack", { configurable: true, get: () => "1" });
       Object.defineProperty(window, "doNotTrack", { configurable: true, get: () => "1" });
@@ -45,6 +46,26 @@ const installPostHogStub = async (page, eventBodies, { doNotTrack = false } = {}
 
 const pageviewCount = (bodies) => bodies.filter((body) => body.includes("%24pageview") || body.includes("$pageview")).length;
 
+test("suppresses analytics entirely for Playwright automation", async ({ page }) => {
+  const eventBodies = [];
+  await page.route("**/ingest-test/**", async (route) => {
+    eventBodies.push(route.request().postData() || "");
+    await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+  });
+
+  await page.goto("/en");
+  await page.waitForTimeout(500);
+  expect(eventBodies).toEqual([]);
+});
+
+test("suppresses explicitly classified test traffic even when the browser looks human", async ({ page }) => {
+  const eventBodies = [];
+  await installPostHogStub(page, eventBodies);
+  await page.goto("/en?traffic_class=test");
+  await page.waitForTimeout(500);
+  expect(eventBodies).toEqual([]);
+});
+
 test("captures by default, exposes Terms controls, and stops after opt-out", async ({ page }) => {
   const eventBodies = [];
   await installPostHogStub(page, eventBodies);
@@ -53,6 +74,7 @@ test("captures by default, exposes Terms controls, and stops after opt-out", asy
   await expect(page.getByRole("dialog", { name: "Help us improve ChessView" })).toHaveCount(0);
   await expect.poll(() => pageviewCount(eventBodies)).toBe(1);
   expect(eventBodies.join(" ")).not.toContain("private@example.com");
+  expect(decodeURIComponent(eventBodies.join(" "))).toContain("traffic_class");
 
   await page.goto("/en/events");
   await expect.poll(() => pageviewCount(eventBodies)).toBe(2);

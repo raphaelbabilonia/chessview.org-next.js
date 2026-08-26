@@ -1,0 +1,159 @@
+name: ChessView Website Production Guard
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: chessview-website-production-guard
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout current main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 2
+
+      - name: Probe production and classify the incident
+        id: probe
+        shell: bash
+        env:
+          SITE_BASE: https://chessview.org
+          TARGET_SHA: ${{ github.sha }}
+        run: |
+          set -u
+
+          reasons=()
+          technical_failure=false
+          health_json="$(curl -fsS --retry 2 --retry-delay 2 --max-time 15 "$SITE_BASE/_health" 2>/dev/null || true)"
+          home_code="$(curl -sS -o /dev/null -w '%{http_code}' --retry 2 --retry-delay 2 --max-time 20 "$SITE_BASE/en" 2>/dev/null || printf '000')"
+          events_code="$(curl -sS -o /dev/null -w '%{http_code}' --retry 2 --retry-delay 2 --max-time 30 "$SITE_BASE/en/events" 2>/dev/null || printf '000')"
+          sitemap_code="$(curl -sS -o /dev/null -w '%{http_code}' --retry 2 --retry-delay 2 --max-time 30 "$SITE_BASE/sitemap.xml" 2>/dev/null || printf '000')"
+          robots_code="$(curl -sS -o /dev/null -w '%{http_code}' --retry 2 --retry-delay 2 --max-time 15 "$SITE_BASE/robots.txt" 2>/dev/null || printf '000')"
+
+          deployed_sha="$(printf '%s' "$health_json" | jq -r '.deploymentSha // empty' 2>/dev/null || true)"
+          health_ok="$(printf '%s' "$health_json" | jq -r '.ok // false' 2>/dev/null || printf 'false')"
+          if [ "$health_ok" != "true" ]; then reasons+=("health"); technical_failure=true; fi
+          if [ "$home_code" != "200" ]; then reasons+=("home:$home_code"); technical_failure=true; fi
+          if [ "$events_code" != "200" ]; then reasons+=("events:$events_code"); technical_failure=true; fi
+          if [ "$sitemap_code" != "200" ]; then reasons+=("sitemap:$sitemap_code"); technical_failure=true; fi
+          if [ "$robots_code" != "200" ]; then reasons+=("robots:$robots_code"); technical_failure=true; fi
+
+          mapfile -t sample_codes < <(
+            seq 1 100 | xargs -P 20 -I '{}' \
+              curl -sS -o /dev/null -w '%{http_code}\n' --max-time 15 "$SITE_BASE/_health" 2>/dev/null || true
+          )
+          server_errors="$(printf '%s\n' "${sample_codes[@]}" | awk '/^5[0-9][0-9]$/ { count++ } END { print count + 0 }')"
+          incomplete_samples=$((100 - ${#sample_codes[@]}))
+          if [ "$server_errors" -gt 1 ]; then reasons+=("5xx:$server_errors/100"); technical_failure=true; fi
+          if [ "$incomplete_samples" -gt 0 ]; then reasons+=("incomplete-samples:$incomplete_samples"); technical_failure=true; fi
+
+          sha_match=false
+          if [ -n "$deployed_sha" ] && [ "$deployed_sha" = "$TARGET_SHA" ]; then sha_match=true; fi
+          if [ "$sha_match" != "true" ]; then reasons+=("deployment-sha-mismatch"); fi
+
+          healthy=false
+          if [ "$technical_failure" = "false" ] && [ "$sha_match" = "true" ]; then healthy=true; fi
+          printf 'healthy=%s\n' "$healthy" >> "$GITHUB_OUTPUT"
+          printf 'technical_failure=%s\n' "$technical_failure" >> "$GITHUB_OUTPUT"
+          printf 'sha_match=%s\n' "$sha_match" >> "$GITHUB_OUTPUT"
+          printf 'deployed_sha=%s\n' "$deployed_sha" >> "$GITHUB_OUTPUT"
+          printf 'reason=%s\n' "$(IFS=,; echo "${reasons[*]:-none}")" >> "$GITHUB_OUTPUT"
+
+      - name: Decide whether this guard owns the rollback
+        id: decision
+        if: steps.probe.outputs.healthy != 'true'
+        shell: bash
+        env:
+          PROBE_TECHNICAL_FAILURE: ${{ steps.probe.outputs.technical_failure }}
+          PROBE_SHA_MATCH: ${{ steps.probe.outputs.sha_match }}
+        run: |
+          set -euo pipefail
+          subject="$(git show -s --format=%s HEAD)"
+          commit_epoch="$(git show -s --format=%ct HEAD)"
+          age_seconds=$(( $(date +%s) - commit_epoch ))
+          owns_rollback=false
+          restore_backup=false
+          if [[ "$subject" == \[growth-run:* ]] && [ "$age_seconds" -ge 1800 ]; then
+            owns_rollback=true
+            if [ "$PROBE_TECHNICAL_FAILURE" = "true" ] && [ "$PROBE_SHA_MATCH" = "true" ]; then
+              restore_backup=true
+            fi
+          fi
+          printf 'owns_rollback=%s\n' "$owns_rollback" >> "$GITHUB_OUTPUT"
+          printf 'restore_backup=%s\n' "$restore_backup" >> "$GITHUB_OUTPUT"
+          printf 'age_seconds=%s\n' "$age_seconds" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the previous website release
+        if: steps.decision.outputs.restore_backup == 'true'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          timeout: 60s
+          command_timeout: 10m
+          script: |
+            set -e
+            APP_NAME="chessview-web"
+            SITE_USER="chessview"
+            TARGET_DIR="/home/chessview/htdocs/chessview.org"
+            BACKUP_ROOT="/home/chessview/backups"
+            BACKUP_DIR="$(find "$BACKUP_ROOT" -maxdepth 1 -mindepth 1 -type d -name 'web-*' -printf '%T@ %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
+            if [ -z "$BACKUP_DIR" ] || [ ! -f "$BACKUP_DIR/server.js" ]; then
+              echo "No valid website backup is available"
+              exit 1
+            fi
+            run_privileged() {
+              if [ "$(id -u)" -eq 0 ]; then "$@"; else sudo -n "$@"; fi
+            }
+            run_as_site_user() {
+              if [ "$(id -un)" = "$SITE_USER" ]; then bash -lc "$1"; else sudo -n -H -u "$SITE_USER" bash -lc "$1"; fi
+            }
+            run_privileged rsync -av --delete --exclude '.well-known' "$BACKUP_DIR"/ "$TARGET_DIR"/
+            run_as_site_user "pm2 delete '$APP_NAME' >/dev/null 2>&1 || true; cd '$TARGET_DIR' && pm2 start ecosystem.config.cjs --update-env"
+            run_as_site_user "pm2 save || true"
+            for attempt in $(seq 1 20); do
+              health_code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:3011/_health || printf '000')"
+              if [ "$health_code" = "200" ]; then exit 0; fi
+              sleep 3
+            done
+            exit 1
+
+      - name: Revert the owned growth release on main
+        if: steps.decision.outputs.owns_rollback == 'true'
+        shell: bash
+        env:
+          TARGET_SHA: ${{ github.sha }}
+          PROBE_REASON: ${{ steps.probe.outputs.reason }}
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          remote_sha="$(git rev-parse origin/main)"
+          if [ "$remote_sha" != "$TARGET_SHA" ]; then
+            echo "Remote main moved; refusing an unsafe automatic revert."
+            exit 1
+          fi
+          git config user.name "ChessView Production Guard"
+          git config user.email "actions@users.noreply.github.com"
+          git revert --no-edit "$TARGET_SHA"
+          git commit --amend -m "Revert growth release $TARGET_SHA (production guard: $PROBE_REASON)"
+          git push origin HEAD:main
+
+      - name: Fail unowned or still-warming incidents
+        if: steps.probe.outputs.healthy != 'true' && steps.decision.outputs.owns_rollback != 'true'
+        shell: bash
+        env:
+          PROBE_REASON: ${{ steps.probe.outputs.reason }}
+          AGE_SECONDS: ${{ steps.decision.outputs.age_seconds }}
+        run: |
+          echo "Production guard did not mutate main. reason=$PROBE_REASON age_seconds=$AGE_SECONDS"
+          exit 1

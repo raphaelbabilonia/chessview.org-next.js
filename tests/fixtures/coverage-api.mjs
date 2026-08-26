@@ -88,6 +88,16 @@ const events = [
   },
 ];
 
+for (const event of events) {
+  event.indexable = true;
+  event.updatedAt = "2026-08-26T00:00:00.000Z";
+  event.websiteUrl = `https://fixture.example.org/events/${event.slug}`;
+  event.source = {
+    ...event.source,
+    url: `https://fixture.example.org/events/${event.slug}`,
+  };
+}
+
 const newsItems = [
   {
     id: "fixture-news-chessbase",

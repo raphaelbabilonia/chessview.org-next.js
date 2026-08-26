@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { EventCard } from "@/components/EventCard";
 import { getAllUpcomingEvents } from "@/lib/api";
-import { pageSeoMetadata } from "@/lib/seo";
+import { noIndexFollowRobots, pageSeoMetadata } from "@/lib/seo";
 import { slugifySegment, sourceHref } from "@/lib/tournament";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
@@ -33,12 +33,14 @@ export async function generateMetadata({ params }) {
   const label = events[0]?.source?.name || labelFromSlug(source);
   const path = sourceHref(label);
 
-  return pageSeoMetadata({
+  const metadata = pageSeoMetadata({
     locale,
     path,
     title: `${copy.events.sourceTitle} ${label}`,
     description: `${copy.events.description} ${label}.`,
   });
+  if (!error && events.length < 5) metadata.robots = noIndexFollowRobots;
+  return metadata;
 }
 
 export default async function SourceEventsPage({ params }) {

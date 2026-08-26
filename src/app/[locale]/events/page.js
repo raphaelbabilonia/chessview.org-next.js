@@ -3,12 +3,13 @@ import { notFound } from "next/navigation";
 import { EventCard } from "@/components/EventCard";
 import { TrackableForm } from "@/components/TrackableForm";
 import { getEvents, todayIsoDate } from "@/lib/api";
-import { pageSeoMetadata } from "@/lib/seo";
+import { eventListCanonicalPath, eventListHasQueryState } from "@/lib/event-list-query";
+import { noIndexFollowRobots, pageSeoMetadata } from "@/lib/seo";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
 
 const EVENTS_PAGE_SIZE = 30;
-const filterParamKeys = ["search", "city", "country", "source", "status", "from", "to"];
+const filterParamKeys = ["search", "city", "country", "source", "status", "from", "to", "timeControl", "sort"];
 
 const getParam = (params, key) => {
   const value = params?.[key];
@@ -126,17 +127,20 @@ function PaginationNav({ copy, locale, linkFilters, meta }) {
   );
 }
 
-export async function generateMetadata({ params }) {
+export async function generateMetadata({ params, searchParams }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const copy = getDictionary(locale);
+  const query = await searchParams;
 
-  return pageSeoMetadata({
+  const metadata = pageSeoMetadata({
     locale,
-    path: "/events",
+    path: eventListCanonicalPath(),
     title: copy.events.title,
     description: copy.events.description,
   });
+  if (eventListHasQueryState(query)) metadata.robots = noIndexFollowRobots;
+  return metadata;
 }
 
 export default async function EventsPage({ params, searchParams }) {
@@ -156,6 +160,8 @@ export default async function EventsPage({ params, searchParams }) {
     status: getParam(query, "status"),
     from: requestedFrom || defaultFrom,
     to: getParam(query, "to"),
+    timeControl: getParam(query, "timeControl"),
+    sort: getParam(query, "sort"),
   };
   const requestFilters = {
     ...filters,

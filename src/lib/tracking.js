@@ -17,6 +17,8 @@ import {
   sanitizeReplayNetworkRequest,
   resolveAnalyticsConsent,
   serializeAnalyticsConsent,
+  suppressAnalyticsForTrafficClass,
+  trafficClassFor,
   trackingRouteTypeFor,
 } from "@/lib/tracking-core";
 
@@ -29,6 +31,16 @@ let initialized = false;
 let lastTrackedPath = "";
 
 const browserWindow = () => (typeof window === "undefined" ? null : window);
+
+const currentTrafficClass = () => {
+  const currentWindow = browserWindow();
+  if (!currentWindow) return "test";
+  return trafficClassFor({
+    locationLike: currentWindow.location,
+    navigatorLike: currentWindow.navigator,
+    sessionStorageLike: currentWindow.sessionStorage,
+  });
+};
 
 const emit = (name, detail) => {
   const currentWindow = browserWindow();
@@ -88,7 +100,14 @@ const clearPostHogPersistence = () => {
 const dispatchReady = () => emit(ANALYTICS_READY_EVENT, { enabled: trackingIsEnabled() });
 
 export const initAnalytics = () => {
-  if (!analyticsIsConfigured() || initialized || !browserWindow()) return false;
+  if (
+    !analyticsIsConfigured() ||
+    initialized ||
+    !browserWindow() ||
+    suppressAnalyticsForTrafficClass(currentTrafficClass())
+  ) {
+    return false;
+  }
 
   try {
     posthog.init(projectToken, {
@@ -152,11 +171,24 @@ export const initAnalytics = () => {
       },
       before_send(event) {
         if (!event) return null;
-        return { ...event, properties: sanitizePostHogProperties(event.properties) };
+        const trafficClass = currentTrafficClass();
+        if (suppressAnalyticsForTrafficClass(trafficClass)) return null;
+        return {
+          ...event,
+          properties: sanitizePostHogProperties({
+            ...event.properties,
+            traffic_class: trafficClass,
+          }),
+        };
       },
       loaded(client) {
         initialized = true;
-        if (readAnalyticsConsent() === "denied") client.opt_out_capturing();
+        if (
+          readAnalyticsConsent() === "denied" ||
+          suppressAnalyticsForTrafficClass(currentTrafficClass())
+        ) {
+          client.opt_out_capturing();
+        }
         else {
           client.opt_in_capturing({ captureEventName: false });
           client.startSessionRecording();
@@ -172,7 +204,14 @@ export const initAnalytics = () => {
 };
 
 export const trackingIsEnabled = () => {
-  if (!analyticsIsConfigured() || !initialized || readAnalyticsConsent() !== "granted") return false;
+  if (
+    !analyticsIsConfigured() ||
+    !initialized ||
+    readAnalyticsConsent() !== "granted" ||
+    suppressAnalyticsForTrafficClass(currentTrafficClass())
+  ) {
+    return false;
+  }
   return !posthog.has_opted_out_capturing();
 };
 
@@ -202,7 +241,10 @@ export const trackAnalyticsEvent = (eventName, data = {}) => {
   if (!allowedAnalyticsEvents.has(name) || !trackingIsEnabled()) return false;
 
   const currentWindow = browserWindow();
-  posthog.capture(name, normalizeAnalyticsPayload(data, currentWindow?.location));
+  posthog.capture(
+    name,
+    normalizeAnalyticsPayload({ ...data, trafficClass: currentTrafficClass() }, currentWindow?.location)
+  );
   return true;
 };
 
@@ -230,6 +272,7 @@ export const trackPageView = (path) => {
 
   lastTrackedPath = cleanPath;
   posthog.capture("$pageview", {
+    traffic_class: currentTrafficClass(),
     $current_url: sanitizeAnalyticsUrl(currentWindow?.location.href || cleanPath, { keepUtm: true }),
     $pathname: cleanPath,
     route_type: trackingRouteTypeFor(cleanPath),

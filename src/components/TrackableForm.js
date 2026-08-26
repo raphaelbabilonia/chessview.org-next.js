@@ -2,7 +2,7 @@
 
 import { trackAnalyticsEvent } from "@/lib/tracking";
 
-const allowedFilters = new Set(["search", "city", "country", "source", "status", "from", "to"]);
+const allowedFilters = new Set(["search", "city", "country", "source", "status", "from", "to", "timeControl", "sort"]);
 
 const safeFilterValue = (name, value) => {
   const clean = String(value || "").trim();

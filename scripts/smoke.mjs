@@ -71,6 +71,16 @@ await check("API health", async () => {
   assert(health.ok === true, "API health did not return ok=true");
 });
 
+await check("website health exposes the deployed release", async () => {
+  const response = await fetch(`${siteUrl}/_health`);
+  assert(response.status === 200, `/_health returned ${response.status}`);
+  const health = await response.json();
+  assert(health.ok === true, "website health did not return ok=true");
+  assert(health.service === "chessview-web", "website health returned the wrong service");
+  assert(typeof health.deploymentSha === "string" && health.deploymentSha.length > 0, "website health omitted deployment SHA");
+  assert(response.headers.get("cache-control") === "no-store", "website health is cacheable");
+});
+
 await check("API news", async () => {
   const newsPayload = await getJson(`${apiUrl}/news?limit=3`);
   assert(newsPayload.data?.length === 3, "API news did not return three limited items");
@@ -180,6 +190,10 @@ await check("event list pages render translations", async () => {
   assert(response.status === 200, `/es/events returned ${response.status}`);
   assert(text.includes("Encontr"), "Spanish event list title missing");
   assert(text.includes(`/es/events/${firstEvent.slug}`), "Event list did not include first event link");
+
+  const filtered = await getText("/es/events?country=Argentina&page=2");
+  assert(filtered.response.status === 200, `filtered event list returned ${filtered.response.status}`);
+  assert(filtered.text.includes("noindex"), "filtered and paginated event list is indexable");
 });
 
 await check("maps pages render the three-dimensional service", async () => {
@@ -249,17 +263,28 @@ await check("event detail includes SEO data", async () => {
   assert(text.includes(`/es/events/${firstEvent.slug}`), "hreflang alternate for Spanish missing");
 });
 
-await check("sitemap includes localized event URLs", async () => {
-  const { response, text } = await getText("/sitemap.xml");
-  assert(response.status === 200, `/sitemap.xml returned ${response.status}`);
-  assert(text.includes('hreflang="x-default"'), "sitemap missing x-default hreflang alternates");
+await check("sitemap index partitions canonical localized URLs", async () => {
+  const index = await getText("/sitemap.xml");
+  assert(index.response.status === 200, `/sitemap.xml returned ${index.response.status}`);
+  assert(index.text.includes("<sitemapindex"), "sitemap root is not a sitemap index");
+  assert(index.text.length < 1_000_000, "sitemap index is unexpectedly large");
+  assert(index.text.includes("/sitemaps/core-0.xml"), "sitemap index is missing core content");
   for (const locale of ["en", "es", "it"]) {
-    assert(text.includes(`/${locale}/news`), `sitemap missing ${locale} news URL`);
-    assert(text.includes(`/${locale}/maps`), `sitemap missing ${locale} maps URL`);
-    assert(text.includes(`/${locale}/collaborate`), `sitemap missing ${locale} collaboration URL`);
+    assert(index.text.includes(`/sitemaps/events-${locale}-0.xml`), `sitemap index is missing ${locale} events`);
   }
+
+  const core = await getText("/sitemaps/core-0.xml");
+  assert(core.response.status === 200, `core sitemap returned ${core.response.status}`);
+  assert(core.text.includes("/en/news"), "core sitemap missing English news URL");
+  assert(core.text.includes("/es/maps"), "core sitemap missing Spanish maps URL");
+  assert(core.text.includes("/it/collaborate"), "core sitemap missing Italian collaboration URL");
+
   for (const locale of ["en", "es", "it"]) {
-    assert(text.includes(`/${locale}/events/${firstEvent.slug}`), `sitemap missing ${locale} event URL`);
+    const child = await getText(`/sitemaps/events-${locale}-0.xml`);
+    assert(child.response.status === 200, `${locale} event sitemap returned ${child.response.status}`);
+    assert(child.text.includes('hreflang="x-default"'), `${locale} event sitemap missing x-default alternate`);
+    assert(child.text.includes(`/${locale}/events/${firstEvent.slug}`), `${locale} event sitemap missing fixture event`);
+    assert((child.text.match(/<url>/g) || []).length <= 5000, `${locale} event sitemap exceeds 5,000 URLs`);
   }
 });
 

@@ -27,6 +27,16 @@ export const crawlerRobots = {
   },
 };
 
+export const noIndexFollowRobots = {
+  index: false,
+  follow: true,
+  googleBot: {
+    ...crawlerRobots.googleBot,
+    index: false,
+    follow: true,
+  },
+};
+
 export const defaultOpenGraphImage = {
   url: siteConfig.ogImage.path,
   width: 1200,

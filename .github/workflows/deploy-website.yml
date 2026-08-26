@@ -42,6 +42,9 @@ jobs:
       - name: Run consent-first analytics tests
         run: npm run test:analytics
 
+      - name: Run growth foundation tests
+        run: npm run test:growth-foundation:unit
+
   deploy:
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     needs: map-tests
@@ -155,7 +158,7 @@ jobs:
             TEMP_DIR="/tmp/chessview-web-deploy"
             BACKUP_ROOT="/home/chessview/backups"
             BACKUP_DIR="$BACKUP_ROOT/web-$(date +%Y%m%d-%H%M%S)"
-            LOCAL_HEALTH_URL="http://127.0.0.1:3011/en"
+            LOCAL_HEALTH_URL="http://127.0.0.1:3011/_health"
             NODE_BIN="/opt/chessview/runtimes/node/24/bin/node"
 
             if [ ! -d "$TEMP_DIR" ]; then
@@ -243,8 +246,12 @@ jobs:
           command_timeout: 5m
           script: |
             set -e
+            HEALTH_JSON=$(curl -fsS --max-time 10 https://chessview.org/_health || true)
             PUBLIC_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 https://chessview.org/en || echo "000")
+            EVENTS_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 https://chessview.org/en/events || echo "000")
+            DEPLOYED_SHA=$(printf '%s' "$HEALTH_JSON" | sed -n 's/.*"deploymentSha":"\([^"]*\)".*/\1/p')
             echo "https://chessview.org/en => HTTP $PUBLIC_STATUS"
-            if [ "$PUBLIC_STATUS" != "200" ]; then
+            echo "https://chessview.org/en/events => HTTP $EVENTS_STATUS"
+            if [ "$PUBLIC_STATUS" != "200" ] || [ "$EVENTS_STATUS" != "200" ] || [ "$DEPLOYED_SHA" != "${{ github.sha }}" ]; then
               exit 1
             fi

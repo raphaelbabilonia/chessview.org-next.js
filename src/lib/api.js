@@ -78,6 +78,13 @@ export const getEventCatalog = (filters = {}) =>
     fallback: [],
   });
 
+export const getEventFacets = (filters = {}) =>
+  apiFetch("/events/facets", {
+    searchParams: filters,
+    revalidate: 300,
+    fallback: { countries: [], cities: [], timeControls: [] },
+  });
+
 export const todayIsoDate = (date = new Date()) =>
   new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).toISOString().slice(0, 10);
 

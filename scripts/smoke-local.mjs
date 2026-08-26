@@ -65,10 +65,12 @@ try {
   await waitFor(`${apiUrl}/health`);
   await run(["node_modules/next/dist/bin/next", "build"], {
     API_BASE_URL: apiUrl,
+    CHESSVIEW_DEPLOY_SHA: "smoke-local-sha",
     NEXT_PUBLIC_ANALYTICS_ENABLED: "false",
   });
   start(["node_modules/next/dist/bin/next", "start", "--hostname", "127.0.0.1", "--port", "3019"], {
     API_BASE_URL: apiUrl,
+    CHESSVIEW_DEPLOY_SHA: "smoke-local-sha",
     NEXT_PUBLIC_ANALYTICS_ENABLED: "false",
   });
   await waitFor(`${siteUrl}/en`);

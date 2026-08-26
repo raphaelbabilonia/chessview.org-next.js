@@ -17,7 +17,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "npm run test:maps:unit && npm run test:analytics:unit",
+    "test": "npm run test:maps:unit && npm run test:analytics:unit && npm run test:growth-foundation:unit",
     "audit:prod": "npm audit --omit=dev --audit-level=moderate",
     "maps:build-admin1": "node scripts/build-coverage-admin1.mjs",
     "smoke": "node scripts/smoke.mjs",
@@ -28,6 +28,7 @@
     "test:analytics": "npm run test:analytics:unit && npm run test:analytics:e2e",
     "test:analytics:e2e": "playwright test --config=playwright.analytics.config.mjs",
     "test:analytics:unit": "node --test tests/unit/tracking-analytics.test.mjs",
+    "test:growth-foundation:unit": "node --test tests/unit/growth-foundation.test.mjs",
     "seo:submit-indexnow": "node scripts/submit-indexnow.mjs",
     "verify": "npm run lint && npm test && npm run smoke:local && npm run audit:prod"
   },

@@ -8,6 +8,7 @@ export const ANALYTICS_PAGEVIEW_EVENT = "chessview:analytics-pageview";
 export const ANALYTICS_SETTINGS_EVENT = "chessview:analytics-settings";
 export const ANALYTICS_PAGEVIEW_COUNT_KEY = "chessview_analytics_pageviews";
 export const ANALYTICS_SESSION_STARTED_KEY = "chessview_analytics_session_started";
+export const TRAFFIC_CLASS_STORAGE_KEY = "chessview_traffic_class";
 export const RESEARCH_SURVEY_STORAGE_KEY = "chessview_research_survey";
 export const RESEARCH_SURVEY_VERSION = 1;
 export const RESEARCH_SURVEY_COOLDOWN_MS = 90 * 24 * 60 * 60 * 1000;
@@ -16,9 +17,13 @@ export const allowedAnalyticsEvents = new Set([
   "event_view_details",
   "event_original_click",
   "event_announcement_open",
+  "event_calendar_download",
+  "event_share",
   "events_filter_apply",
+  "events_quick_filter_apply",
   "news_original_click",
   "news_filter_apply",
+  "related_event_open",
   "language_change",
   "theme_change",
   "github_source_click",
@@ -49,10 +54,21 @@ export const allowedAnalyticsEvents = new Set([
   "visitor_research_survey_submitted",
 ]);
 
-const allowedFilterKeys = new Set(["search", "city", "country", "source", "status", "from", "to"]);
+const allowedFilterKeys = new Set([
+  "search",
+  "city",
+  "country",
+  "source",
+  "status",
+  "from",
+  "to",
+  "time_control",
+  "sort",
+]);
 const allowedMetadataKeys = new Set([
   "degrees",
   "direction",
+  "experiment_id",
   "from",
   "input",
   "label",
@@ -68,6 +84,7 @@ const allowedMetadataKeys = new Set([
   "view",
   "visit_purpose",
   "visitor_role",
+  "variant",
 ]);
 const blockedPropertyPattern = /(?:email|password|secret|token|contact|query|search_text|entity_title|outbound_url|form_value|input_value|full_name)/i;
 const blockedPostHogProperties = new Set([
@@ -79,6 +96,47 @@ const blockedPostHogProperties = new Set([
   "title",
 ]);
 const allowedUtmPropertyPattern = /(?:^|_)(?:utm_source|utm_medium|utm_campaign)$/;
+const allowedTrafficClasses = new Set(["production", "internal", "automation", "test"]);
+const automatedUserAgentPattern =
+  /(?:\bbot\b|crawler|spider|headless|lighthouse|pagespeed|playwright|puppeteer|selenium|uptimerobot|pingdom|statuscake)/i;
+
+const normalizedTrafficClass = (value) => {
+  const candidate = String(value || "").trim().toLowerCase();
+  return allowedTrafficClasses.has(candidate) ? candidate : "";
+};
+
+export const trafficClassFor = ({ locationLike = {}, navigatorLike = {}, sessionStorageLike } = {}) => {
+  if (navigatorLike.webdriver || automatedUserAgentPattern.test(String(navigatorLike.userAgent || ""))) {
+    return "automation";
+  }
+
+  let requested = "";
+  try {
+    requested = normalizedTrafficClass(new URLSearchParams(locationLike.search || "").get("traffic_class"));
+  } catch {
+    requested = "";
+  }
+
+  let stored = "";
+  try {
+    stored = normalizedTrafficClass(sessionStorageLike?.getItem?.(TRAFFIC_CLASS_STORAGE_KEY));
+    if (requested) sessionStorageLike?.setItem?.(TRAFFIC_CLASS_STORAGE_KEY, requested);
+  } catch {
+    stored = "";
+  }
+
+  if (requested || stored) return requested || stored;
+
+  const hostname = String(locationLike.hostname || "").toLowerCase();
+  if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname.endsWith(".local")) {
+    return "test";
+  }
+
+  return "production";
+};
+
+export const suppressAnalyticsForTrafficClass = (trafficClass) =>
+  trafficClass === "automation" || trafficClass === "test";
 
 export const cleanAnalyticsText = (value, max = 220) =>
   String(value ?? "")
@@ -179,6 +237,7 @@ export const normalizeAnalyticsPayload = (data = {}, locationLike) => {
   const path = pathWithoutQuery(data.path || locationLike?.pathname || "/");
   const outboundHost = hostnameFromUrl(data.outboundUrl);
   const payload = {
+    traffic_class: normalizedTrafficClass(data.trafficClass) || "production",
     route_type: cleanAnalyticsText(data.routeType || trackingRouteTypeFor(path), 40),
     locale: cleanAnalyticsText(data.locale || localeFromPath(path), 8),
     entity_type: cleanAnalyticsText(data.entityType, 40),

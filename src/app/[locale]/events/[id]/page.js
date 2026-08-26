@@ -4,6 +4,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { backendAssetUrl, getEvent } from "@/lib/api";
 import { compactDescription, formatCardDateRange, formatCountryName, formatDateRange, formatTimeControl } from "@/lib/format";
 import { pageSeoMetadata } from "@/lib/seo";
+import { metadataForPublicDisplay, organizerNameForPublicDisplay } from "@/lib/public-event";
 import { absoluteUrl } from "@/lib/site";
 import { localizedEventHref } from "@/lib/tournament";
 import { isLocale, localePath } from "@/i18n/config";
@@ -168,7 +169,6 @@ const metadataGroupsFor = (metadata, copy) => {
         value: metadataValue(item, copy),
       })),
     },
-    { title: copy.event.metadataSourceAudit, entries: entriesFromObject(metadata.sourceAudit, copy) },
     {
       title: copy.event.metadataExtraFacts,
       entries: (metadata.extraFacts || []).map((item, index) => ({
@@ -243,7 +243,7 @@ export default async function EventDetailPage({ params }) {
     locationBase,
     includesLocationPart(locationBase, event.city) ? "" : event.city,
   ]).join(", ");
-  const organizerName = event.sourceOrganizerName || event.organizer?.name || "";
+  const organizerName = organizerNameForPublicDisplay(event);
   const contactText = [event.contactEmail, event.contactPhone].filter(Boolean).join(" / ");
   const displayCountry = formatCountryName(event.country, locale);
   const country = includesLocationPart(location, event.country) || includesLocationPart(location, displayCountry) ? "" : displayCountry;
@@ -254,7 +254,7 @@ export default async function EventDetailPage({ params }) {
   const sourceName = event.source?.name || copy.event.tba;
   const announcementDocument = announcementDocumentFor(event, copy);
   const announcementHref = announcementDocument ? documentHref(announcementDocument) : "";
-  const metadata = isPlainObject(event.metadata) ? event.metadata : {};
+  const metadata = metadataForPublicDisplay(event.metadata);
   const metadataGroups = metadataGroupsFor(metadata, copy);
   const hasAdvancedMetadata = Boolean(metadata.summary || metadataGroups.length);
   const schema = {
