@@ -135,11 +135,11 @@ Use the PostHog project settings to select the EU region, discard IP data, keep 
 
 ## Production Deployment
 
-The GitHub Actions workflow deploys the public website as a self-hosted Next.js standalone server on the VPS. It expects these repository secrets:
+The GitHub Actions workflow builds a standalone Next.js artifact and deploys it through the restricted KVM8 gateway. It expects these repository secrets:
 
-- `VPS_HOST`: the VPS host or IP address, for example `148.230.112.224`.
-- `VPS_USERNAME`: a root or sudo-capable deploy user on the VPS.
-- `VPS_SSH_KEY`: the private SSH key whose public key is authorized for `VPS_USERNAME`.
+- `CHESSVIEW_VPS_HOST` and `CHESSVIEW_VPS_USER`: the commissioned KVM8 gateway destination.
+- `CHESSVIEW_VPS_SSH_KEY`: the restricted deployment key.
+- `CHESSVIEW_VPS_KNOWN_HOSTS`: the pinned SSH host identity; strict verification is required.
 
 The workflow builds with:
 
@@ -151,7 +151,9 @@ NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN=phc_your_eu_project_token
 NEXT_PUBLIC_POSTHOG_HOST=/ingest
 ```
 
-It assumes CloudPanel has a Node.js site for `chessview.org` using site user `chessview`, with nginx proxying to port `3001`. If CloudPanel creates a different site user or path, update `SITE_USER` and `TARGET_DIR` in `.github/workflows/deploy-website.yml`.
+Production uses `hoc-chessview-web.service`, with its current release at `/srv/hoc/chessview/web` and an internal listener on port `3021`. The API is a separate isolated service. The gateway verifies artifact hashes, retains the previous release, and verifies readiness. The workflow also checks the exact public `/_health` deployment SHA. Preserve these routes and use the gateway for deployment and rollback.
+
+Content workers run in the private brain checkout on Windows through its hidden Task Scheduler job and terminal CLI. Keep the duplicate GitHub coordinate job disabled. The independent `production-guard.yml` workflow remains responsible for public health and guarded rollback ownership.
 
 ## Security and Open Source Notes
 
