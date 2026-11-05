@@ -1709,6 +1709,8 @@ body.coverage-fullscreen-lock {
 }
 
 .event-card-main h3 {
+  overflow-wrap: break-word;
+  hyphens: auto;
   font-size: 1.05rem;
   line-height: 1.18;
 }

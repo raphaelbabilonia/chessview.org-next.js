@@ -126,7 +126,7 @@ const dictionaries = {
     },
     coverage: {
       eyebrow: "Tournament maps",
-      seoTitle: "Chess tournament maps | ChessView",
+      seoTitle: "Chess tournament maps",
       title: "Explore chess tournaments worldwide",
       description:
         "Find live and upcoming chess tournaments on an interactive 3D globe, then explore countries, regions, and event details.",
@@ -459,7 +459,7 @@ const dictionaries = {
     },
     coverage: {
       eyebrow: "Mapa de torneos",
-      seoTitle: "Mapas de torneos de ajedrez | ChessView",
+      seoTitle: "Mapas de torneos de ajedrez",
       title: "Explora torneos de ajedrez en todo el mundo",
       description:
         "Encuentra torneos de ajedrez activos y futuros en un globo 3D interactivo y explora paises, regiones y eventos.",
@@ -792,7 +792,7 @@ const dictionaries = {
     },
     coverage: {
       eyebrow: "Mappa tornei",
-      seoTitle: "Mappe dei tornei di scacchi | ChessView",
+      seoTitle: "Mappe dei tornei di scacchi",
       title: "Esplora i tornei di scacchi nel mondo",
       description:
         "Trova tornei di scacchi in corso e futuri su un globo 3D interattivo, poi esplora paesi, regioni ed eventi.",

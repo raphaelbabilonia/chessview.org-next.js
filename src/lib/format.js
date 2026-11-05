@@ -120,6 +120,7 @@ export const formatCardDateRange = (start, end, locale = "en") => {
     .filter((part) => part.type !== "year")
     .map((part) => part.value)
     .join("")
+    .replace(/,(\s*[\u2013\u2014-])/gu, "$1")
     .replace(/[,\s]+$/g, "")
     .trim();
 

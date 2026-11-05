@@ -5,8 +5,8 @@ export default function NotFound() {
     <main className="page">
       <section className="info-panel">
         <p className="eyebrow">Not found</p>
-        <h1>Event not found</h1>
-        <p className="muted">The page may have moved, or the event may not be public.</p>
+        <h1>Page not found</h1>
+        <p className="muted">The page may have moved, or the address may be mistyped.</p>
         <div className="button-row">
           <Link className="button" href="/events">
             Browse events

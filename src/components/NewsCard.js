@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { ExternalLink } from "lucide-react";
 import { formatDate } from "@/lib/format";
-import { hasRequiredNewsImage } from "@/lib/news";
+import { displayAuthor, hasRequiredNewsImage } from "@/lib/news";
 
 const normalizeTagLabel = (value) =>
   String(value || "")
@@ -13,7 +13,7 @@ const normalizeTagLabel = (value) =>
 export function NewsCard({ copy, item, locale }) {
   if (!hasRequiredNewsImage(item)) return null;
 
-  const meta = [item.author, item.region, item.language].filter(Boolean).slice(0, 3);
+  const meta = [displayAuthor(item.author), item.region, item.language].filter(Boolean).slice(0, 3);
   const relatedNames = Array.isArray(item.relatedPlayerNames) ? item.relatedPlayerNames.slice(0, 3) : [];
   const summary = item.summary || item.description;
   const visibleLabels = new Set(
