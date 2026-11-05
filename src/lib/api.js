@@ -147,9 +147,10 @@ export const getAllUpcomingEvents = (filters = {}, options) =>
     options,
   );
 
+// Not cached: Next keeps a stale entry when revalidation returns 404, so a removed event would stay online.
 export const getEvent = (id) =>
   apiFetch(`/events/${encodeURIComponent(id)}`, {
-    revalidate: 60,
+    revalidate: 0,
     fallback: null,
   });
 
