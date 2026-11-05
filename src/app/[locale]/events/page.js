@@ -1,4 +1,5 @@
 import { Search } from "lucide-react";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EventCard } from "@/components/EventCard";
 import { TrackableForm } from "@/components/TrackableForm";
@@ -181,7 +182,8 @@ export default async function EventsPage({ params, searchParams }) {
     ...filters,
     from: requestedFrom,
   };
-  const activeFilterCount = filterParamKeys.filter((key) => linkFilters[key]).length;
+  const newestAdded = filters.sort === "recent";
+  const activeFilterCount = filterParamKeys.filter((key) => key !== "sort" && linkFilters[key]).length;
 
   return (
     <main className="page">
@@ -201,6 +203,7 @@ export default async function EventsPage({ params, searchParams }) {
           eventName="events_filter_apply"
           routeType="events"
         >
+          {filters.sort ? <input type="hidden" name="sort" value={filters.sort} /> : null}
           <label>
             {copy.events.search}
             <input name="search" defaultValue={filters.search} placeholder={copy.events.searchPlaceholder} />
@@ -246,6 +249,12 @@ export default async function EventsPage({ params, searchParams }) {
         <>
           <div className="results-toolbar">
             <p>{resultSummary}</p>
+            <Link
+              className="button button-small button-ghost"
+              href={buildPageHref(locale, { ...linkFilters, sort: newestAdded ? "" : "recent" }, 1)}
+            >
+              {newestAdded ? copy.events.sortByDate : copy.events.sortNewest}
+            </Link>
           </div>
           <PaginationNav copy={copy} locale={locale} linkFilters={linkFilters} meta={meta} />
           <section className="event-grid" aria-label={copy.events.results}>

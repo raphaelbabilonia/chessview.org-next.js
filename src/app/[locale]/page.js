@@ -99,13 +99,15 @@ export default async function HomePage({ params }) {
   if (!isLocale(locale)) notFound();
 
   const copy = getDictionary(locale);
-  const [catalogResult, featuredResult, newsResult] = await Promise.all([
+  const [catalogResult, featuredResult, newsResult, newlyAddedResult] = await Promise.all([
     getUpcomingEventCatalog(),
     getUpcomingEvents({ limit: 3 }),
     getFeaturedNews(3),
+    getUpcomingEvents({ sort: "recent", limit: 6 }),
   ]);
   const { data: events, error } = catalogResult;
   const featuredEvents = Array.isArray(featuredResult.data) ? featuredResult.data : [];
+  const newlyAddedEvents = Array.isArray(newlyAddedResult.data) ? newlyAddedResult.data : [];
   const { data: news, error: newsError } = newsResult;
   const publicEvents = Array.isArray(events) ? events : [];
   const countryCoverage = buildCountryCoverage(publicEvents, locale);
@@ -137,6 +139,26 @@ export default async function HomePage({ params }) {
         </div>
         <CountryCoverageSummary copy={copy} coverage={homeCoverage} locale={locale} />
       </section>
+
+      {newlyAddedEvents.length ? (
+        <section className="page-section">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">{copy.home.newlyAddedEyebrow}</p>
+              <h2>{copy.home.newlyAdded}</h2>
+            </div>
+            <Link className="button button-small button-ghost" href={`/${locale}/events?sort=recent`}>
+              {copy.home.viewAll}
+              <ArrowRight size={16} aria-hidden="true" />
+            </Link>
+          </div>
+          <div className="event-grid">
+            {newlyAddedEvents.map((event) => (
+              <EventCard copy={copy} event={event} key={event._id} locale={locale} />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="page-section landing-updates">
         <div className="landing-column">
