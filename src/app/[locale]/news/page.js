@@ -5,13 +5,12 @@ import { NewsCard } from "@/components/NewsCard";
 import { TrackableForm } from "@/components/TrackableForm";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/dictionaries";
-import { getNewsItems, hasRequiredNewsImage } from "@/lib/news";
+import { getNewsItems } from "@/lib/news";
 import { pageSeoMetadata } from "@/lib/seo";
 import { siteConfig } from "@/lib/site";
 
 export const revalidate = 60;
 
-const NEWS_FETCH_LIMIT = 100;
 const NEWS_PAGE_SIZE = 12;
 const newsFilterParamKeys = ["search", "source"];
 
@@ -60,39 +59,6 @@ const getPageItems = (currentPage, totalPages) => {
     return items;
   }, []);
 };
-
-const normalize = (value) => String(value || "").trim().toLowerCase();
-
-const searchableTextFor = (item) =>
-  [
-    item.title,
-    item.summary,
-    item.description,
-    item.sourceName,
-    item.author,
-    item.region,
-    item.language,
-    item.category,
-    item.relatedTournamentName,
-    ...(Array.isArray(item.relatedPlayerNames) ? item.relatedPlayerNames : []),
-    ...(Array.isArray(item.tags) ? item.tags : []),
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-const getSourcesFromItems = (items) =>
-  Object.values(
-    items.reduce((sources, item) => {
-      const name = item.sourceName || "Unknown source";
-      sources[name] ||= {
-        name,
-        url: item.sourceHomeUrl || item.sourceUrl || item.canonicalUrl || item.url || "",
-        count: 0,
-      };
-      sources[name].count += 1;
-      return sources;
-    }, {})
-  ).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
 function PaginationNav({ copy, locale, linkFilters, meta }) {
   if (!meta?.pages || meta.pages <= 1) return null;
@@ -188,31 +154,16 @@ export default async function NewsPage({ params, searchParams }) {
     search: getParam(query, "search"),
     source: getParam(query, "source"),
   };
-  const { data, error } = await getNewsItems({
-    ...filters,
-    limit: NEWS_FETCH_LIMIT,
-  });
-  const allItems = Array.isArray(data) ? data.filter(hasRequiredNewsImage) : [];
-  const sources = getSourcesFromItems(allItems);
-  const searchNeedle = normalize(filters.search);
-  const sourceNeedle = normalize(filters.source);
-  const items = allItems.filter((item) => {
-    const matchesSearch = !searchNeedle || normalize(searchableTextFor(item)).includes(searchNeedle);
-    const matchesSource = !sourceNeedle || normalize(item.sourceName) === sourceNeedle;
-    return matchesSearch && matchesSource;
-  });
-  const totalPages = Math.max(1, Math.ceil(items.length / NEWS_PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const pageItems = items.slice((currentPage - 1) * NEWS_PAGE_SIZE, currentPage * NEWS_PAGE_SIZE);
-  const paginationMeta = {
-    page: currentPage,
-    pages: totalPages,
-    hasPrev: currentPage > 1,
-    hasNext: currentPage < totalPages,
-  };
+  const fetchPage = (pageNumber) => getNewsItems({ ...filters, limit: NEWS_PAGE_SIZE, page: pageNumber });
+  let result = await fetchPage(page);
+  if (page > 1 && !result.error && result.meta?.pages && page > result.meta.pages) result = await fetchPage(result.meta.pages);
+  const { error, meta } = result;
+  const pageItems = Array.isArray(result.data) ? result.data : [];
+  const sources = Array.isArray(meta?.sources) ? meta.sources : [];
+  const paginationMeta = meta;
   const resultSummary = renderTemplate(copy.news.resultSummary, {
     count: pageItems.length,
-    total: items.length,
+    total: meta?.total ?? pageItems.length,
   });
   const activeFilterCount = newsFilterParamKeys.filter((key) => filters[key]).length;
   const hasSelectedSource = sources.some((source) => source.name === filters.source);

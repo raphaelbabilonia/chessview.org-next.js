@@ -115,7 +115,7 @@ export async function generateMetadata({ params }) {
   return pageSeoMetadata({
     locale,
     path: "/collaborate",
-    title: `${copy.title} | ChessView`,
+    title: copy.title,
     description: copy.lead,
   });
 }

@@ -59,7 +59,7 @@ export function EventCard({ copy, event, locale }) {
         <div className="event-card-main">
           <div className="event-card-title-row">
             <h3>{event.title}</h3>
-            <StatusBadge labels={copy.status} value={event.status || "published"} />
+            {event.status && event.status !== "published" ? <StatusBadge labels={copy.status} value={event.status} /> : null}
           </div>
           <p className="event-card-source">{sourceName}</p>
         </div>

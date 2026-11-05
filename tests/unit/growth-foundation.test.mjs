@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { eventListHasQueryState } from "../../src/lib/event-list-query.js";
+import { formatCardDateRange } from "../../src/lib/format.js";
 import { metadataForPublicDisplay, organizerNameForPublicDisplay } from "../../src/lib/public-event.js";
 import {
   MAX_SITEMAP_URLS,
@@ -98,5 +99,19 @@ describe("growth release-zero public rendering", () => {
     );
     assert.equal(organizerNameForPublicDisplay({ organizer: { name: "ChessView Agent Publisher" } }), "");
     assert.equal(organizerNameForPublicDisplay({ organizer: { name: "Human Organizer" } }), "Human Organizer");
+  });
+});
+
+describe("public card display", () => {
+  it("drops the stranded comma from a range across two years", () => {
+    const range = formatCardDateRange("2026-07-20T00:00:00Z", "2027-07-27T00:00:00Z", "en");
+    assert.doesNotMatch(range.primary, /,/);
+    assert.match(range.primary, /^Jul 20\s*[\u2013-]\s*Jul 27$/u);
+    assert.equal(range.secondary, "2026 - 2027");
+  });
+
+  it("keeps same-year and single-day ranges intact", () => {
+    assert.match(formatCardDateRange("2026-11-05T00:00:00Z", "2026-11-09T00:00:00Z", "en").primary, /^Nov 5\s*[\u2013-]\s*9$/u);
+    assert.equal(formatCardDateRange("2026-11-05T00:00:00Z", "2026-11-05T00:00:00Z", "en").primary, "Nov 5");
   });
 });
