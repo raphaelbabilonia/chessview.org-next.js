@@ -142,7 +142,7 @@ export default async function AgentCollaborationPage({ params }) {
             <Clock size={20} aria-hidden="true" />
           </span>
           <h2>{copy.rules}</h2>
-          <p>Queued submissions are reviewed weekly. Events need confidence &gt;= 0.85; news needs confidence &gt;= 0.82.</p>
+          <p>Queued submissions are reviewed weekly. Events need confidence &gt;= 0.85 to enter tournament review; news always waits for a person.</p>
         </article>
         <article className="info-panel collaboration-panel">
           <span className="collaboration-icon">

@@ -35,7 +35,7 @@ const lines = [
   "",
   "- ChessView links to original organizers, federations, publishers, and public documents wherever possible.",
   "- Tournament dates, registration rules, fees, eligibility, ratings, venues, and schedule changes must be verified with the original source before acting on them.",
-  "- Public agent submissions enter a queue and do not publish immediately; weekly rule-based review promotes only high-confidence, source-attributed metadata.",
+  "- Public agent submissions enter a queue and do not publish immediately; weekly rule-based review passes only high-confidence, source-attributed events on to tournament review, and public news waits for a person.",
   "- Agents must not submit copied full articles, credentials, cookies, private user data, proprietary databases, or private-network URLs.",
   "- Do not treat demo credentials, local development settings, or repository examples as production credentials.",
   "",
