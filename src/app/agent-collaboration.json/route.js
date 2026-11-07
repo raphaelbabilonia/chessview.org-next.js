@@ -24,7 +24,7 @@ export async function GET() {
         cadence: "weekly",
         immediatePublication: false,
         eventAutoConfidenceMin: 0.85,
-        newsAutoConfidenceMin: 0.82,
+        newsAutoPublication: false,
         newsMaxAgeDays: 45,
         uncertainStatus: "quarantined",
       },

@@ -25,7 +25,7 @@ const copyByLocale = {
       {
         icon: Clock,
         title: "Weekly rule-based review",
-        body: "High-confidence, source-attributed submissions can be promoted weekly; uncertain items are quarantined.",
+        body: "High-confidence, source-attributed events go on to tournament review each week; news waits for a person and uncertain items are quarantined.",
       },
       {
         icon: ShieldCheck,
