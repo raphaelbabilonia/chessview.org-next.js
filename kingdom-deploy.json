@@ -1,0 +1,24 @@
+{
+  "standard": "kingdom-deploy/1",
+  "app": "chessview-web",
+  "project": "Chess View",
+  "realm": "Mix",
+  "kind": "next-standalone",
+  "target": "KVM8, chessview.org (systemd hoc-chessview-web)",
+  "health": "https://chessview.org/_health (deploymentSha)",
+  "rollback": "automatic: hoc-chessview-release restores the previous release if /en or /_health fails; kingdom-deploy re-releases the previous artifact if the public check fails; ops/production-guard also watches every 15 minutes",
+  "runtime": { "node": "24.19.0" },
+  "skip_when_only": [".github/", "docs/", "ops/", "README.md", "AGENTS.md", "CLAUDE.md", "CONTRIBUTING.md"],
+  "env": {
+    "NEXT_TELEMETRY_DISABLED": "1",
+    "CHESSVIEW_POSTHOG_PUBLIC_PROJECT": "phc_pXY2HNKyiR9p7iP3XdCQKDiXbbxmzUYvPoSnGkGrDPRH"
+  },
+  "install": ["npm ci", "npm run audit:prod"],
+  "check": ["npm run lint", "npm test", "npm run smoke:local"],
+  "build": [
+    "API_BASE_URL=https://api.chessview.org/api NEXT_PUBLIC_SITE_URL=https://chessview.org NEXT_PUBLIC_ANALYTICS_ENABLED=true NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN=\"$CHESSVIEW_POSTHOG_PUBLIC_PROJECT\" NEXT_PUBLIC_POSTHOG_HOST=/ingest CHESSVIEW_DEPLOY_SHA=\"$KINGDOM_REVISION\" npm run build",
+    "rm -rf deploy && mkdir -p deploy/.next && cp -R .next/standalone/. deploy/ && cp -R .next/static deploy/.next/static && cp -R public deploy/public && cp ecosystem.config.cjs deploy/ecosystem.config.cjs",
+    "printf '%s\n' \"$KINGDOM_REVISION\" > deploy/.deployment-sha"
+  ],
+  "package": { "from": "deploy" }
+}
