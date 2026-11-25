@@ -1,6 +1,6 @@
 #!/bin/bash
 # Idempotent install of the ChessView production guard on KVM8. Run as root with this folder as $1:
-#   tar -cf - -C ops/production-guard . | ssh hoc-kvm8-direccion 'd=$(mktemp -d) && tar -xf - -C "$d" && sudo -n bash "$d/install.sh" "$d"'
+#   git -c core.autocrlf=false archive --format=tar HEAD:ops/production-guard | ssh hoc-kvm8-direccion 'd=$(mktemp -d) && tar -xf - -C "$d" && sudo -n bash "$d/install.sh" "$d"'
 # It (re)installs the script and units, makes the guard's GitHub key once (prints only the public key; add it on
 # raphaelbabilonia/chessview.org-next.js as a deploy key WITH write access: the guard pushes growth-release reverts),
 # and enables the timer. Remove: systemctl disable --now hoc-chessview-guard.timer (state and key are kept).

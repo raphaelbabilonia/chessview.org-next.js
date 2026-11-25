@@ -191,7 +191,10 @@ def main():
     live, reasons, technical = probe()
     kd = json.loads(KD_STATE.read_text()) if KD_STATE.exists() else {}
     deployed = kd.get('deployed')
-    kept_live = bool(deployed) and live == deployed and head in (kd.get('seen'), kd.get('blocked'))
+    owns = subject.startswith('[growth-run:') and age >= WARMUP_SECONDS
+    # A commit kingdom-deploy skipped (docs only) or blocked keeps the last good release live on purpose; a blocked
+    # growth commit is still the guard's to revert on main, as the old workflow did.
+    kept_live = bool(deployed) and live == deployed and (head == kd.get('seen') or (head == kd.get('blocked') and not owns))
     sha_ok = bool(live) and (live == head or kept_live)
     if not sha_ok:
         reasons.append('deployment-sha-mismatch')
@@ -200,7 +203,6 @@ def main():
     if not technical and sha_ok:
         note = {} if live == head else {'note': 'main is blocked or skipped by kingdom-deploy; its record owns that'}
         return record({'result': 'healthy', **entry, **note}, 0)
-    owns = subject.startswith('[growth-run:') and age >= WARMUP_SECONDS
     reason = ','.join(reasons)
     if owns:
         actions = []

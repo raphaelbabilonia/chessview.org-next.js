@@ -9,10 +9,10 @@ The same checks and the same ownership rule, now run by the server every 15 minu
   (`/etc/hoc-secrets/chessview/production-guard-github`, root only) and prints its public key, which is added on this
   repository as a deploy key with write access (it only ever pushes `Revert growth release ...` commits).
 
-Install or update from Windows (Git Bash), from this repository's root:
+Install or update from Windows (Git Bash), from this repository's root, after committing (the archive keeps LF endings):
 
 ```bash
-tar -cf - -C ops/production-guard . | /c/Windows/System32/OpenSSH/ssh.exe -T -o BatchMode=yes hoc-kvm8-direccion \
+git -c core.autocrlf=false archive --format=tar HEAD:ops/production-guard | /c/Windows/System32/OpenSSH/ssh.exe -T -o BatchMode=yes hoc-kvm8-direccion \
   'd=$(mktemp -d) && tar -xf - -C "$d" && sudo -n bash "$d/install.sh" "$d"'
 ```
 
