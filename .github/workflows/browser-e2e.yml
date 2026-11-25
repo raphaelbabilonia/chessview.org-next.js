@@ -1,0 +1,24 @@
+name: Browser E2E (manual)
+
+# Releases are built and tested on KVM8 (kingdom-deploy.json). These browser tests need Chromium and WebKit,
+# which the server does not have, so they run only when started by hand (Kingdom DEPLOY.md, rule 3).
+on:
+  workflow_dispatch:
+
+jobs:
+  browser-e2e:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.19.0"
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run lint
+      - run: npm run test:maps
+      - run: npm run test:analytics
+      - run: npm run test:growth-foundation:unit

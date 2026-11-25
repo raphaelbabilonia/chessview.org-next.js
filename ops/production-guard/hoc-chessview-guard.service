@@ -1,0 +1,14 @@
+[Unit]
+Description=ChessView production guard (health checks, growth-release rollback)
+Documentation=https://github.com/raphaelbabilonia/chessview.org-next.js/tree/main/ops/production-guard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/hoc-chessview-guard
+TimeoutStartSec=1500
+Nice=5
+PrivateTmp=yes
+ProtectHome=yes
+UMask=0077

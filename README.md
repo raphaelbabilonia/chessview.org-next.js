@@ -135,25 +135,34 @@ Use the PostHog project settings to select the EU region, discard IP data, keep 
 
 ## Production Deployment
 
-The GitHub Actions workflow builds a standalone Next.js artifact and deploys it through the restricted KVM8 gateway. It expects these repository secrets:
+Push to `main` is the release (Kingdom deploy standard, 25 Nov 2026). KVM8 pulls `main` every two minutes
+(`kingdom-deploy@chessview-web.timer`), runs gitleaks, `npm ci`, `npm run audit:prod`, lint, the unit tests and the
+local smoke test (`npm run smoke:local`) in a sandbox without network, builds the standalone site and hands it to
+`hoc-chessview-release web`. Everything it runs is in [`kingdom-deploy.json`](kingdom-deploy.json); nothing is
+deployed through GitHub Actions and no deploy secret lives in GitHub.
 
-- `CHESSVIEW_VPS_HOST` and `CHESSVIEW_VPS_USER`: the commissioned KVM8 gateway destination.
-- `CHESSVIEW_VPS_SSH_KEY`: the restricted deployment key.
-- `CHESSVIEW_VPS_KNOWN_HOSTS`: the pinned SSH host identity; strict verification is required.
-
-The workflow builds with:
+The production build uses:
 
 ```env
 API_BASE_URL=https://api.chessview.org/api
 NEXT_PUBLIC_SITE_URL=https://chessview.org
 NEXT_PUBLIC_ANALYTICS_ENABLED=true
-NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN=phc_your_eu_project_token
+NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN=<public EU project token, in kingdom-deploy.json>
 NEXT_PUBLIC_POSTHOG_HOST=/ingest
 ```
 
-Production uses `hoc-chessview-web.service`, with its current release at `/srv/hoc/chessview/web` and an internal listener on port `3021`. The API is a separate isolated service. The gateway verifies artifact hashes, retains the previous release, and verifies readiness. The workflow also checks the exact public `/_health` deployment SHA. Preserve these routes and use the gateway for deployment and rollback.
+Production uses `hoc-chessview-web.service`, with its current release at `/srv/hoc/chessview/web` and an internal
+listener on port `3021`. The API is a separate isolated service. The release command verifies the artifact hash,
+retains the previous release and puts it back if `/en` or the exact `/_health` deployment SHA fails; kingdom-deploy then
+checks the public `/_health` SHA and re-releases the previous artifact if that fails.
 
-Content workers run in the private brain checkout on Windows through its hidden Task Scheduler job and terminal CLI. Keep the duplicate GitHub coordinate job disabled. The independent `production-guard.yml` workflow remains responsible for public health and guarded rollback ownership.
+The browser end-to-end tests (`npm run test:maps:e2e`, `npm run test:analytics:e2e`) need Chromium and WebKit, which the
+server does not have; run them locally or with the manual `Browser E2E` workflow (`workflow_dispatch` only).
+
+Content workers run in the private brain checkout on Windows through its hidden Task Scheduler job and terminal CLI.
+Keep the duplicate GitHub coordinate job disabled. The independent production guard
+([`ops/production-guard/`](ops/production-guard/), a KVM8 timer every 15 minutes) remains responsible for public
+health and guarded rollback ownership.
 
 ## Security and Open Source Notes
 
