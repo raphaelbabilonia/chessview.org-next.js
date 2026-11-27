@@ -17,7 +17,7 @@ See [OPEN_SOURCE_POLICY.md](./OPEN_SOURCE_POLICY.md) for the full policy.
 
 ## Why Next.js
 
-The React/Vite frontend is a client-side app. That is fine for dashboards and authenticated workflows, but public pages benefit from server-rendered HTML so search engines and social crawlers can read event content immediately.
+Public pages need server-rendered HTML so search engines and social crawlers can read event content immediately. (The earlier React/Vite client app, `chessview.org-frontend`, was retired and archived on 27 Nov 2026.)
 
 Initial public routes:
 

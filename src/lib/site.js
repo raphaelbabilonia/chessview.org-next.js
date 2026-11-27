@@ -24,11 +24,6 @@ export const siteConfig = {
       description: "Tournament, news, tracking, private ingest, and public agent collaboration API.",
       url: "https://github.com/raphaelbabilonia/chessview.org-backend",
     },
-    {
-      name: "Organizer frontend",
-      description: "React/Vite organizer and tournament management interface.",
-      url: "https://github.com/raphaelbabilonia/chessview.org-frontend",
-    },
   ],
   ogImage: {
     path: "/opengraph-image",
